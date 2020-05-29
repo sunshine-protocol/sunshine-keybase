@@ -1,0 +1,2 @@
+[workspace]
+members = ["bin/cli", "bin/node", "client", "pallet"]

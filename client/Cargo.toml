@@ -1,0 +1,10 @@
+[package]
+name = "client"
+version = "0.1.0"
+authors = ["David Craven <david@craven.ch>"]
+edition = "2018"
+
+[dependencies]
+ipfs-embed = { git = "https://github.com/ipfs-rust/ipfs-embed" }
+ipld-block-builder = "0.3.0"
+substrate-subxt = "0.8.0"
