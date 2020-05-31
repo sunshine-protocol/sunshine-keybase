@@ -1,5 +1,5 @@
 [package]
-name = "node-template"
+name = "node-identity"
 version = "2.0.0-rc2"
 authors = ["Anonymous"]
 description = "Substrate Node template"
@@ -12,14 +12,11 @@ repository = "https://github.com/paritytech/substrate/"
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
-[[bin]]
-name = "node-template"
-
 [dependencies]
-futures = "0.3.4"
+futures = "0.3.5"
 log = "0.4.8"
-structopt = "0.3.8"
-parking_lot = "0.10.0"
+structopt = "0.3.14"
+parking_lot = "0.10.2"
 
 sc-cli = "0.8.0-rc2"
 sp-core = "2.0.0-rc2"
@@ -39,7 +36,7 @@ sc-client-api = "2.0.0-rc2"
 sp-runtime = "2.0.0-rc2"
 sc-basic-authorship = "0.8.0-rc2"
 
-node-template-runtime = { version = "2.0.0-rc2", path = "runtime" }
+runtime-identity = { version = "2.0.0-rc2", path = "runtime" }
 
 [build-dependencies]
 substrate-build-script-utils = "2.0.0-rc2"

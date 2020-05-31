@@ -1,5 +1,5 @@
 [package]
-name = "node-template-runtime"
+name = "runtime-identity"
 version = "2.0.0-rc2"
 authors = ["Anonymous"]
 edition = "2018"
@@ -23,12 +23,12 @@ system = { version = "2.0.0-rc2", default-features = false, package = "frame-sys
 timestamp = { version = "2.0.0-rc2", default-features = false, package = "pallet-timestamp" }
 transaction-payment = { version = "2.0.0-rc2", default-features = false, package = "pallet-transaction-payment" }
 frame-executive = { version = "2.0.0-rc2", default-features = false }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
+serde = { version = "1.0.111", optional = true, features = ["derive"] }
 sp-api = { version = "2.0.0-rc2", default-features = false }
-sp-block-builder = { default-features = false, version = "2.0.0-rc2"}
+sp-block-builder = { default-features = false, version = "2.0.0-rc2" }
 sp-consensus-aura = { version = "0.8.0-rc2", default-features = false }
 sp-core = { version = "2.0.0-rc2", default-features = false }
-sp-inherents = { default-features = false, version = "2.0.0-rc2"}
+sp-inherents = { default-features = false, version = "2.0.0-rc2" }
 sp-io = { version = "2.0.0-rc2", default-features = false }
 sp-offchain = { version = "2.0.0-rc2", default-features = false }
 sp-runtime = { version = "2.0.0-rc2", default-features = false }
@@ -38,6 +38,7 @@ sp-transaction-pool = { version = "2.0.0-rc2", default-features = false }
 sp-version = { version = "2.0.0-rc2", default-features = false }
 
 identity = { version = "0.1.0", default-features = false, package = "pallet-identity", path = "../../../pallet" }
+utils-identity = { version = "0.1.0", default-features = false, path = "../../../utils" }
 
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner" }
@@ -70,4 +71,5 @@ std = [
     "system/std",
     "timestamp/std",
     "transaction-payment/std",
+    "utils-identity/std",
 ]

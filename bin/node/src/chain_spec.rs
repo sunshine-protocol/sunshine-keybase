@@ -1,4 +1,4 @@
-use node_template_runtime::{
+use runtime_identity::{
     AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
     SystemConfig, WASM_BINARY,
 };
