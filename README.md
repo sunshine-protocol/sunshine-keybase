@@ -28,7 +28,9 @@ Add a new online identity
 
 ```bash
 > ./target/release/cli-identity prove dvc94ch@github
-claiming github identity dvc94ch
+Claiming dvc94ch@github...
+Please *publicly* post the following Gist, and name it 'substrate-identity-proof.md'.
+
 ### substrate identity proof
 
 I hereby claim:
@@ -55,5 +57,5 @@ and list your identities
 
 ```bash
 > ./target/release/cli-identity id
-0 dvc94ch@github Active("https://gist.githubusercontent.com/dvc94ch/da8bbf9c69976a3d750e2c433126852b/raw/95d0318026e9318fdb1b970c2708e7376cfac9b6/substrate-identity-proof.md")
+0 dvc94ch@github https://gist.github.com/da8bbf9c69976a3d750e2c433126852b
 ```

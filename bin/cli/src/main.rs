@@ -37,22 +37,17 @@ async fn run() -> Result<(), Error> {
             let identifier = identifier.unwrap_or_else(|| Identifier::Ss58(account_id));
             if let Identifier::Ss58(account_id) = identifier {
                 for id in client.identity(&account_id).await? {
-                    println!(
-                        "{} {}@{} {:?}",
-                        id.seqno,
-                        id.service.username(),
-                        id.service.service(),
-                        id.status
-                    );
+                    println!("{}", id);
                 }
             }
         }
         SubCommand::Prove(ProveCommand {
             identifier: Identifier::Github(username),
         }) => {
-            println!("claiming github identity {}", username);
+            println!("Claiming {}@github...", username);
             let proof = client.prove_ownership(Service::Github(username)).await?;
-            println!("{}", proof);
+            println!("Please *publicly* post the following Gist, and name it 'substrate-identity-proof.md'.\n");
+            print!("{}", proof);
         }
         _ => {
             eprintln!("unsupported identifier");

@@ -160,11 +160,35 @@ pub enum IdentityStatus {
     Active(String),
 }
 
+impl core::fmt::Display for IdentityStatus {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        match self {
+            Self::Expired => write!(f, "expired"),
+            Self::Revoked => write!(f, "revoked"),
+            Self::ProofNotFound => write!(f, "proof not found"),
+            Self::Active(proof) => write!(f, "{}", proof),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IdentityInfo {
     pub service: Service,
     pub seqno: u32,
     pub status: IdentityStatus,
+}
+
+impl core::fmt::Display for IdentityInfo {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "{} {}@{} {}",
+            self.seqno,
+            self.service.username(),
+            self.service.service(),
+            self.status
+        )
+    }
 }
 
 #[cfg(test)]
