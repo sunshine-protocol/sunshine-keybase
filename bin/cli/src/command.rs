@@ -1,9 +1,9 @@
 use crate::runtime::AccountId;
 use clap::Clap;
+use client_identity::claim::{Service, ServiceParseError};
 use std::path::PathBuf;
 use std::str::FromStr;
 use substrate_subxt::sp_core::crypto::{PublicError, Ss58Codec};
-use thiserror::Error;
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
 pub struct Opts {
@@ -26,56 +26,34 @@ pub struct IdCommand {
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
 pub struct ProveCommand {
-    pub identifier: Identifier,
+    pub service: Service,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Identifier {
-    Ss58(AccountId),
-    Github(String),
+    Account(AccountId),
+    Service(Service),
 }
 
 impl FromStr for Identifier {
-    type Err = IdentifierError;
+    type Err = ServiceParseError;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let mut parts = string.split("@");
-        let username = parts.next().ok_or(IdentifierError::InvalidIdentifier)?;
-        if username.is_empty() {
-            return Err(IdentifierError::InvalidIdentifier);
-        }
-        let result = if let Some(service) = parts.next() {
-            match service {
-                "github" => Ok(Identifier::Github(username.into())),
-                _ => Err(IdentifierError::UnknownService(service.into())),
-            }
+        if let Ok(Account(account_id)) = Account::from_str(string) {
+            Ok(Self::Account(account_id))
         } else {
-            Ok(Identifier::Ss58(AccountId::from_string(username)?))
-        };
-        if parts.next().is_some() {
-            return Err(IdentifierError::InvalidIdentifier);
+            Ok(Self::Service(Service::from_str(string)?))
         }
-        result
     }
 }
 
-#[derive(Clone, Debug, Error, Eq, PartialEq)]
-pub enum IdentifierError {
-    #[error("unknown service {0}")]
-    UnknownService(String),
-    #[error("invalid identifier")]
-    InvalidIdentifier,
-    #[error("invalid ss58: {0}")]
-    InvalidSs58(InvalidSs58),
-}
+pub struct Account(pub AccountId);
 
-#[derive(Clone, Debug, Error, Eq, PartialEq)]
-#[error("{0:?}")]
-pub struct InvalidSs58(PublicError);
+impl FromStr for Account {
+    type Err = PublicError;
 
-impl From<PublicError> for IdentifierError {
-    fn from(error: PublicError) -> Self {
-        Self::InvalidSs58(InvalidSs58(error))
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        Ok(Self(AccountId::from_string(string)?))
     }
 }
 
@@ -86,26 +64,22 @@ mod tests {
 
     #[test]
     fn parse_identifer() {
-        if let Err(IdentifierError::InvalidSs58(_)) = Identifier::from_str("dvc94ch") {
-        } else {
-            panic!()
-        }
         assert_eq!(
             Identifier::from_str("dvc94ch@github"),
-            Ok(Identifier::Github("dvc94ch".into()))
+            Ok(Identifier::Service(Service::Github("dvc94ch".into())))
         );
         assert_eq!(
             Identifier::from_str("dvc94ch@twitter"),
-            Err(IdentifierError::UnknownService("twitter".into()))
+            Err(ServiceParseError::Unknown("twitter".into()))
         );
         assert_eq!(
             Identifier::from_str("@dvc94ch"),
-            Err(IdentifierError::InvalidIdentifier)
+            Err(ServiceParseError::Invalid)
         );
         let alice = AccountKeyring::Alice.to_account_id();
         assert_eq!(
             Identifier::from_str(&alice.to_string()),
-            Ok(Identifier::Ss58(alice))
+            Ok(Identifier::Account(alice))
         );
     }
 }

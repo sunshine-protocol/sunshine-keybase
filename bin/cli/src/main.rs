@@ -34,23 +34,25 @@ async fn run() -> Result<(), Error> {
     let mut client = Client::new(subxt, store, pair).await?;
     match opts.subcmd {
         SubCommand::Id(IdCommand { identifier }) => {
-            let identifier = identifier.unwrap_or_else(|| Identifier::Ss58(account_id));
-            if let Identifier::Ss58(account_id) = identifier {
-                for id in client.identity(&account_id).await? {
-                    println!("{}", id);
-                }
+            let account_id = match identifier {
+                Some(Identifier::Account(account_id)) => account_id,
+                Some(Identifier::Service(_)) => unimplemented!(),
+                None => account_id,
+            };
+            for id in client.identity(&account_id).await? {
+                println!("{}", id);
             }
         }
-        SubCommand::Prove(ProveCommand {
-            identifier: Identifier::Github(username),
-        }) => {
-            println!("Claiming {}@github...", username);
-            let proof = client.prove_ownership(Service::Github(username)).await?;
-            println!("Please *publicly* post the following Gist, and name it 'substrate-identity-proof.md'.\n");
+        SubCommand::Prove(ProveCommand { service }) => {
+            println!("Claiming {}...", service);
+            let instructions = match service {
+                Service::Github(_) => {
+                    "Please *publicly* post the following Gist, and name it 'substrate-identity-proof.md'.\n"
+                }
+            };
+            let proof = client.prove_ownership(service).await?;
+            println!("{}", instructions);
             print!("{}", proof);
-        }
-        _ => {
-            eprintln!("unsupported identifier");
         }
     }
     Ok(())

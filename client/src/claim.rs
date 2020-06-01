@@ -9,9 +9,11 @@ use libipld::json::DagJsonCodec;
 use libipld::multibase::{encode, Base};
 use libipld::store::Store;
 use libipld::DagCbor;
+use std::str::FromStr;
 use std::time::{Duration, UNIX_EPOCH};
 use substrate_subxt::sp_core::Pair;
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
+use thiserror::Error;
 
 #[derive(Clone, Debug, Eq, PartialEq, DagCbor)]
 pub struct Claim {
@@ -152,6 +154,43 @@ impl Service {
     }
 }
 
+impl core::fmt::Display for Service {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "{}@{}", self.username(), self.service())
+    }
+}
+
+impl FromStr for Service {
+    type Err = ServiceParseError;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let mut parts = string.split("@");
+        let username = parts.next().ok_or(ServiceParseError::Invalid)?;
+        if username.is_empty() {
+            return Err(ServiceParseError::Invalid);
+        }
+        let service = parts.next().ok_or(ServiceParseError::Invalid)?;
+        if service.is_empty() {
+            return Err(ServiceParseError::Invalid);
+        }
+        if parts.next().is_some() {
+            return Err(ServiceParseError::Invalid);
+        }
+        match service {
+            "github" => Ok(Self::Github(username.into())),
+            _ => Err(ServiceParseError::Unknown(service.into())),
+        }
+    }
+}
+
+#[derive(Debug, Error, Eq, PartialEq)]
+pub enum ServiceParseError {
+    #[error("Expected a service description of the form username@service.")]
+    Invalid,
+    #[error("Unknown service '{0}'")]
+    Unknown(String),
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum IdentityStatus {
     Expired,
@@ -180,14 +219,7 @@ pub struct IdentityInfo {
 
 impl core::fmt::Display for IdentityInfo {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(
-            f,
-            "{} {}@{} {}",
-            self.seqno,
-            self.service.username(),
-            self.service.service(),
-            self.status
-        )
+        write!(f, "{} {} {}", self.seqno, self.service, self.status)
     }
 }
 
