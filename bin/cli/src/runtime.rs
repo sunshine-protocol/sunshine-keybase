@@ -1,4 +1,4 @@
-use client_identity::subxt::Identity;
+use client_identity::Identity;
 use substrate_subxt::balances::{AccountData, Balances};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
 use substrate_subxt::system::System;

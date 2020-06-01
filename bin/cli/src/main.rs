@@ -2,7 +2,7 @@ use crate::command::*;
 use crate::error::Error;
 use crate::runtime::Runtime;
 use clap::Clap;
-use client_identity::{claim::Service, Client};
+use client_identity::{Client, IdentityStatus, Service};
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
 use substrate_subxt::sp_core::Pair;
@@ -54,6 +54,24 @@ async fn run() -> Result<(), Error> {
             println!("{}", instructions);
             print!("{}", proof);
         }
+        SubCommand::Revoke(RevokeCommand { seqno }) => {
+            let id = client
+                .identity(&account_id)
+                .await?
+                .into_iter()
+                .find(|id| id.seqno == seqno && id.status != IdentityStatus::Revoked)
+                .ok_or(Error::InvalidSeqNo)?;
+            println!("Do you really want to revoke {}? [y/n]", id.service);
+            if ask_for_confirmation().await? {
+                client.revoke_claim(seqno).await?;
+            }
+        }
     }
     Ok(())
+}
+
+async fn ask_for_confirmation() -> Result<bool, Error> {
+    let mut line = String::new();
+    async_std::io::stdin().read_line(&mut line).await?;
+    Ok(&line == "y\n")
 }

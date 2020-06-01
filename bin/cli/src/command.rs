@@ -1,6 +1,6 @@
 use crate::runtime::AccountId;
 use clap::Clap;
-use client_identity::claim::{Service, ServiceParseError};
+use client_identity::{Service, ServiceParseError};
 use std::path::PathBuf;
 use std::str::FromStr;
 use substrate_subxt::sp_core::crypto::{PublicError, Ss58Codec};
@@ -17,6 +17,7 @@ pub struct Opts {
 pub enum SubCommand {
     Id(IdCommand),
     Prove(ProveCommand),
+    Revoke(RevokeCommand),
 }
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
@@ -27,6 +28,11 @@ pub struct IdCommand {
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
 pub struct ProveCommand {
     pub service: Service,
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub struct RevokeCommand {
+    pub seqno: u32,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -1,6 +1,4 @@
-use crate::claim::{Claim, ClaimBody, IdentityInfo, IdentityStatus, Service, UnsignedClaim};
-use crate::error::Error;
-use crate::subxt::{Identity, IdentityStoreExt, IdentityUpdatedEventExt, SetIdentityCallExt};
+use crate::claim::{Claim, ClaimBody, UnsignedClaim};
 use codec::{Decode, Encode};
 use core::convert::TryInto;
 use ipld_block_builder::{Cache, Codec};
@@ -12,10 +10,14 @@ use substrate_subxt::sp_runtime::traits::{IdentifyAccount, SignedExtension, Veri
 use substrate_subxt::system::System;
 use substrate_subxt::{PairSigner, SignedExtra, Signer};
 
-pub mod claim;
-pub mod error;
+mod claim;
+mod error;
 mod github;
-pub mod subxt;
+mod subxt;
+
+pub use claim::{IdentityInfo, IdentityStatus, Service, ServiceParseError};
+pub use error::Error;
+pub use subxt::*;
 
 pub struct Client<I, P, T, S, E>
 where
