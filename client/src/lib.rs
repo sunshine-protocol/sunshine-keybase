@@ -1,4 +1,4 @@
-use crate::claim::{Claim, ClaimBody, ProofParams, Service, UnsignedClaim};
+use crate::claim::{Claim, ClaimBody, IdentityInfo, IdentityStatus, Service, UnsignedClaim};
 use crate::error::Error;
 use crate::subxt::{Identity, IdentityStoreExt, IdentityUpdatedEventExt, SetIdentityCallExt};
 use codec::{Decode, Encode};
@@ -14,7 +14,7 @@ use substrate_subxt::{PairSigner, SignedExtra, Signer};
 
 pub mod claim;
 pub mod error;
-//mod github;
+mod github;
 pub mod subxt;
 
 pub struct Client<I, P, T, S, E>
@@ -97,13 +97,11 @@ where
     }
 
     pub async fn prove_ownership(&mut self, service: Service) -> Result<String, Error> {
-        let claim = self.create_claim(ClaimBody::Ownership(service.clone()), None).await?;
-        let params = ProofParams {
-            account_id: self.signer.account_id().to_string(),
-            object: claim.claim().to_json()?,
-            signature: claim.signature(),
-        };
-        let proof = service.proof(&params);
+        let claim = self
+            .create_claim(ClaimBody::Ownership(service.clone()), None)
+            .await?;
+        let account_id = self.signer.account_id().to_string();
+        let proof = service.proof(&account_id, &claim)?;
         self.submit_claim(claim).await?;
         Ok(proof)
     }
@@ -114,27 +112,69 @@ where
         Ok(())
     }
 
-    pub async fn claims(
-        &mut self,
-        account_id: &<T as System>::AccountId,
-    ) -> Result<Vec<ClaimBody>, Error> {
+    async fn claims(&mut self, account_id: &<T as System>::AccountId) -> Result<Vec<Claim>, Error> {
         let mut claims = vec![];
         let mut next = self.identity_cid(account_id).await?;
         while let Some(cid) = next {
             let claim = self.cache.get(&cid).await?;
-            if claim.verify::<S>(account_id).is_ok() {
-                claims.push(claim.claim().body().clone());
-            }
             next = claim.claim().prev().cloned();
+            if claim.verify::<S>(account_id).is_ok() {
+                claims.push(claim);
+            }
         }
         Ok(claims)
     }
 
-    /*pub async fn identity(&self, account_id: &<T as System>::AccountId) -> Result<(), Error> {
-
+    pub async fn identity(
+        &mut self,
+        account_id: &<T as System>::AccountId,
+    ) -> Result<Vec<IdentityInfo>, Error> {
+        let claims = self.claims(account_id).await?;
+        let account_id = account_id.to_string();
+        let mut identities = vec![];
+        let mut proofs = vec![];
+        for claim in claims.iter().rev() {
+            match claim.claim().body() {
+                ClaimBody::Ownership(service) => {
+                    let status = if claim.claim().expired() {
+                        IdentityStatus::Expired
+                    } else {
+                        IdentityStatus::ProofNotFound
+                    };
+                    if let Ok(proof) = service.proof(&account_id, claim) {
+                        identities.push(IdentityInfo {
+                            service: service.clone(),
+                            seqno: claim.claim().seqno(),
+                            status,
+                        });
+                        proofs.push(proof);
+                    }
+                }
+                ClaimBody::Revoke(seqno) => {
+                    if let Some(mut id) = identities.iter_mut().find(|id| id.seqno == *seqno) {
+                        id.status = IdentityStatus::Revoked;
+                    }
+                }
+            }
+        }
+        for (mut id, proof) in identities.iter_mut().zip(proofs.iter()) {
+            if id.status == IdentityStatus::ProofNotFound {
+                match &id.service {
+                    Service::Github(username) => {
+                        if let Ok(url) =
+                            github::verify_identity(&username, "substrate-identity-proof.md", proof)
+                                .await
+                        {
+                            id.status = IdentityStatus::Active(url);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(identities)
     }
 
-    pub async fn resolve(&self, id: &Identifier<T>) -> Result<<T as System>::AccountId, Error> {
+    /*pub async fn resolve(&self, id: &Identifier<T>) -> Result<<T as System>::AccountId, Error> {
         todo!()
     }*/
 }

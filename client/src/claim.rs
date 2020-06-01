@@ -6,7 +6,7 @@ use libipld::cid::Cid;
 use libipld::codec::Codec as _;
 use libipld::ipld::Ipld;
 use libipld::json::DagJsonCodec;
-use libipld::multibase::{Base, encode};
+use libipld::multibase::{encode, Base};
 use libipld::store::Store;
 use libipld::DagCbor;
 use std::time::{Duration, UNIX_EPOCH};
@@ -43,9 +43,6 @@ impl Claim {
             Decode::decode(&mut &self.signature[..]).map_err(|_| Error::InvalidSignature)?;
         if !signature.verify(&message[..], account_id) {
             return Err(Error::InvalidSignature);
-        }
-        if self.claim.expired() {
-            return Err(Error::Expired);
         }
         Ok(())
     }
@@ -104,6 +101,10 @@ impl UnsignedClaim {
         self.prev.as_ref()
     }
 
+    pub fn seqno(&self) -> u32 {
+        self.seqno
+    }
+
     pub fn to_json(&self) -> Result<String, Error> {
         let bytes = DagCborCodec::encode(self)?;
         let ipld: Ipld = DagCborCodec::decode(&bytes)?;
@@ -124,10 +125,6 @@ pub enum Service {
 }
 
 impl Service {
-    pub fn identifier(&self) -> String {
-        format!("{}@{}", self.username(), self.service())
-    }
-
     pub fn username(&self) -> &str {
         match self {
             Self::Github(username) => &username,
@@ -140,25 +137,34 @@ impl Service {
         }
     }
 
-    pub fn proof(&self, params: &ProofParams) -> String {
-        match self {
-            Self::Github(username) => {
-                format!(
-                    include_str!("../github-template.md"),
-                    username = &username,
-                    account_id = &params.account_id,
-                    object = &params.object,
-                    signature = &params.signature,
-                )
-            }
-        }
+    pub fn proof(&self, account_id: &str, claim: &Claim) -> Result<String, Error> {
+        let object = claim.claim().to_json()?;
+        let signature = claim.signature();
+        Ok(match self {
+            Self::Github(username) => format!(
+                include_str!("../github-template.md"),
+                username = username,
+                account_id = account_id,
+                object = object,
+                signature = signature,
+            ),
+        })
     }
 }
 
-pub struct ProofParams {
-    pub account_id: String,
-    pub object: String,
-    pub signature: String,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum IdentityStatus {
+    Expired,
+    Revoked,
+    ProofNotFound,
+    Active(String),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IdentityInfo {
+    pub service: Service,
+    pub seqno: u32,
+    pub status: IdentityStatus,
 }
 
 #[cfg(test)]
@@ -187,7 +193,7 @@ mod tests {
         let claim = Claim::new::<MultiSignature, _>(&pair, claim).unwrap();
         assert!(claim
             .verify::<MultiSignature>(&pair.public().into())
-            .is_err());
+            .is_ok());
 
         let root = cache.insert(claim).await.unwrap();
 

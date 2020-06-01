@@ -5,8 +5,8 @@ use clap::Clap;
 use client_identity::{claim::Service, Client};
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
-use substrate_subxt::ClientBuilder;
 use substrate_subxt::sp_core::Pair;
+use substrate_subxt::ClientBuilder;
 
 mod command;
 mod error;
@@ -36,8 +36,14 @@ async fn run() -> Result<(), Error> {
         SubCommand::Id(IdCommand { identifier }) => {
             let identifier = identifier.unwrap_or_else(|| Identifier::Ss58(account_id));
             if let Identifier::Ss58(account_id) = identifier {
-                for id in client.claims(&account_id).await? {
-                    println!("{:?}", id);
+                for id in client.identity(&account_id).await? {
+                    println!(
+                        "{} {}@{} {:?}",
+                        id.seqno,
+                        id.service.username(),
+                        id.service.service(),
+                        id.status
+                    );
                 }
             }
         }

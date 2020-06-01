@@ -64,7 +64,11 @@ mod tests {
             .unwrap();
         assert_eq!(&event.who, signer.account_id());
         assert_eq!(event.cid, cid);
-        let cid2 = client.identity(signer.account_id(), None).await.unwrap().unwrap();
+        let cid2 = client
+            .identity(signer.account_id(), None)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(cid, cid2);
     }
 }
