@@ -1,4 +1,4 @@
-use crate::claim::{Claim, ClaimBody, UnsignedClaim};
+use crate::claim::{Claim, ClaimBody, ProofParams, Service, UnsignedClaim};
 use crate::error::Error;
 use crate::subxt::{Identity, IdentityStoreExt, IdentityUpdatedEventExt, SetIdentityCallExt};
 use codec::{Decode, Encode};
@@ -63,18 +63,18 @@ where
         &self,
         account_id: &<T as System>::AccountId,
     ) -> Result<Option<Cid>, Error> {
-        if let Some(bytes) = self.subxt.identity(account_id).await? {
+        if let Some(bytes) = self.subxt.identity(account_id, None).await? {
             Ok(Some(bytes.try_into()?))
         } else {
             Ok(None)
         }
     }
 
-    pub async fn make_claim(
+    async fn create_claim(
         &mut self,
         body: ClaimBody,
         expire_in: Option<Duration>,
-    ) -> Result<(), Error> {
+    ) -> Result<Claim, Error> {
         let claim = UnsignedClaim::new(
             &mut self.cache,
             body,
@@ -82,8 +82,10 @@ where
             expire_in.unwrap_or_else(|| Duration::from_millis(u64::MAX)),
         )
         .await?;
-        // TODO impl deref for PairSigner
-        let claim = Claim::new::<S, _>(self.signer.signer(), claim)?;
+        Claim::new::<S, _>(self.signer.signer(), claim)
+    }
+
+    async fn submit_claim(&mut self, claim: Claim) -> Result<(), Error> {
         let root = self.cache.insert(claim).await?;
         let cid = T::Cid::from(root.clone());
         self.subxt
@@ -91,6 +93,24 @@ where
             .await?
             .identity_updated()?;
         self.root = Some(root);
+        Ok(())
+    }
+
+    pub async fn prove_ownership(&mut self, service: Service) -> Result<String, Error> {
+        let claim = self.create_claim(ClaimBody::Ownership(service.clone()), None).await?;
+        let params = ProofParams {
+            account_id: self.signer.account_id().to_string(),
+            object: claim.claim().to_json()?,
+            signature: claim.signature(),
+        };
+        let proof = service.proof(&params);
+        self.submit_claim(claim).await?;
+        Ok(proof)
+    }
+
+    pub async fn revoke_claim(&mut self, claim: u32) -> Result<(), Error> {
+        let claim = self.create_claim(ClaimBody::Revoke(claim), None).await?;
+        self.submit_claim(claim).await?;
         Ok(())
     }
 
@@ -103,19 +123,15 @@ where
         while let Some(cid) = next {
             let claim = self.cache.get(&cid).await?;
             if claim.verify::<S>(account_id).is_ok() {
-                claims.push(claim.body().clone());
+                claims.push(claim.claim().body().clone());
             }
-            next = claim.prev().cloned();
+            next = claim.claim().prev().cloned();
         }
         Ok(claims)
     }
 
     /*pub async fn identity(&self, account_id: &<T as System>::AccountId) -> Result<(), Error> {
 
-    }
-
-    pub async fn prove(&self, body: ClaimBody) -> Result<(), Error> {
-        todo!()
     }
 
     pub async fn resolve(&self, id: &Identifier<T>) -> Result<<T as System>::AccountId, Error> {
@@ -166,7 +182,7 @@ mod tests {
         let mut client = Client::new(subxt, store, pair.clone()).await.unwrap();
         assert_eq!(client.claims(&pair.public().into()).await.unwrap().len(), 0);
         client
-            .make_claim(ClaimBody::Github("dvc94ch".into()), None)
+            .prove_ownership(Service::Github("dvc94ch".into()))
             .await
             .unwrap();
         assert_eq!(client.claims(&pair.public().into()).await.unwrap().len(), 1);

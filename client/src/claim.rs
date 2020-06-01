@@ -4,6 +4,9 @@ use ipld_block_builder::{Cache, Codec};
 use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
 use libipld::codec::Codec as _;
+use libipld::ipld::Ipld;
+use libipld::json::DagJsonCodec;
+use libipld::multibase::{Base, encode};
 use libipld::store::Store;
 use libipld::DagCbor;
 use std::time::{Duration, UNIX_EPOCH};
@@ -47,12 +50,12 @@ impl Claim {
         Ok(())
     }
 
-    pub fn body(&self) -> &ClaimBody {
-        &self.claim.body
+    pub fn claim(&self) -> &UnsignedClaim {
+        &self.claim
     }
 
-    pub fn prev(&self) -> Option<&Cid> {
-        self.claim.prev.as_ref()
+    pub fn signature(&self) -> String {
+        encode(Base::Base64, &self.signature)
     }
 }
 
@@ -92,11 +95,70 @@ impl UnsignedClaim {
         let expires_at = Duration::from_millis(self.ctime.saturating_add(self.expire_in));
         UNIX_EPOCH.elapsed().unwrap() > expires_at
     }
+
+    pub fn body(&self) -> &ClaimBody {
+        &self.body
+    }
+
+    pub fn prev(&self) -> Option<&Cid> {
+        self.prev.as_ref()
+    }
+
+    pub fn to_json(&self) -> Result<String, Error> {
+        let bytes = DagCborCodec::encode(self)?;
+        let ipld: Ipld = DagCborCodec::decode(&bytes)?;
+        let bytes = DagJsonCodec::encode(&ipld)?;
+        Ok(String::from_utf8(bytes.to_vec())?)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, DagCbor)]
 pub enum ClaimBody {
+    Ownership(Service),
+    Revoke(u32),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, DagCbor)]
+pub enum Service {
     Github(String),
+}
+
+impl Service {
+    pub fn identifier(&self) -> String {
+        format!("{}@{}", self.username(), self.service())
+    }
+
+    pub fn username(&self) -> &str {
+        match self {
+            Self::Github(username) => &username,
+        }
+    }
+
+    pub fn service(&self) -> &str {
+        match self {
+            Self::Github(_) => "github",
+        }
+    }
+
+    pub fn proof(&self, params: &ProofParams) -> String {
+        match self {
+            Self::Github(username) => {
+                format!(
+                    include_str!("../github-template.md"),
+                    username = &username,
+                    account_id = &params.account_id,
+                    object = &params.object,
+                    signature = &params.signature,
+                )
+            }
+        }
+    }
+}
+
+pub struct ProofParams {
+    pub account_id: String,
+    pub object: String,
+    pub signature: String,
 }
 
 #[cfg(test)]
@@ -114,7 +176,7 @@ mod tests {
 
         let claim = UnsignedClaim::new(
             &mut cache,
-            ClaimBody::Github("dvc94ch".into()),
+            ClaimBody::Ownership(Service::Github("dvc94ch".into())),
             None,
             Duration::from_millis(0),
         )
@@ -131,7 +193,7 @@ mod tests {
 
         let claim = UnsignedClaim::new(
             &mut cache,
-            ClaimBody::Github("dvc94ch".into()),
+            ClaimBody::Ownership(Service::Github("dvc94ch".into())),
             Some(root),
             Duration::from_millis(u64::MAX),
         )

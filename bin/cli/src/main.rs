@@ -2,7 +2,7 @@ use crate::command::*;
 use crate::error::Error;
 use crate::runtime::Runtime;
 use clap::Clap;
-use client_identity::{claim::ClaimBody, Client};
+use client_identity::{claim::Service, Client};
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
 use substrate_subxt::ClientBuilder;
@@ -45,7 +45,8 @@ async fn run() -> Result<(), Error> {
             identifier: Identifier::Github(username),
         }) => {
             println!("claiming github identity {}", username);
-            client.make_claim(ClaimBody::Github(username), None).await?;
+            let proof = client.prove_ownership(Service::Github(username)).await?;
+            println!("{}", proof);
         }
         _ => {
             eprintln!("unsupported identifier");
