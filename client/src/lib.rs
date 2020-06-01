@@ -5,7 +5,7 @@ use ipld_block_builder::{Cache, Codec};
 use libipld::cid::Cid;
 use libipld::store::Store;
 use std::time::Duration;
-use substrate_subxt::sp_core::Pair;
+use substrate_subxt::sp_core::crypto::{Pair, Ss58Codec};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{PairSigner, SignedExtra, Signer};
@@ -17,17 +17,19 @@ mod subxt;
 
 pub use claim::{IdentityInfo, IdentityStatus, Service, ServiceParseError};
 pub use error::Error;
+pub use github::Error as GithubError;
 pub use subxt::*;
 
 pub struct Client<I, P, T, S, E>
 where
     I: Store,
     P: Pair,
-    T: Identity + 'static,
-    <T as System>::AccountId: Into<<T as System>::Address>,
+    T: Identity + Send + Sync + 'static,
+    <T as System>::AccountId: Into<<T as System>::Address> + Ss58Codec,
     S: Encode + From<P::Signature> + Verify + Send + Sync + 'static,
     <S as Verify>::Signer: From<P::Public> + IdentifyAccount<AccountId = <T as System>::AccountId>,
-    E: SignedExtra<T> + 'static,
+    E: SignedExtra<T> + SignedExtension + Send + Sync + 'static,
+    <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
 {
     subxt: substrate_subxt::Client<T, S, E>,
     signer: PairSigner<T, S, E, P>,
@@ -40,7 +42,7 @@ where
     I: Store,
     P: Pair,
     T: Identity + Send + Sync + 'static,
-    <T as System>::AccountId: Into<<T as System>::Address>,
+    <T as System>::AccountId: Into<<T as System>::Address> + Ss58Codec,
     S: Decode + Encode + From<P::Signature> + Verify + Send + Sync + 'static,
     <S as Verify>::Signer: From<P::Public> + IdentifyAccount<AccountId = <T as System>::AccountId>,
     E: SignedExtra<T> + SignedExtension + Send + Sync + 'static,
@@ -163,10 +165,7 @@ where
             if id.status == IdentityStatus::ProofNotFound {
                 match &id.service {
                     Service::Github(username) => {
-                        if let Ok(url) =
-                            github::verify_identity(&username, "substrate-identity-proof.md", proof)
-                                .await
-                        {
+                        if let Ok(url) = github::verify_identity(&username, proof).await {
                             id.status = IdentityStatus::Active(url);
                         }
                     }
@@ -176,9 +175,23 @@ where
         Ok(identities)
     }
 
-    /*pub async fn resolve(&self, id: &Identifier<T>) -> Result<<T as System>::AccountId, Error> {
-        todo!()
-    }*/
+    pub async fn resolve(&mut self, service: &Service) -> Result<<T as System>::AccountId, Error> {
+        let accounts = match service {
+            Service::Github(username) => github::resolve_identity(&username).await?,
+        };
+        for account in accounts {
+            let account_id = match <T as System>::AccountId::from_string(&account) {
+                Ok(account_id) => account_id,
+                Err(_) => continue,
+            };
+            for id in self.identity(&account_id).await? {
+                if &id.service == service {
+                    return Ok(account_id);
+                }
+            }
+        }
+        Err(Error::ResolveFailure)
+    }
 }
 
 #[cfg(test)]

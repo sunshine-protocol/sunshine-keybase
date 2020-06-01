@@ -36,9 +36,10 @@ async fn run() -> Result<(), Error> {
         SubCommand::Id(IdCommand { identifier }) => {
             let account_id = match identifier {
                 Some(Identifier::Account(account_id)) => account_id,
-                Some(Identifier::Service(_)) => unimplemented!(),
+                Some(Identifier::Service(service)) => client.resolve(&service).await?,
                 None => account_id,
             };
+            println!("{}", account_id.to_string());
             for id in client.identity(&account_id).await? {
                 println!("{}", id);
             }

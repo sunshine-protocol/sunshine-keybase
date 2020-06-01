@@ -18,6 +18,8 @@ pub enum Error {
     Cid(#[from] libipld::cid::Error),
     #[error("invalid signature")]
     InvalidSignature,
-    #[error("claim expired")]
-    Expired,
+    #[error("failed to resolve identity")]
+    ResolveFailure,
+    #[error(transparent)]
+    Github(#[from] crate::github::Error),
 }
