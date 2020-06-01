@@ -18,6 +18,7 @@ pub enum SubCommand {
     Id(IdCommand),
     Prove(ProveCommand),
     Revoke(RevokeCommand),
+    Transfer(TransferCommand),
 }
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
@@ -35,10 +36,25 @@ pub struct RevokeCommand {
     pub seqno: u32,
 }
 
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub struct TransferCommand {
+    pub identifier: Identifier,
+    pub amount: u128,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Identifier {
     Account(AccountId),
     Service(Service),
+}
+
+impl core::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        match self {
+            Self::Account(account_id) => write!(f, "{}", account_id.to_string()),
+            Self::Service(service) => service.fmt(f),
+        }
+    }
 }
 
 impl FromStr for Identifier {

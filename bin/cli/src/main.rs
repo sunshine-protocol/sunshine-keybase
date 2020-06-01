@@ -5,8 +5,9 @@ use clap::Clap;
 use client_identity::{Client, IdentityStatus, Service};
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
+use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::Pair;
-use substrate_subxt::ClientBuilder;
+use substrate_subxt::{ClientBuilder, PairSigner};
 
 mod command;
 mod error;
@@ -31,7 +32,8 @@ async fn run() -> Result<(), Error> {
     let pair = sp_keyring::AccountKeyring::Alice.pair();
     let account_id = pair.public().into();
     let subxt = ClientBuilder::<Runtime>::new().build().await?;
-    let mut client = Client::new(subxt, store, pair).await?;
+    let signer = PairSigner::new(pair.clone());
+    let mut client = Client::new(subxt.clone(), store, pair).await?;
     match opts.subcmd {
         SubCommand::Id(IdCommand { identifier }) => {
             let account_id = match identifier {
@@ -66,6 +68,19 @@ async fn run() -> Result<(), Error> {
             if ask_for_confirmation().await? {
                 client.revoke_claim(seqno).await?;
             }
+        }
+        SubCommand::Transfer(TransferCommand { identifier, amount }) => {
+            let account_id = match identifier {
+                Identifier::Account(account_id) => account_id,
+                Identifier::Service(service) => client.resolve(&service).await?,
+            };
+            let event = subxt
+                .transfer_and_watch(&signer, &account_id, amount)
+                .await?
+                .transfer()
+                .map_err(|_| Error::FailedToDecodeTransferEvent)?
+                .ok_or(Error::FailedToFindTransferEvent)?;
+            println!("transfered {} to {}", event.amount, event.to.to_string());
         }
     }
     Ok(())
