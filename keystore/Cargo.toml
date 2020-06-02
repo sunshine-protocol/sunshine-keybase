@@ -1,0 +1,13 @@
+[package]
+name = "keybase-keystore"
+version = "0.1.0"
+authors = ["David Craven <david@craven.ch>"]
+edition = "2018"
+
+[dependencies]
+bip39 = "0.6.0-beta.1"
+rand = "0.7.3"
+secrecy = "0.6.0"
+strobe-rs = "0.5.3"
+thiserror = "1.0.19"
+zeroize = "1.1.0"

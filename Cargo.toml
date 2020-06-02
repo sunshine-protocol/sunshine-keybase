@@ -1,5 +1,5 @@
 [workspace]
-members = ["bin/cli", "bin/node", "client", "pallet", "utils"]
+members = ["bin/cli", "bin/node", "client", "keystore", "pallet", "utils"]
 
 [patch.crates-io]
 substrate-subxt = { path = "../substrate-subxt" }
