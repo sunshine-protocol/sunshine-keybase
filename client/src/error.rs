@@ -16,6 +16,13 @@ pub enum Error {
     Subxt(#[from] substrate_subxt::Error),
     #[error(transparent)]
     Cid(#[from] libipld::cid::Error),
+    #[error(transparent)]
+    Keystore(#[from] keystore::Error),
+
+    #[error("keystore already initialized")]
+    KeystoreInitialized,
+    #[error("device mask not found")]
+    NoDeviceMask,
     #[error("invalid signature")]
     InvalidSignature,
     #[error("failed to resolve identity")]

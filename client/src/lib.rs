@@ -1,7 +1,9 @@
 use crate::claim::{Claim, ClaimBody, UnsignedClaim};
 use codec::{Decode, Encode};
 use core::convert::TryInto;
+use core::marker::PhantomData;
 use ipld_block_builder::{Cache, Codec};
+use keystore::{DeviceKey, KeyStore, Password, PublicDeviceKey};
 use libipld::cid::Cid;
 use libipld::store::Store;
 use std::time::Duration;
@@ -20,59 +22,127 @@ pub use error::Error;
 pub use github::Error as GithubError;
 pub use subxt::*;
 
-pub struct Client<I, T, S, E>
+pub struct Client<T, S, E, P, I>
 where
-    I: Store,
     T: Identity + Send + Sync + 'static,
     <T as System>::AccountId: Into<<T as System>::Address> + Ss58Codec,
     S: Encode + Verify + Send + Sync + 'static,
     <S as Verify>::Signer: IdentifyAccount<AccountId = <T as System>::AccountId>,
     E: SignedExtra<T> + SignedExtension + Send + Sync + 'static,
     <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    P: Pair,
+    I: Store,
 {
+    _marker: PhantomData<P>,
+    keystore: KeyStore,
     subxt: substrate_subxt::Client<T, S, E>,
     cache: Cache<I, Codec, Claim>,
 }
 
-impl<I, T, S, E> Client<I, T, S, E>
+impl<T, S, E, P, I> Client<T, S, E, P, I>
 where
-    I: Store,
     T: Identity + Send + Sync + 'static,
     <T as System>::AccountId: Into<<T as System>::Address> + Ss58Codec,
-    S: Decode + Encode + Verify + Send + Sync + 'static,
-    <S as Verify>::Signer: IdentifyAccount<AccountId = <T as System>::AccountId>,
+    S: Decode + Encode + From<P::Signature> + Verify + Send + Sync + 'static,
+    <S as Verify>::Signer: From<P::Public> + IdentifyAccount<AccountId = <T as System>::AccountId>,
     E: SignedExtra<T> + SignedExtension + Send + Sync + 'static,
     <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    P: Pair,
+    <P as Pair>::Seed: From<[u8; 32]>,
+    I: Store,
 {
-    pub fn new(subxt: substrate_subxt::Client<T, S, E>, store: I) -> Self {
+    pub fn new(keystore: KeyStore, subxt: substrate_subxt::Client<T, S, E>, store: I) -> Self {
         Self {
+            _marker: PhantomData,
+            keystore,
             subxt,
             cache: Cache::new(store, Codec::new(), 32),
         }
+    }
+
+    pub fn signer(&self) -> Result<PairSigner<T, S, E, P>, Error> {
+        // fetch device key from disk every time to make sure account is unlocked.
+        let dk = self.keystore.device_key()?;
+        Ok(PairSigner::new(P::from_seed(&P::Seed::from(
+            *dk.expose_secret(),
+        ))))
     }
 
     async fn identity_cid(
         &self,
         account_id: &<T as System>::AccountId,
     ) -> Result<Option<Cid>, Error> {
-        if let Some(bytes) = self.subxt.identity(account_id, None).await? {
-            Ok(Some(bytes.try_into()?))
-        } else {
-            Ok(None)
+        if let Some(uid) = self.subxt.device(account_id, None).await? {
+            if let Some(bytes) = self.subxt.identity(uid, None).await? {
+                return Ok(Some(bytes.try_into()?));
+            }
         }
+        Ok(None)
     }
 
-    async fn create_claim<P>(
+    pub async fn create_account(
+        &self,
+        password: Password,
+        force: bool,
+    ) -> Result<<T as System>::AccountId, Error> {
+        if self.keystore.is_initialized() && !force {
+            return Err(Error::KeystoreInitialized);
+        }
+        let dk = DeviceKey::generate();
+        let pair = P::from_seed(&P::Seed::from(*dk.expose_secret()));
+        let signer = PairSigner::new(pair);
+        let pdk = self.keystore.initialize(&dk, &password)?;
+        let mask = T::Mask::from(*pdk);
+        self.subxt
+            .create_account_and_watch(&signer, &mask)
+            .await?
+            .account_created()?;
+        Ok(signer.account_id().clone())
+    }
+
+    pub fn lock(&self) -> Result<(), Error> {
+        Ok(self.keystore.lock()?)
+    }
+
+    pub async fn unlock(
+        &self,
+        account_id: &<T as System>::AccountId,
+        password: Password,
+    ) -> Result<(), Error> {
+        let pdk = self
+            .subxt
+            .device_mask(account_id, None)
+            .await?
+            .ok_or(Error::NoDeviceMask)?;
+        self.keystore
+            .unlock(&PublicDeviceKey::new(pdk.mask.into()), &password)?;
+        Ok(())
+    }
+
+    pub async fn add_device(&self, device: &<T as System>::AccountId) -> Result<(), Error> {
+        let signer = self.signer()?;
+        self.subxt
+            .add_device_and_watch(&signer, device)
+            .await?
+            .device_added()?;
+        Ok(())
+    }
+
+    pub async fn remove_device(&self, device: &<T as System>::AccountId) -> Result<(), Error> {
+        let signer = self.signer()?;
+        self.subxt
+            .remove_device_and_watch(&signer, device)
+            .await?
+            .device_removed()?;
+        Ok(())
+    }
+
+    async fn create_claim(
         &mut self,
         body: ClaimBody,
         expire_in: Option<Duration>,
         signer: &PairSigner<T, S, E, P>,
-    ) -> Result<Claim, Error>
-    where
-        P: Pair,
-        S: From<P::Signature>,
-        S::Signer: From<P::Public>,
-    {
+    ) -> Result<Claim, Error> {
         let prev = self.identity_cid(signer.account_id()).await?;
         let claim = UnsignedClaim::new(
             &mut self.cache,
@@ -89,48 +159,33 @@ where
         claim: Claim,
         signer: &(dyn Signer<T, S, E> + Send + Sync),
     ) -> Result<(), Error> {
+        let prev = claim.claim().prev().cloned().map(T::Cid::from);
         let root = self.cache.insert(claim).await?;
         let cid = T::Cid::from(root);
         self.subxt
-            .set_identity_and_watch(signer, &cid)
+            .set_identity_and_watch(signer, &prev, &cid)
             .await?
-            .identity_updated()?;
+            .identity_changed()?;
         Ok(())
     }
 
-    pub async fn prove_ownership<P>(
-        &mut self,
-        service: Service,
-        signer: &PairSigner<T, S, E, P>,
-    ) -> Result<String, Error>
-    where
-        P: Pair,
-        S: From<P::Signature>,
-        S::Signer: From<P::Public>,
-    {
+    pub async fn prove_ownership(&mut self, service: Service) -> Result<String, Error> {
+        let signer = self.signer()?;
         let claim = self
-            .create_claim(ClaimBody::Ownership(service.clone()), None, signer)
+            .create_claim(ClaimBody::Ownership(service.clone()), None, &signer)
             .await?;
         let account_id = signer.account_id().to_string();
         let proof = service.proof(&account_id, &claim)?;
-        self.submit_claim(claim, signer).await?;
+        self.submit_claim(claim, &signer).await?;
         Ok(proof)
     }
 
-    pub async fn revoke_claim<P>(
-        &mut self,
-        claim: u32,
-        signer: &PairSigner<T, S, E, P>,
-    ) -> Result<(), Error>
-    where
-        P: Pair,
-        S: From<P::Signature>,
-        S::Signer: From<P::Public>,
-    {
+    pub async fn revoke_claim(&mut self, claim: u32) -> Result<(), Error> {
+        let signer = self.signer()?;
         let claim = self
-            .create_claim(ClaimBody::Revoke(claim), None, signer)
+            .create_claim(ClaimBody::Revoke(claim), None, &signer)
             .await?;
-        self.submit_claim(claim, signer).await?;
+        self.submit_claim(claim, &signer).await?;
         Ok(())
     }
 
@@ -219,7 +274,7 @@ mod tests {
     use substrate_subxt::balances::{AccountData, Balances};
     use substrate_subxt::system::System;
     use substrate_subxt::{sp_core, sp_runtime, ClientBuilder};
-    use utils_identity::CidBytes;
+    use utils_identity::cid::CidBytes;
 
     #[derive(Clone, Debug, Eq, PartialEq)]
     struct Runtime;
@@ -242,7 +297,10 @@ mod tests {
     }
 
     impl Identity for Runtime {
+        type Uid = u8;
         type Cid = CidBytes;
+        type Mask = [u8; 32];
+        type Gen = u8;
     }
 
     #[async_std::test]
@@ -251,14 +309,14 @@ mod tests {
         env_logger::try_init().ok();
         let subxt = ClientBuilder::<Runtime>::new().build().await.unwrap();
         let store = MemStore::default();
-        let pair = sp_keyring::AccountKeyring::Alice.pair();
-        let signer = PairSigner::new(pair);
-        let mut client = Client::new(subxt, store);
-        assert_eq!(client.claims(signer.account_id()).await.unwrap().len(), 0);
+        let keystore = KeyStore::new("/tmp/keystore");
+        let account_id = sp_keyring::AccountKeyring::Alice.to_account_id();
+        let mut client = Client::<_, _, _, sp_core::sr25519::Pair, _>::new(keystore, subxt, store);
+        assert_eq!(client.claims(&account_id).await.unwrap().len(), 0);
         client
-            .prove_ownership(Service::Github("dvc94ch".into()), &signer)
+            .prove_ownership(Service::Github("dvc94ch".into()))
             .await
             .unwrap();
-        assert_eq!(client.claims(signer.account_id()).await.unwrap().len(), 1);
+        assert_eq!(client.claims(&account_id).await.unwrap().len(), 1);
     }
 }

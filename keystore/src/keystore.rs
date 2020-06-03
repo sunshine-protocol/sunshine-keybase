@@ -91,6 +91,10 @@ impl From<String> for Password {
 pub struct PublicDeviceKey(Secret);
 
 impl PublicDeviceKey {
+    pub fn new(pdk: [u8; SECRET_LEN]) -> Self {
+        Self(Secret::new(pdk))
+    }
+
     fn private(&self, pass: &Password) -> RandomKey {
         RandomKey(self.0.xor(&pass.0))
     }
@@ -106,7 +110,29 @@ impl PublicDeviceKey {
     }
 }
 
+impl core::ops::Deref for PublicDeviceKey {
+    type Target = [u8; SECRET_LEN];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.expose_secret()
+    }
+}
+
 pub struct Mask(Secret);
+
+impl Mask {
+    pub fn new(mask: [u8; SECRET_LEN]) -> Self {
+        Self(Secret::new(mask))
+    }
+}
+
+impl core::ops::Deref for Mask {
+    type Target = [u8; SECRET_LEN];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.expose_secret()
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -143,11 +169,7 @@ impl KeyStore {
         self.edk.exists()
     }
 
-    pub fn initialize(
-        &self,
-        dk: &DeviceKey,
-        pass: &Password,
-    ) -> Result<PublicDeviceKey, Error> {
+    pub fn initialize(&self, dk: &DeviceKey, pass: &Password) -> Result<PublicDeviceKey, Error> {
         let path = self.edk.parent().expect("joined a file name on init; qed");
         std::fs::create_dir_all(path)?;
 

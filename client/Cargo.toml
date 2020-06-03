@@ -9,6 +9,7 @@ async-std = "=1.5.0"
 codec = { version = "1.3.0", package = "parity-scale-codec" }
 frame-support = "2.0.0-rc2"
 ipld-block-builder = "0.3.0"
+keystore = { path = "../keystore", package = "keybase-keystore" }
 libipld = { version = "0.3.0", features = ["dag-json"] }
 serde = { version = "1.0.111", features = ["derive"] }
 # TODO export error in libipld
