@@ -3,9 +3,11 @@ use substrate_subxt::balances::{AccountData, Balances};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{sp_core, sp_runtime};
-use utils_identity::CidBytes;
+use utils_identity::cid::CidBytes;
 
 pub type AccountId = <<sp_runtime::MultiSignature as Verify>::Signer as IdentifyAccount>::AccountId;
+pub type Signature = sp_runtime::MultiSignature;
+pub type Extra = substrate_subxt::DefaultExtra<Runtime>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Runtime;
@@ -27,5 +29,8 @@ impl Balances for Runtime {
 }
 
 impl Identity for Runtime {
+    type Uid = u32;
     type Cid = CidBytes;
+    type Mask = [u8; 32];
+    type Gen = u16;
 }

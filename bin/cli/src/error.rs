@@ -10,10 +10,17 @@ pub enum Error {
     Subxt(#[from] substrate_subxt::Error),
     #[error(transparent)]
     Io(#[from] async_std::io::Error),
+    #[error(transparent)]
+    Keystore(#[from] keybase_keystore::Error),
+
+    #[error("Failed to find config dir. Use `--path` to supply a suitable directory.")]
+    ConfigDirNotFound,
+    #[error("Invalid account id.")]
+    InvalidAccountId,
     #[error("Invalid seqno, run `cli-identity id` for a list of valid sequence numbers.")]
-    InvalidSeqNo,
+    SeqNoInvalid,
     #[error("Failed to decode transfer event.")]
-    FailedToDecodeTransferEvent,
+    TransferEventDecode,
     #[error("Failed to find transfer event.")]
-    FailedToFindTransferEvent,
+    TransferEventFind,
 }

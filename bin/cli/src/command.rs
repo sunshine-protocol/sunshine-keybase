@@ -15,10 +15,21 @@ pub struct Opts {
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
 pub enum SubCommand {
+    Init(InitCommand),
+    Unlock,
+    Lock,
     Id(IdCommand),
     Prove(ProveCommand),
     Revoke(RevokeCommand),
     Transfer(TransferCommand),
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub struct InitCommand {
+    #[clap(short = "f", long = "force")]
+    pub force: bool,
+    #[clap(short = "s", long = "suri")]
+    pub suri: bool,
 }
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
