@@ -256,7 +256,10 @@ impl sudo::Trait for Runtime {
 
 /// Used for the identity module.
 impl identity::Trait for Runtime {
-    type Cid = utils_identity::CidBytes;
+    type Uid = u32;
+    type Cid = utils_identity::cid::CidBytes;
+    type Mask = [u8; 32];
+    type Gen = u16;
     type Event = Event;
 }
 

@@ -47,6 +47,9 @@ impl system::Trait for Test {
     type OnKilledAccount = ();
 }
 impl Trait for Test {
+    type Uid = u8;
+    type Mask = [u8; 32];
+    type Gen = u8;
     type Cid = u32;
     type Event = ();
 }

@@ -1,9 +1,12 @@
 //! Identity module.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch, Parameter};
-use frame_system::{self as system, ensure_signed};
-use sp_runtime::traits::Member;
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure, Parameter,
+};
+use frame_system::{self as system, ensure_signed, Trait as System};
+use sp_runtime::traits::{CheckedAdd, Member};
+use utils_identity::mask::DeviceMaskData;
 
 #[cfg(test)]
 mod mock;
@@ -12,55 +15,186 @@ mod mock;
 mod tests;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait {
+pub trait Trait: System {
+    /// Uid type.
+    type Uid: Parameter + Member + Copy + Default + CheckedAdd + From<u8>;
+
     /// Cid type.
     type Cid: Parameter + Member;
 
+    /// Mask type.
+    type Mask: Parameter + Member;
+
+    /// Generation type.
+    type Gen: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Ord;
+
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as System>::Event>;
 }
 
 decl_storage! {
     trait Store for Module<T: Trait> as IdentityModule {
-        pub Identity get(fn identity):
-            map hasher(blake2_128_concat) <T as system::Trait>::AccountId => Option<T::Cid>;
+        UidCounter: T::Uid;
+
+        pub Device get(fn device): map
+            hasher(blake2_128_concat) <T as System>::AccountId
+            => Option<T::Uid>;
+
+        pub DeviceMask get(fn device_mask): map
+            hasher(blake2_128_concat) <T as System>::AccountId
+            => Option<DeviceMaskData<T::Mask, T::Gen>>;
+
+        pub Identity get(fn identity): map
+            hasher(blake2_128_concat) T::Uid
+            => Option<T::Cid>;
+
+        pub PasswordGen get(fn gen): map
+            hasher(blake2_128_concat) T::Uid
+            => T::Gen;
+
+        pub PasswordMask get(fn mask): double_map
+            hasher(blake2_128_concat) T::Uid,
+            hasher(blake2_128_concat) T::Gen
+            => Option<T::Mask>;
     }
 }
 
 decl_event!(
     pub enum Event<T>
     where
-        AccountId = <T as system::Trait>::AccountId,
+        AccountId = <T as System>::AccountId,
+        Uid = <T as Trait>::Uid,
         Cid = <T as Trait>::Cid,
+        Mask = <T as Trait>::Mask,
+        Gen = <T as Trait>::Gen,
     {
-        IdentityUpdated(AccountId, Cid),
+        AccountCreated(Uid),
+        DeviceAdded(Uid, AccountId),
+        DeviceRemoved(Uid, AccountId),
+        DeviceMaskChanged(AccountId, Mask, Gen),
+        IdentityChanged(Uid, Cid),
+        PasswordChanged(Uid, Gen, Mask),
     }
 );
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        /// Proof needs to be provided that the parent of the new identity
-        /// cid is the old identity cid.
-        InvalidProof
+        /// No account.
+        NoAccount,
+        /// Failed to create account.
+        CantCreateAccount,
+        /// Failed to add device.
+        CantAddDevice,
+        /// Failed to remove device.
+        CantRemoveDevice,
+        /// Failed to set device mask.
+        CantSetDeviceMask,
+        /// Failed to change password.
+        CantChangePassword,
+        /// Failed to set identity.
+        CantSetIdentity,
     }
 }
 
 decl_module! {
     /// The module declaration.
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        // Initializing errors
+        // Initialize errors.
         type Error = Error<T>;
 
-        // Initializing events
+        // Initialize events.
         fn deposit_event() = default;
 
-        /// Sets the identity.
+        /// Create account.
         #[weight = 0]
-        pub fn set_identity(origin, cid: T::Cid) -> dispatch::DispatchResult {
+        pub fn create_account(origin, mask: T::Mask) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            // TODO: require a proof that the parent of cid is the current cid.
-            <Identity<T>>::insert(who.clone(), cid.clone());
-            Self::deposit_event(RawEvent::IdentityUpdated(who, cid));
+            ensure!(<Device<T>>::get(&who).is_none(), Error::<T>::CantCreateAccount);
+
+            let uid = <UidCounter<T>>::get();
+            let next_uid = uid.checked_add(&1u8.into()).ok_or(Error::<T>::CantCreateAccount)?;
+            let gen = T::Gen::from(0u8);
+            <UidCounter<T>>::put(next_uid);
+            <PasswordGen<T>>::insert(uid, gen);
+            Self::deposit_event(RawEvent::AccountCreated(uid));
+
+            <Device<T>>::insert(who.clone(), uid);
+            Self::deposit_event(RawEvent::DeviceAdded(uid, who.clone()));
+
+            let device_mask = DeviceMaskData { mask: mask.clone(), gen };
+            <DeviceMask<T>>::insert(who.clone(), device_mask);
+            Self::deposit_event(RawEvent::DeviceMaskChanged(who.clone(), mask, gen));
+            Ok(())
+        }
+
+        /// Add a device.
+        #[weight = 0]
+        pub fn add_device(origin, device: <T as System>::AccountId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
+            ensure!(<Device<T>>::get(&device).is_none(), Error::<T>::CantAddDevice);
+
+            <Device<T>>::insert(device.clone(), uid);
+            Self::deposit_event(RawEvent::DeviceAdded(uid, device));
+            Ok(())
+        }
+
+        /// Remove a device.
+        #[weight = 0]
+        pub fn remove_device(origin, device: <T as System>::AccountId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
+            ensure!(who != device, Error::<T>::CantRemoveDevice);
+            ensure!(<Device<T>>::get(&device) == Some(uid), Error::<T>::CantRemoveDevice);
+
+            <Device<T>>::remove(&device);
+            <DeviceMask<T>>::remove(&device);
+            Self::deposit_event(RawEvent::DeviceRemoved(uid, device));
+            Ok(())
+        }
+
+        /// Set device mask.
+        #[weight = 0]
+        pub fn set_device_mask(origin, mask: T::Mask, gen: T::Gen) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
+            ensure!(gen <= <PasswordGen<T>>::get(uid), Error::<T>::CantSetDeviceMask);
+            if let Some(mask) = <DeviceMask<T>>::get(&who) {
+                ensure!(gen > mask.gen, Error::<T>::CantSetDeviceMask);
+            }
+
+            <DeviceMask<T>>::insert(who.clone(), DeviceMaskData { mask: mask.clone(), gen });
+            Self::deposit_event(RawEvent::DeviceMaskChanged(who, mask, gen));
+            Ok(())
+        }
+
+        /// Change password.
+        #[weight = 0]
+        pub fn change_password(origin, mask: T::Mask, gen: T::Gen) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
+            ensure!(
+                gen == <PasswordGen<T>>::get(uid)
+                    .checked_add(&1u8.into())
+                    .ok_or(Error::<T>::CantChangePassword)?,
+                Error::<T>::CantChangePassword
+            );
+
+            <PasswordGen<T>>::insert(uid, gen);
+            <PasswordMask<T>>::insert(uid, gen, mask.clone());
+            Self::deposit_event(RawEvent::PasswordChanged(uid, gen, mask));
+            Ok(())
+        }
+
+        /// Set the identity.
+        #[weight = 0]
+        pub fn set_identity(origin, prev_cid: Option<T::Cid>, new_cid: T::Cid) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
+            ensure!(<Identity<T>>::get(uid) == prev_cid, Error::<T>::CantSetIdentity);
+
+            <Identity<T>>::insert(uid, new_cid.clone());
+            Self::deposit_event(RawEvent::IdentityChanged(uid, new_cid));
             Ok(())
         }
     }
