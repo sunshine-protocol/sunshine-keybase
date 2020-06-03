@@ -672,6 +672,8 @@ dependencies = [
  "env_logger",
  "exitfailure",
  "ipfs-embed",
+ "keybase-keystore",
+ "rpassword",
  "sp-keyring",
  "substrate-subxt",
  "thiserror",
@@ -686,6 +688,7 @@ dependencies = [
  "env_logger",
  "frame-support",
  "ipld-block-builder",
+ "keybase-keystore",
  "libipld",
  "parity-scale-codec",
  "serde",
@@ -3462,6 +3465,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "utils-identity",
 ]
 
 [[package]]
