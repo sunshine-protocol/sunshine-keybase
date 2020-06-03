@@ -20,47 +20,35 @@ pub use error::Error;
 pub use github::Error as GithubError;
 pub use subxt::*;
 
-pub struct Client<I, P, T, S, E>
+pub struct Client<I, T, S, E>
 where
     I: Store,
-    P: Pair,
     T: Identity + Send + Sync + 'static,
     <T as System>::AccountId: Into<<T as System>::Address> + Ss58Codec,
-    S: Encode + From<P::Signature> + Verify + Send + Sync + 'static,
-    <S as Verify>::Signer: From<P::Public> + IdentifyAccount<AccountId = <T as System>::AccountId>,
+    S: Encode + Verify + Send + Sync + 'static,
+    <S as Verify>::Signer: IdentifyAccount<AccountId = <T as System>::AccountId>,
     E: SignedExtra<T> + SignedExtension + Send + Sync + 'static,
     <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
 {
     subxt: substrate_subxt::Client<T, S, E>,
-    signer: PairSigner<T, S, E, P>,
     cache: Cache<I, Codec, Claim>,
-    root: Option<Cid>,
 }
 
-impl<I, P, T, S, E> Client<I, P, T, S, E>
+impl<I, T, S, E> Client<I, T, S, E>
 where
     I: Store,
-    P: Pair,
     T: Identity + Send + Sync + 'static,
     <T as System>::AccountId: Into<<T as System>::Address> + Ss58Codec,
-    S: Decode + Encode + From<P::Signature> + Verify + Send + Sync + 'static,
-    <S as Verify>::Signer: From<P::Public> + IdentifyAccount<AccountId = <T as System>::AccountId>,
+    S: Decode + Encode + Verify + Send + Sync + 'static,
+    <S as Verify>::Signer: IdentifyAccount<AccountId = <T as System>::AccountId>,
     E: SignedExtra<T> + SignedExtension + Send + Sync + 'static,
     <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
 {
-    pub async fn new(
-        subxt: substrate_subxt::Client<T, S, E>,
-        store: I,
-        pair: P,
-    ) -> Result<Self, Error> {
-        let mut client = Self {
-            signer: PairSigner::new(pair.clone()),
+    pub fn new(subxt: substrate_subxt::Client<T, S, E>, store: I) -> Self {
+        Self {
             subxt,
             cache: Cache::new(store, Codec::new(), 32),
-            root: None,
-        };
-        client.root = client.identity_cid(client.signer.account_id()).await?;
-        Ok(client)
+        }
     }
 
     async fn identity_cid(
@@ -74,45 +62,75 @@ where
         }
     }
 
-    async fn create_claim(
+    async fn create_claim<P>(
         &mut self,
         body: ClaimBody,
         expire_in: Option<Duration>,
-    ) -> Result<Claim, Error> {
+        signer: &PairSigner<T, S, E, P>,
+    ) -> Result<Claim, Error>
+    where
+        P: Pair,
+        S: From<P::Signature>,
+        S::Signer: From<P::Public>,
+    {
+        let prev = self.identity_cid(signer.account_id()).await?;
         let claim = UnsignedClaim::new(
             &mut self.cache,
             body,
-            self.root.clone(),
+            prev,
             expire_in.unwrap_or_else(|| Duration::from_millis(u64::MAX)),
         )
         .await?;
-        Claim::new::<S, _>(self.signer.signer(), claim)
+        Claim::new::<S, _>(signer.signer(), claim)
     }
 
-    async fn submit_claim(&mut self, claim: Claim) -> Result<(), Error> {
+    async fn submit_claim(
+        &mut self,
+        claim: Claim,
+        signer: &(dyn Signer<T, S, E> + Send + Sync),
+    ) -> Result<(), Error> {
         let root = self.cache.insert(claim).await?;
-        let cid = T::Cid::from(root.clone());
+        let cid = T::Cid::from(root);
         self.subxt
-            .set_identity_and_watch(&self.signer, &cid)
+            .set_identity_and_watch(signer, &cid)
             .await?
             .identity_updated()?;
-        self.root = Some(root);
         Ok(())
     }
 
-    pub async fn prove_ownership(&mut self, service: Service) -> Result<String, Error> {
+    pub async fn prove_ownership<P>(
+        &mut self,
+        service: Service,
+        signer: &PairSigner<T, S, E, P>,
+    ) -> Result<String, Error>
+    where
+        P: Pair,
+        S: From<P::Signature>,
+        S::Signer: From<P::Public>,
+    {
         let claim = self
-            .create_claim(ClaimBody::Ownership(service.clone()), None)
+            .create_claim(ClaimBody::Ownership(service.clone()), None, signer)
             .await?;
-        let account_id = self.signer.account_id().to_string();
+        let account_id = signer.account_id().to_string();
         let proof = service.proof(&account_id, &claim)?;
-        self.submit_claim(claim).await?;
+        self.submit_claim(claim, signer).await?;
         Ok(proof)
     }
 
-    pub async fn revoke_claim(&mut self, claim: u32) -> Result<(), Error> {
-        let claim = self.create_claim(ClaimBody::Revoke(claim), None).await?;
-        self.submit_claim(claim).await?;
+    pub async fn revoke_claim<P>(
+        &mut self,
+        claim: u32,
+        signer: &PairSigner<T, S, E, P>,
+    ) -> Result<(), Error>
+    where
+        P: Pair,
+        S: From<P::Signature>,
+        S::Signer: From<P::Public>,
+    {
+        let claim = self
+            .create_claim(ClaimBody::Revoke(claim), None, signer)
+            .await?;
+        self.submit_claim(claim, signer).await?;
         Ok(())
     }
 
@@ -234,12 +252,13 @@ mod tests {
         let subxt = ClientBuilder::<Runtime>::new().build().await.unwrap();
         let store = MemStore::default();
         let pair = sp_keyring::AccountKeyring::Alice.pair();
-        let mut client = Client::new(subxt, store, pair.clone()).await.unwrap();
-        assert_eq!(client.claims(&pair.public().into()).await.unwrap().len(), 0);
+        let signer = PairSigner::new(pair);
+        let mut client = Client::new(subxt, store);
+        assert_eq!(client.claims(signer.account_id()).await.unwrap().len(), 0);
         client
-            .prove_ownership(Service::Github("dvc94ch".into()))
+            .prove_ownership(Service::Github("dvc94ch".into()), &signer)
             .await
             .unwrap();
-        assert_eq!(client.claims(&pair.public().into()).await.unwrap().len(), 1);
+        assert_eq!(client.claims(signer.account_id()).await.unwrap().len(), 1);
     }
 }
