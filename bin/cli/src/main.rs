@@ -11,6 +11,7 @@ use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::sr25519;
 use substrate_subxt::system::AccountStoreExt;
 use substrate_subxt::{ClientBuilder, Signer};
+use textwrap::Wrapper;
 
 mod command;
 mod error;
@@ -62,88 +63,106 @@ async fn run() -> Result<(), Error> {
         store,
     );
 
-    match opts.subcmd {
-        SubCommand::Key(KeyCommand::Init(KeyInitCommand { force, suri })) => {
-            let dk = if let Some(suri) = suri {
-                DeviceKey::from_seed(suri.0)
-            } else {
-                DeviceKey::generate()
-            };
-            client.set_device_key(&dk, &ask_for_password()?, force)?;
-        }
-        SubCommand::Key(KeyCommand::Unlock) => {
-            client.unlock(&ask_for_password()?)?;
-        }
-        SubCommand::Key(KeyCommand::Lock) => {
-            client.lock()?;
-        }
-        SubCommand::Account(AccountCommand::Create(AccountCreateCommand { device })) => {
-            client.create_account_for(&device.0).await?;
-        }
-        SubCommand::Device(DeviceCommand::Add(DeviceAddCommand { device })) => {
-            client.add_device(&device.0).await?;
-        }
-        SubCommand::Device(DeviceCommand::Remove(DeviceRemoveCommand { device })) => {
-            client.remove_device(&device.0).await?;
-        }
-        SubCommand::Device(DeviceCommand::List) => todo!(),
-        SubCommand::Id(IdCommand::List(IdListCommand { identifier })) => {
-            let account_id = match identifier {
-                Some(Identifier::Account(account_id)) => account_id,
-                Some(Identifier::Service(service)) => client.resolve(&service).await?,
-                None => client.signer()?.account_id().clone(),
-            };
-            println!("{}", account_id.to_string());
-            for id in client.identity(&account_id).await? {
-                println!("{}", id);
-            }
-        }
-        SubCommand::Id(IdCommand::Prove(IdProveCommand { service })) => {
-            println!("Claiming {}...", service);
-            let instructions = match service {
-                Service::Github(_) => {
-                    "Please *publicly* post the following Gist, and name it 'substrate-identity-proof.md'.\n"
+    match opts.cmd {
+        SubCommand::Key(KeyCommand { cmd }) => match cmd {
+            KeySubCommand::Init(KeyInitCommand { force, suri }) => {
+                let dk = if let Some(suri) = &suri {
+                    DeviceKey::from_seed(suri.0)
+                } else {
+                    DeviceKey::generate()
+                };
+                let account_id = client.set_device_key(&dk, &ask_for_password()?, force)?;
+                if suri.is_some() {
+                    client.create_account_for(&account_id).await?;
+                } else {
+                    let account_id = account_id.to_string();
+                    println!("Your device id is {}", &account_id);
+                    let p = "Creating an account requires making a `create_account_for` \
+                             transaction. Your wallet contains insufficient funds for paying \
+                             the transaction fee. Ask someone to scan the qr code with your \
+                             device id to create an account for you.";
+                    println!("{}\n", Wrapper::with_termwidth().fill(p));
+                    qr2term::print_qr(&account_id)?;
                 }
-            };
-            let proof = client.prove_ownership(service).await?;
-            println!("{}", instructions);
-            print!("{}", proof);
-        }
-        SubCommand::Id(IdCommand::Revoke(IdRevokeCommand { seqno })) => {
-            let signer = client.signer()?;
-            let id = client
-                .identity(signer.account_id())
-                .await?
-                .into_iter()
-                .find(|id| id.seqno == seqno && id.status != IdentityStatus::Revoked)
-                .ok_or(Error::SeqNoInvalid)?;
-            println!("Do you really want to revoke {}? [y/n]", id.service);
-            if ask_for_confirmation().await? {
-                client.revoke_claim(seqno).await?;
             }
-        }
-        SubCommand::Wallet(WalletCommand::Balance) => {
-            let signer = client.signer()?;
-            let balance = subxt.account(signer.account_id(), None).await?.data.free;
-            println!("{} of free balance", balance);
-        }
-        SubCommand::Wallet(WalletCommand::Transfer(WalletTransferCommand {
-            identifier,
-            amount,
-        })) => {
-            let signer = client.signer()?;
-            let account_id = match identifier {
-                Identifier::Account(account_id) => account_id,
-                Identifier::Service(service) => client.resolve(&service).await?,
-            };
-            let event = subxt
-                .transfer_and_watch(&signer, &account_id, amount)
-                .await?
-                .transfer()
-                .map_err(|_| Error::TransferEventDecode)?
-                .ok_or(Error::TransferEventFind)?;
-            println!("transfered {} to {}", event.amount, event.to.to_string());
-        }
+            KeySubCommand::Unlock => {
+                client.unlock(&ask_for_password()?)?;
+            }
+            KeySubCommand::Lock => client.lock()?,
+        },
+        SubCommand::Account(AccountCommand { cmd }) => match cmd {
+            AccountSubCommand::Create(AccountCreateCommand { device }) => {
+                client.create_account_for(&device.0).await?;
+            }
+        },
+        SubCommand::Device(DeviceCommand { cmd }) => match cmd {
+            DeviceSubCommand::Add(DeviceAddCommand { device }) => {
+                client.add_device(&device.0).await?;
+            }
+            DeviceSubCommand::Remove(DeviceRemoveCommand { device }) => {
+                client.remove_device(&device.0).await?;
+            }
+            DeviceSubCommand::List => todo!(),
+        },
+        SubCommand::Id(IdCommand { cmd }) => match cmd {
+            IdSubCommand::List(IdListCommand { identifier }) => {
+                let account_id = match identifier {
+                    Some(Identifier::Account(account_id)) => account_id,
+                    Some(Identifier::Service(service)) => client.resolve(&service).await?,
+                    None => client.signer()?.account_id().clone(),
+                };
+                println!("{}", account_id.to_string());
+                for id in client.identity(&account_id).await? {
+                    println!("{}", id);
+                }
+            }
+            IdSubCommand::Prove(IdProveCommand { service }) => {
+                println!("Claiming {}...", service);
+                let instructions = match service {
+                    Service::Github(_) => {
+                        "Please *publicly* post the following Gist, and name it \
+                         'substrate-identity-proof.md'.\n"
+                    }
+                };
+                let proof = client.prove_ownership(service).await?;
+                println!("{}", instructions);
+                print!("{}", proof);
+            }
+            IdSubCommand::Revoke(IdRevokeCommand { seqno }) => {
+                let signer = client.signer()?;
+                let id = client
+                    .identity(signer.account_id())
+                    .await?
+                    .into_iter()
+                    .find(|id| id.seqno == seqno && id.status != IdentityStatus::Revoked)
+                    .ok_or(Error::SeqNoInvalid)?;
+                println!("Do you really want to revoke {}? [y/n]", id.service);
+                if ask_for_confirmation().await? {
+                    client.revoke_claim(seqno).await?;
+                }
+            }
+        },
+        SubCommand::Wallet(WalletCommand { cmd }) => match cmd {
+            WalletSubCommand::Balance => {
+                let signer = client.signer()?;
+                let balance = subxt.account(signer.account_id(), None).await?.data.free;
+                println!("{} of free balance", balance);
+            }
+            WalletSubCommand::Transfer(WalletTransferCommand { identifier, amount }) => {
+                let signer = client.signer()?;
+                let account_id = match identifier {
+                    Identifier::Account(account_id) => account_id,
+                    Identifier::Service(service) => client.resolve(&service).await?,
+                };
+                let event = subxt
+                    .transfer_and_watch(&signer, &account_id, amount)
+                    .await?
+                    .transfer()
+                    .map_err(|_| Error::TransferEventDecode)?
+                    .ok_or(Error::TransferEventFind)?;
+                println!("transfered {} to {}", event.amount, event.to.to_string());
+            }
+        },
     }
     Ok(())
 }

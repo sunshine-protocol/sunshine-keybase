@@ -12,6 +12,8 @@ pub enum Error {
     Io(#[from] async_std::io::Error),
     #[error(transparent)]
     Keystore(#[from] keybase_keystore::Error),
+    #[error(transparent)]
+    Qr(#[from] qr2term::QrError),
 
     #[error("Failed to find config dir. Use `--path` to supply a suitable directory.")]
     ConfigDirNotFound,

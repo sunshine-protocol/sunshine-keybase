@@ -10,7 +10,7 @@ use substrate_subxt::sp_core::{sr25519, Pair};
 #[derive(Clone, Debug, Clap)]
 pub struct Opts {
     #[clap(subcommand)]
-    pub subcmd: SubCommand,
+    pub cmd: SubCommand,
     #[clap(short = "p", long = "path")]
     pub path: Option<PathBuf>,
 }
@@ -25,34 +25,64 @@ pub enum SubCommand {
 }
 
 #[derive(Clone, Debug, Clap)]
-pub enum KeyCommand {
+pub struct KeyCommand {
+    #[clap(subcommand)]
+    pub cmd: KeySubCommand,
+}
+
+#[derive(Clone, Debug, Clap)]
+pub enum KeySubCommand {
     Init(KeyInitCommand),
     Unlock,
     Lock,
 }
 
 #[derive(Clone, Debug, Clap)]
-pub enum AccountCommand {
+pub struct AccountCommand {
+    #[clap(subcommand)]
+    pub cmd: AccountSubCommand,
+}
+
+#[derive(Clone, Debug, Clap)]
+pub enum AccountSubCommand {
     Create(AccountCreateCommand),
     //Password(ChangePasswordCommand),
 }
 
 #[derive(Clone, Debug, Clap)]
-pub enum DeviceCommand {
+pub struct DeviceCommand {
+    #[clap(subcommand)]
+    pub cmd: DeviceSubCommand,
+}
+
+#[derive(Clone, Debug, Clap)]
+pub enum DeviceSubCommand {
     Add(DeviceAddCommand),
     Remove(DeviceRemoveCommand),
     List,
 }
 
 #[derive(Clone, Debug, Clap)]
-pub enum IdCommand {
+pub struct IdCommand {
+    #[clap(subcommand)]
+    pub cmd: IdSubCommand,
+}
+
+#[derive(Clone, Debug, Clap)]
+pub enum IdSubCommand {
     List(IdListCommand),
     Prove(IdProveCommand),
     Revoke(IdRevokeCommand),
 }
 
 #[derive(Clone, Debug, Clap)]
-pub enum WalletCommand {
+pub struct WalletCommand {
+    #[clap(subcommand)]
+    pub cmd: WalletSubCommand,
+}
+
+#[derive(Clone, Debug, Clap)]
+pub enum WalletSubCommand {
     Balance,
     Transfer(WalletTransferCommand),
 }

@@ -103,6 +103,7 @@ decl_module! {
         #[weight = 0]
         pub fn create_account_for(origin, device: <T as System>::AccountId) -> DispatchResult {
             let _ = ensure_signed(origin)?;
+            ensure!(<Device<T>>::get(&device).is_none(), Error::<T>::CantCreateAccount);
 
             let uid = <UidCounter<T>>::get();
             let next_uid = uid.checked_add(&1u8.into()).ok_or(Error::<T>::CantCreateAccount)?;
