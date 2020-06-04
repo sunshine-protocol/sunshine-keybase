@@ -6,7 +6,6 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed, Trait as System};
 use sp_runtime::traits::{CheckedAdd, Member};
-use utils_identity::mask::DeviceMaskData;
 
 #[cfg(test)]
 mod mock;
@@ -40,10 +39,6 @@ decl_storage! {
             hasher(blake2_128_concat) <T as System>::AccountId
             => Option<T::Uid>;
 
-        pub DeviceMask get(fn device_mask): map
-            hasher(blake2_128_concat) <T as System>::AccountId
-            => Option<DeviceMaskData<T::Mask, T::Gen>>;
-
         pub Identity get(fn identity): map
             hasher(blake2_128_concat) T::Uid
             => Option<T::Cid>;
@@ -71,7 +66,6 @@ decl_event!(
         AccountCreated(Uid),
         DeviceAdded(Uid, AccountId),
         DeviceRemoved(Uid, AccountId),
-        DeviceMaskChanged(AccountId, Mask, Gen),
         IdentityChanged(Uid, Cid),
         PasswordChanged(Uid, Gen, Mask),
     }
@@ -107,9 +101,8 @@ decl_module! {
 
         /// Create account.
         #[weight = 0]
-        pub fn create_account(origin, mask: T::Mask) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(<Device<T>>::get(&who).is_none(), Error::<T>::CantCreateAccount);
+        pub fn create_account_for(origin, device: <T as System>::AccountId) -> DispatchResult {
+            let _ = ensure_signed(origin)?;
 
             let uid = <UidCounter<T>>::get();
             let next_uid = uid.checked_add(&1u8.into()).ok_or(Error::<T>::CantCreateAccount)?;
@@ -118,12 +111,9 @@ decl_module! {
             <PasswordGen<T>>::insert(uid, gen);
             Self::deposit_event(RawEvent::AccountCreated(uid));
 
-            <Device<T>>::insert(who.clone(), uid);
-            Self::deposit_event(RawEvent::DeviceAdded(uid, who.clone()));
+            <Device<T>>::insert(device.clone(), uid);
+            Self::deposit_event(RawEvent::DeviceAdded(uid, device));
 
-            let device_mask = DeviceMaskData { mask: mask.clone(), gen };
-            <DeviceMask<T>>::insert(who.clone(), device_mask);
-            Self::deposit_event(RawEvent::DeviceMaskChanged(who.clone(), mask, gen));
             Ok(())
         }
 
@@ -148,23 +138,7 @@ decl_module! {
             ensure!(<Device<T>>::get(&device) == Some(uid), Error::<T>::CantRemoveDevice);
 
             <Device<T>>::remove(&device);
-            <DeviceMask<T>>::remove(&device);
             Self::deposit_event(RawEvent::DeviceRemoved(uid, device));
-            Ok(())
-        }
-
-        /// Set device mask.
-        #[weight = 0]
-        pub fn set_device_mask(origin, mask: T::Mask, gen: T::Gen) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
-            ensure!(gen <= <PasswordGen<T>>::get(uid), Error::<T>::CantSetDeviceMask);
-            if let Some(mask) = <DeviceMask<T>>::get(&who) {
-                ensure!(gen > mask.gen, Error::<T>::CantSetDeviceMask);
-            }
-
-            <DeviceMask<T>>::insert(who.clone(), DeviceMaskData { mask: mask.clone(), gen });
-            Self::deposit_event(RawEvent::DeviceMaskChanged(who, mask, gen));
             Ok(())
         }
 

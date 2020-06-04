@@ -14,7 +14,6 @@ frame-system = { version = "2.0.0-rc2", default-features = false }
 sp-core = { version = "2.0.0-rc2", default-features = false }
 sp-io = { version = "2.0.0-rc2", default-features = false }
 sp-runtime = { version = "2.0.0-rc2", default-features = false }
-utils-identity = { path = "../utils", default-features = false }
 
 [features]
 default = ["std"]
@@ -22,5 +21,4 @@ std = [
     "codec/std",
     "frame-support/std",
     "frame-system/std",
-    "utils-identity/std",
 ]

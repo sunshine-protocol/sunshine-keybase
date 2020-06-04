@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use core::convert::TryInto;
 use core::marker::PhantomData;
 use ipld_block_builder::{Cache, Codec};
-use keystore::{DeviceKey, KeyStore, Password, PublicDeviceKey};
+use keystore::{DeviceKey, KeyStore, Password};
 use libipld::cid::Cid;
 use libipld::store::Store;
 use std::time::Duration;
@@ -48,6 +48,7 @@ where
     E: SignedExtra<T> + SignedExtension + Send + Sync + 'static,
     <<E as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     P: Pair,
+    <P as Pair>::Public: Into<<T as System>::AccountId>,
     <P as Pair>::Seed: From<[u8; 32]>,
     I: Store,
 {
@@ -60,6 +61,20 @@ where
         }
     }
 
+    pub fn set_device_key(
+        &self,
+        dk: &DeviceKey,
+        password: &Password,
+        force: bool,
+    ) -> Result<<T as System>::AccountId, Error> {
+        if self.keystore.is_initialized() && !force {
+            return Err(Error::KeystoreInitialized);
+        }
+        let pair = P::from_seed(&P::Seed::from(*dk.expose_secret()));
+        self.keystore.initialize(&dk, &password)?;
+        Ok(pair.public().into())
+    }
+
     pub fn signer(&self) -> Result<PairSigner<T, S, E, P>, Error> {
         // fetch device key from disk every time to make sure account is unlocked.
         let dk = self.keystore.device_key()?;
@@ -68,54 +83,31 @@ where
         ))))
     }
 
-    async fn identity_cid(
-        &self,
-        account_id: &<T as System>::AccountId,
-    ) -> Result<Option<Cid>, Error> {
-        if let Some(uid) = self.subxt.device(account_id, None).await? {
-            if let Some(bytes) = self.subxt.identity(uid, None).await? {
-                return Ok(Some(bytes.try_into()?));
-            }
-        }
-        Ok(None)
-    }
-
-    pub async fn create_account(
-        &self,
-        password: Password,
-        force: bool,
-    ) -> Result<<T as System>::AccountId, Error> {
-        if self.keystore.is_initialized() && !force {
-            return Err(Error::KeystoreInitialized);
-        }
-        let dk = DeviceKey::generate();
-        let pair = P::from_seed(&P::Seed::from(*dk.expose_secret()));
-        let signer = PairSigner::new(pair);
-        let pdk = self.keystore.initialize(&dk, &password)?;
-        let mask = T::Mask::from(*pdk);
-        self.subxt
-            .create_account_and_watch(&signer, &mask)
-            .await?
-            .account_created()?;
-        Ok(signer.account_id().clone())
+    pub fn password(&self) -> Result<Password, Error> {
+        Ok(self.keystore.password()?)
     }
 
     pub fn lock(&self) -> Result<(), Error> {
         Ok(self.keystore.lock()?)
     }
 
-    pub async fn unlock(
+    pub fn unlock(
         &self,
-        account_id: &<T as System>::AccountId,
-        password: Password,
+        password: &Password,
     ) -> Result<(), Error> {
-        let pdk = self
-            .subxt
-            .device_mask(account_id, None)
+        self.keystore.unlock(password)?;
+        Ok(())
+    }
+
+    pub async fn create_account_for(
+        &self,
+        device: &<T as System>::AccountId,
+    ) -> Result<(), Error> {
+        let signer = self.signer()?;
+        self.subxt
+            .create_account_for_and_watch(&signer, device)
             .await?
-            .ok_or(Error::NoDeviceMask)?;
-        self.keystore
-            .unlock(&PublicDeviceKey::new(pdk.mask.into()), &password)?;
+            .account_created()?;
         Ok(())
     }
 
@@ -135,6 +127,18 @@ where
             .await?
             .device_removed()?;
         Ok(())
+    }
+
+    async fn identity_cid(
+        &self,
+        account_id: &<T as System>::AccountId,
+    ) -> Result<Option<Cid>, Error> {
+        if let Some(uid) = self.subxt.device(account_id, None).await? {
+            if let Some(bytes) = self.subxt.identity(uid, None).await? {
+                return Ok(Some(bytes.try_into()?));
+            }
+        }
+        Ok(None)
     }
 
     async fn create_claim(

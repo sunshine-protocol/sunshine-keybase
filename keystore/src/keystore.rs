@@ -56,6 +56,10 @@ impl RandomKey {
         PublicDeviceKey(self.0.xor(&pass.0))
     }
 
+    fn password(&self, pdk: &PublicDeviceKey) -> Password {
+        Password(self.0.xor(&pdk.0))
+    }
+
     fn encrypt(&self, noise: &Secret) -> EncryptedRandomKey {
         EncryptedRandomKey(self.0.encrypt(noise))
     }
@@ -75,6 +79,10 @@ pub struct Password(Secret);
 impl Password {
     pub fn new(plain: &SecretString) -> Self {
         Password(Secret::kdf(plain))
+    }
+
+    pub fn expose_secret(&self) -> &[u8; SECRET_LEN] {
+        self.0.expose_secret()
     }
 
     fn mask(&self, other: &Password) -> Mask {
@@ -101,12 +109,6 @@ impl PublicDeviceKey {
 
     pub fn apply_mask(&mut self, mask: &Mask) {
         self.0 = self.0.xor(&mask.0);
-    }
-
-    pub fn change_password(&mut self, old: &Password, new: &Password) -> Mask {
-        let mask = old.mask(new);
-        self.apply_mask(&mask);
-        mask
     }
 }
 
@@ -154,22 +156,27 @@ pub struct KeyStore {
     edk: AuthSecretFile,
     erk: SecretFile,
     noise: NoiseFile,
+    pdk: SecretFile,
 }
 
 impl KeyStore {
+    /// Creates a new keystore.
     pub fn new<T: AsRef<Path>>(path: T) -> Self {
         Self {
             edk: AuthSecretFile::new(path.as_ref().join("encrypted_device_key")),
             erk: SecretFile::new(path.as_ref().join("encrypted_random_key")),
             noise: NoiseFile::new(path.as_ref().join("noise")),
+            pdk: SecretFile::new(path.as_ref().join("public_device_key")),
         }
     }
 
+    /// Checks if the keystore is initialized.
     pub fn is_initialized(&self) -> bool {
         self.edk.exists()
     }
 
-    pub fn initialize(&self, dk: &DeviceKey, pass: &Password) -> Result<PublicDeviceKey, Error> {
+    /// Initializes the keystore.
+    pub fn initialize(&self, dk: &DeviceKey, pass: &Password) -> Result<(), Error> {
         let path = self.edk.parent().expect("joined a file name on init; qed");
         std::fs::create_dir_all(path)?;
 
@@ -179,12 +186,16 @@ impl KeyStore {
         self.edk.write(&edk.0)?;
 
         let pdk = rk.public(&pass);
-        self.unlock(&pdk, pass)?;
+        self.pdk.write(&pdk.0)?;
 
-        Ok(pdk)
+        self.unlock(pass)?;
+
+        Ok(())
     }
 
-    pub fn unlock(&self, pdk: &PublicDeviceKey, pass: &Password) -> Result<DeviceKey, Error> {
+    /// Unlocking the keystore makes the random key decryptable.
+    pub fn unlock(&self, pass: &Password) -> Result<DeviceKey, Error> {
+        let pdk = self.public()?;
         let rk = pdk.private(pass);
 
         self.noise.generate()?;
@@ -196,18 +207,59 @@ impl KeyStore {
         self.device_key()
     }
 
+    /// Locks the keystore by zeroizing the noise file. This makes the encrypted
+    /// random key undecryptable without a password.
     pub fn lock(&self) -> Result<(), Error> {
         self.noise.zeroize()?;
         Ok(())
     }
 
-    pub fn device_key(&self) -> Result<DeviceKey, Error> {
+    fn random_key(&self) -> Result<RandomKey, Error> {
         let nk = self.noise.read_secret()?;
         let erk = EncryptedRandomKey(self.erk.read()?);
-        let rk = erk.decrypt(&nk);
+        Ok(erk.decrypt(&nk))
+    }
+
+    /// The random key is used to decrypt the device key.
+    ///
+    /// NOTE: Only works if the keystore was unlocked.
+    pub fn device_key(&self) -> Result<DeviceKey, Error> {
+        let rk = self.random_key()?;
         let edk = EncryptedDeviceKey(self.edk.read()?);
         let dk = edk.decrypt(&rk)?;
         Ok(dk)
+    }
+
+    /// The random key is used to recover the password.
+    ///
+    /// NOTE: Only works if the keystore was unlocked.
+    pub fn password(&self) -> Result<Password, Error> {
+        let rk = self.random_key()?;
+        let pdk = self.public()?;
+        Ok(rk.password(&pdk))
+    }
+
+    /// Returns the public device key.
+    pub fn public(&self) -> Result<PublicDeviceKey, Error> {
+        Ok(PublicDeviceKey(self.pdk.read()?))
+    }
+
+    /// Apply mask to public device key.
+    pub fn apply_mask(&self, mask: &Mask) -> Result<(), Error> {
+        let mut pdk = self.public()?;
+        pdk.apply_mask(mask);
+        self.pdk.write(&pdk.0)?;
+        Ok(())
+    }
+
+    /// Change password.
+    pub fn change_password(&self, password: &Password) -> Result<Mask, Error> {
+        let old_password = self.password()?;
+        let mut pdk = self.public()?;
+        let mask = old_password.mask(password);
+        pdk.apply_mask(&mask);
+        self.pdk.write(&pdk.0)?;
+        Ok(mask)
     }
 }
 
@@ -222,30 +274,36 @@ mod tests {
         // generate
         let key = DeviceKey::generate();
         let p1 = Password::from("password".to_string());
-        let mut pdk = store.initialize(&key, &p1).unwrap();
+        store.initialize(&key, &p1).unwrap();
+
+        // check reading the device key.
         let key2 = store.device_key().unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());
 
+        // check reading the password.
+        let rp1 = store.password().unwrap();
+        assert_eq!(p1.expose_secret(), rp1.expose_secret());
+
         // make sure key is the same after lock/unlock
         store.lock().unwrap();
-        store.unlock(&pdk, &p1).unwrap();
+        store.unlock(&p1).unwrap();
         let key2 = store.device_key().unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());
 
         // change password
         let p2 = Password::from("other password".to_string());
-        pdk.change_password(&p1, &p2);
+        store.change_password(&p2).unwrap();
 
         // make sure key is the same after lock/unlock
         store.lock().unwrap();
-        store.unlock(&pdk, &p2).unwrap();
+        store.unlock(&p2).unwrap();
         let key2 = store.device_key().unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());
 
         // make sure unlock fails if password is wrong
         let p3 = Password::from("wrong password".to_string());
         store.lock().unwrap();
-        assert!(store.unlock(&pdk, &p3).is_err());
+        assert!(store.unlock(&p3).is_err());
         assert!(store.device_key().is_err());
     }
 }

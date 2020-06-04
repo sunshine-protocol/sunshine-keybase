@@ -6,7 +6,6 @@ use libipld::cid::{Cid, Error as CidError};
 use substrate_subxt::sp_runtime::traits::{CheckedAdd, Member};
 use substrate_subxt::system::{System, SystemEventsDecoder};
 use substrate_subxt::{module, Call, Event, Store};
-use utils_identity::mask::DeviceMaskData;
 
 #[module]
 pub trait Identity: System {
@@ -22,12 +21,6 @@ pub trait Identity: System {
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
 pub struct DeviceStore<'a, T: Identity> {
     #[store(returns = Option<T::Uid>)]
-    device: &'a <T as System>::AccountId,
-}
-
-#[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
-pub struct DeviceMaskStore<'a, T: Identity> {
-    #[store(returns = Option<DeviceMaskData<T::Mask, T::Gen>>)]
     device: &'a <T as System>::AccountId,
 }
 
@@ -51,8 +44,8 @@ pub struct PasswordMaskStore<T: Identity> {
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
-pub struct CreateAccountCall<'a, T: Identity> {
-    mask: &'a T::Mask,
+pub struct CreateAccountForCall<'a, T: Identity> {
+    device: &'a <T as System>::AccountId,
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
@@ -125,7 +118,7 @@ mod tests {
     use super::*;
     use libipld::cid::{Cid, Codec};
     use libipld::multihash::Sha2_256;
-    use substrate_subxt::{ClientBuilder, KusamaRuntime as NodeTemplateRuntime, PairSigner};
+    use substrate_subxt::{ClientBuilder, KusamaRuntime as NodeTemplateRuntime, PairSigner, Signer};
     use utils_identity::cid::CidBytes;
 
     impl Identity for NodeTemplateRuntime {
@@ -146,7 +139,7 @@ mod tests {
         let signer = PairSigner::new(sp_keyring::AccountKeyring::Alice.pair());
         let cid = CidBytes::from(&Cid::new_v1(Codec::Raw, Sha2_256::digest(b"hello_world")));
         let uid = client
-            .create_account_and_watch(&signer, &[0u8; 32])
+            .create_account_for_and_watch(&signer, signer.account_id())
             .await
             .unwrap()
             .account_created()

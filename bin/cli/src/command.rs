@@ -1,9 +1,10 @@
+use crate::error::Error;
 use crate::runtime::AccountId;
 use clap::Clap;
 use client_identity::{Service, ServiceParseError};
 use std::path::PathBuf;
 use std::str::FromStr;
-use substrate_subxt::sp_core::crypto::{PublicError, Ss58Codec};
+use substrate_subxt::sp_core::crypto::Ss58Codec;
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
 pub struct Opts {
@@ -15,40 +16,87 @@ pub struct Opts {
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
 pub enum SubCommand {
-    Init(InitCommand),
-    Unlock,
-    Lock,
+    Key(KeyCommand),
+    Account(AccountCommand),
+    Device(DeviceCommand),
     Id(IdCommand),
-    Prove(ProveCommand),
-    Revoke(RevokeCommand),
-    Transfer(TransferCommand),
+    Wallet(WalletCommand),
 }
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
-pub struct InitCommand {
+pub enum KeyCommand {
+    Init(KeyInitCommand),
+    Unlock,
+    Lock,
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub enum AccountCommand {
+    Create(AccountCreateCommand),
+    //Password(ChangePasswordCommand),
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub enum DeviceCommand {
+    Add(DeviceAddCommand),
+    Remove(DeviceRemoveCommand),
+    List,
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub enum IdCommand {
+    List(IdListCommand),
+    Prove(IdProveCommand),
+    Revoke(IdRevokeCommand),
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub enum WalletCommand {
+    Balance,
+    Transfer(WalletTransferCommand),
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub struct KeyInitCommand {
     #[clap(short = "f", long = "force")]
     pub force: bool,
+
     #[clap(short = "s", long = "suri")]
     pub suri: bool,
 }
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
-pub struct IdCommand {
+pub struct AccountCreateCommand {
+    pub account: Account,
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub struct DeviceAddCommand {
+    pub device: Account,
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub struct DeviceRemoveCommand {
+    pub device: Account,
+}
+
+#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+pub struct IdListCommand {
     pub identifier: Option<Identifier>,
 }
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
-pub struct ProveCommand {
+pub struct IdProveCommand {
     pub service: Service,
 }
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
-pub struct RevokeCommand {
+pub struct IdRevokeCommand {
     pub seqno: u32,
 }
 
 #[derive(Clone, Debug, Clap, Eq, PartialEq)]
-pub struct TransferCommand {
+pub struct WalletTransferCommand {
     pub identifier: Identifier,
     pub amount: u128,
 }
@@ -80,13 +128,14 @@ impl FromStr for Identifier {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Account(pub AccountId);
 
 impl FromStr for Account {
-    type Err = PublicError;
+    type Err = Error;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        Ok(Self(AccountId::from_string(string)?))
+        Ok(Self(AccountId::from_string(string).map_err(|_| Error::InvalidAccountId)?))
     }
 }
 
