@@ -118,7 +118,9 @@ mod tests {
     use super::*;
     use libipld::cid::{Cid, Codec};
     use libipld::multihash::Sha2_256;
-    use substrate_subxt::{ClientBuilder, KusamaRuntime as NodeTemplateRuntime, PairSigner, Signer};
+    use substrate_subxt::{
+        ClientBuilder, KusamaRuntime as NodeTemplateRuntime, PairSigner, Signer,
+    };
     use utils_identity::cid::CidBytes;
 
     impl Identity for NodeTemplateRuntime {

@@ -91,18 +91,12 @@ where
         Ok(self.keystore.lock()?)
     }
 
-    pub fn unlock(
-        &self,
-        password: &Password,
-    ) -> Result<(), Error> {
+    pub fn unlock(&self, password: &Password) -> Result<(), Error> {
         self.keystore.unlock(password)?;
         Ok(())
     }
 
-    pub async fn create_account_for(
-        &self,
-        device: &<T as System>::AccountId,
-    ) -> Result<(), Error> {
+    pub async fn create_account_for(&self, device: &<T as System>::AccountId) -> Result<(), Error> {
         let signer = self.signer()?;
         self.subxt
             .create_account_for_and_watch(&signer, device)

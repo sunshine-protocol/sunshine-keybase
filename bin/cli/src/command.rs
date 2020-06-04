@@ -5,8 +5,9 @@ use client_identity::{Service, ServiceParseError};
 use std::path::PathBuf;
 use std::str::FromStr;
 use substrate_subxt::sp_core::crypto::Ss58Codec;
+use substrate_subxt::sp_core::{sr25519, Pair};
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct Opts {
     #[clap(subcommand)]
     pub subcmd: SubCommand,
@@ -14,7 +15,7 @@ pub struct Opts {
     pub path: Option<PathBuf>,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub enum SubCommand {
     Key(KeyCommand),
     Account(AccountCommand),
@@ -23,79 +24,81 @@ pub enum SubCommand {
     Wallet(WalletCommand),
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub enum KeyCommand {
     Init(KeyInitCommand),
     Unlock,
     Lock,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub enum AccountCommand {
     Create(AccountCreateCommand),
     //Password(ChangePasswordCommand),
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub enum DeviceCommand {
     Add(DeviceAddCommand),
     Remove(DeviceRemoveCommand),
     List,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub enum IdCommand {
     List(IdListCommand),
     Prove(IdProveCommand),
     Revoke(IdRevokeCommand),
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub enum WalletCommand {
     Balance,
     Transfer(WalletTransferCommand),
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct KeyInitCommand {
+    /// Overwrite existing keys.
     #[clap(short = "f", long = "force")]
     pub force: bool,
 
-    #[clap(short = "s", long = "suri")]
-    pub suri: bool,
+    /// Suri.
+    #[clap(long = "suri")]
+    pub suri: Option<Suri>,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct AccountCreateCommand {
-    pub account: Account,
+    pub device: Ss58,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct DeviceAddCommand {
-    pub device: Account,
+    pub device: Ss58,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct DeviceRemoveCommand {
-    pub device: Account,
+    pub device: Ss58,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct IdListCommand {
     pub identifier: Option<Identifier>,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct IdProveCommand {
     pub service: Service,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct IdRevokeCommand {
     pub seqno: u32,
 }
 
-#[derive(Clone, Debug, Clap, Eq, PartialEq)]
+#[derive(Clone, Debug, Clap)]
 pub struct WalletTransferCommand {
     pub identifier: Identifier,
     pub amount: u128,
@@ -120,7 +123,7 @@ impl FromStr for Identifier {
     type Err = ServiceParseError;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        if let Ok(Account(account_id)) = Account::from_str(string) {
+        if let Ok(Ss58(account_id)) = Ss58::from_str(string) {
             Ok(Self::Account(account_id))
         } else {
             Ok(Self::Service(Service::from_str(string)?))
@@ -128,14 +131,35 @@ impl FromStr for Identifier {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Account(pub AccountId);
+#[derive(Clone)]
+pub struct Suri(pub [u8; 32]);
 
-impl FromStr for Account {
+impl core::fmt::Debug for Suri {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "*****")
+    }
+}
+
+impl FromStr for Suri {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        Ok(Self(AccountId::from_string(string).map_err(|_| Error::InvalidAccountId)?))
+        let (_, seed) =
+            sr25519::Pair::from_string_with_seed(string, None).map_err(|_| Error::InvalidSuri)?;
+        Ok(Self(seed.unwrap()))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Ss58(pub AccountId);
+
+impl FromStr for Ss58 {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            AccountId::from_string(string).map_err(|_| Error::InvalidSs58)?,
+        ))
     }
 }
 

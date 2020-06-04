@@ -14,6 +14,10 @@ impl DeviceKey {
         Self(Secret::generate())
     }
 
+    pub fn from_seed(secret: [u8; SECRET_LEN]) -> Self {
+        Self(Secret::new(secret))
+    }
+
     pub fn from_mnemonic(mnemonic: &Mnemonic) -> Result<Self, NotEnoughEntropyError> {
         let entropy = mnemonic.entropy();
         if entropy.len() < SECRET_LEN {

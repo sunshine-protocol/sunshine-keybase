@@ -7,9 +7,9 @@ use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
 use keybase_keystore::{DeviceKey, KeyStore, Password};
 use std::path::PathBuf;
-use substrate_subxt::system::AccountStoreExt;
 use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::sr25519;
+use substrate_subxt::system::AccountStoreExt;
 use substrate_subxt::{ClientBuilder, Signer};
 
 mod command;
@@ -63,8 +63,12 @@ async fn run() -> Result<(), Error> {
     );
 
     match opts.subcmd {
-        SubCommand::Key(KeyCommand::Init(KeyInitCommand { force, suri: _ })) => {
-            let dk = DeviceKey::generate();
+        SubCommand::Key(KeyCommand::Init(KeyInitCommand { force, suri })) => {
+            let dk = if let Some(suri) = suri {
+                DeviceKey::from_seed(suri.0)
+            } else {
+                DeviceKey::generate()
+            };
             client.set_device_key(&dk, &ask_for_password()?, force)?;
         }
         SubCommand::Key(KeyCommand::Unlock) => {
@@ -73,8 +77,8 @@ async fn run() -> Result<(), Error> {
         SubCommand::Key(KeyCommand::Lock) => {
             client.lock()?;
         }
-        SubCommand::Account(AccountCommand::Create(AccountCreateCommand { account })) => {
-            client.create_account_for(&account.0).await?;
+        SubCommand::Account(AccountCommand::Create(AccountCreateCommand { device })) => {
+            client.create_account_for(&device.0).await?;
         }
         SubCommand::Device(DeviceCommand::Add(DeviceAddCommand { device })) => {
             client.add_device(&device.0).await?;
@@ -82,9 +86,7 @@ async fn run() -> Result<(), Error> {
         SubCommand::Device(DeviceCommand::Remove(DeviceRemoveCommand { device })) => {
             client.remove_device(&device.0).await?;
         }
-        SubCommand::Device(DeviceCommand::List) => {
-            todo!()
-        }
+        SubCommand::Device(DeviceCommand::List) => todo!(),
         SubCommand::Id(IdCommand::List(IdListCommand { identifier })) => {
             let account_id = match identifier {
                 Some(Identifier::Account(account_id)) => account_id,
@@ -154,6 +156,6 @@ async fn ask_for_confirmation() -> Result<bool, Error> {
 
 fn ask_for_password() -> Result<Password, Error> {
     Ok(Password::from(rpassword::prompt_password_stdout(
-        "Enter your password",
+        "Enter your password:\n",
     )?))
 }

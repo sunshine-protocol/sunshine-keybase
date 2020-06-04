@@ -15,8 +15,10 @@ pub enum Error {
 
     #[error("Failed to find config dir. Use `--path` to supply a suitable directory.")]
     ConfigDirNotFound,
-    #[error("Invalid account id.")]
-    InvalidAccountId,
+    #[error("Invalid suri encoded key pair.")]
+    InvalidSuri,
+    #[error("Invalid ss58 encoded account id.")]
+    InvalidSs58,
     #[error("Invalid seqno, run `cli-identity id` for a list of valid sequence numbers.")]
     SeqNoInvalid,
     #[error("Failed to decode transfer event.")]
