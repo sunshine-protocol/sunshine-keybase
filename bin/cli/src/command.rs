@@ -22,6 +22,7 @@ pub enum SubCommand {
     Device(DeviceCommand),
     Id(IdCommand),
     Wallet(WalletCommand),
+    Run,
 }
 
 #[derive(Clone, Debug, Clap)]
