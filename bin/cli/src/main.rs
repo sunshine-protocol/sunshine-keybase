@@ -9,7 +9,6 @@ use keybase_keystore::{DeviceKey, KeyStore, Password};
 use std::path::PathBuf;
 use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::sr25519;
-use substrate_subxt::system::AccountStoreExt;
 use substrate_subxt::{ClientBuilder, Signer};
 use textwrap::Wrapper;
 
@@ -145,7 +144,7 @@ async fn run() -> Result<(), Error> {
         SubCommand::Wallet(WalletCommand { cmd }) => match cmd {
             WalletSubCommand::Balance => {
                 let signer = client.signer()?;
-                let balance = subxt.account(signer.account_id(), None).await?.data.free;
+                let balance = client.account(signer.account_id()).await?.free;
                 println!("{} of free balance", balance);
             }
             WalletSubCommand::Transfer(WalletTransferCommand { identifier, amount }) => {
@@ -163,9 +162,7 @@ async fn run() -> Result<(), Error> {
                 println!("transfered {} to {}", event.amount, event.to.to_string());
             }
         },
-        SubCommand::Run => {
-            loop {}
-        }
+        SubCommand::Run => loop {},
     }
     Ok(())
 }

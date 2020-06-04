@@ -123,6 +123,17 @@ where
         Ok(())
     }
 
+    pub async fn account(
+        &self,
+        device: &<T as System>::AccountId,
+    ) -> Result<T::IdAccountData, Error> {
+        if let Some(uid) = self.subxt.device(device, None).await? {
+            Ok(self.subxt.account(uid, None).await?)
+        } else {
+            Ok(T::IdAccountData::default())
+        }
+    }
+
     async fn identity_cid(
         &self,
         account_id: &<T as System>::AccountId,
@@ -299,6 +310,7 @@ mod tests {
         type Cid = CidBytes;
         type Mask = [u8; 32];
         type Gen = u8;
+        type IdAccountData = ();
     }
 
     #[async_std::test]

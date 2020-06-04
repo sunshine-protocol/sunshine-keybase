@@ -188,7 +188,7 @@ impl system::Trait for Runtime {
     /// What to do if an account is fully reaped from the system.
     type OnKilledAccount = ();
     /// The data to be stored in an account.
-    type AccountData = balances::AccountData<Balance>;
+    type AccountData = ();
 }
 
 impl aura::Trait for Runtime {
@@ -234,7 +234,7 @@ impl balances::Trait for Runtime {
     type Event = Event;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
+    type AccountStore = Identity;
 }
 
 parameter_types! {
@@ -260,6 +260,7 @@ impl identity::Trait for Runtime {
     type Cid = utils_identity::cid::CidBytes;
     type Mask = [u8; 32];
     type Gen = u16;
+    type AccountData = balances::AccountData<Balance>;
     type Event = Event;
 }
 

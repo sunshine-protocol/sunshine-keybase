@@ -21,7 +21,7 @@ impl System for Runtime {
     type Address = AccountId;
     type Header = sp_runtime::generic::Header<Self::BlockNumber, Self::Hashing>;
     type Extrinsic = sp_runtime::OpaqueExtrinsic;
-    type AccountData = AccountData<<Self as Balances>::Balance>;
+    type AccountData = ();
 }
 
 impl Balances for Runtime {
@@ -33,4 +33,5 @@ impl Identity for Runtime {
     type Cid = CidBytes;
     type Mask = [u8; 32];
     type Gen = u16;
+    type IdAccountData = AccountData<<Self as Balances>::Balance>;
 }

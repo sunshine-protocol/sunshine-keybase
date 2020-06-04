@@ -1,5 +1,5 @@
 //! Subxt calls.
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, FullCodec};
 use core::convert::TryInto;
 use frame_support::Parameter;
 use libipld::cid::{Cid, Error as CidError};
@@ -16,6 +16,8 @@ pub trait Identity: System {
     type Mask: Parameter + Member + Default + From<[u8; 32]> + Into<[u8; 32]>;
 
     type Gen: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Ord;
+
+    type IdAccountData: Member + FullCodec + Clone + Default;
 }
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
@@ -41,6 +43,12 @@ pub struct PasswordMaskStore<T: Identity> {
     #[store(returns = Option<T::Mask>)]
     uid: T::Uid,
     gen: T::Uid,
+}
+
+#[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
+pub struct AccountStore<T: Identity> {
+    #[store(returns = T::IdAccountData)]
+    uid: T::Uid,
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
@@ -128,6 +136,7 @@ mod tests {
         type Cid = CidBytes;
         type Mask = [u8; 32];
         type Gen = u8;
+        type IdAccountData = ();
     }
 
     #[async_std::test]

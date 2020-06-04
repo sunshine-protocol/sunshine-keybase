@@ -51,6 +51,7 @@ impl Trait for Test {
     type Mask = [u8; 32];
     type Gen = u8;
     type Cid = u32;
+    type AccountData = ();
     type Event = ();
 }
 pub type IdentityModule = Module<Test>;
