@@ -21,10 +21,10 @@ pub enum Error {
     InvalidSuri,
     #[error("Invalid ss58 encoded account id.")]
     InvalidSs58,
-    #[error("Invalid seqno, run `cli-identity id` for a list of valid sequence numbers.")]
-    SeqNoInvalid,
     #[error("Failed to decode transfer event.")]
     TransferEventDecode,
     #[error("Failed to find transfer event.")]
     TransferEventFind,
+    #[error("Failed to find an account associated with key.")]
+    NoAccount,
 }

@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::runtime::AccountId;
+use crate::runtime::{AccountId, Uid};
 use clap::Clap;
 use client_identity::{Service, ServiceParseError};
 use std::path::PathBuf;
@@ -60,7 +60,7 @@ pub struct DeviceCommand {
 pub enum DeviceSubCommand {
     Add(DeviceAddCommand),
     Remove(DeviceRemoveCommand),
-    List,
+    List(DeviceListCommand),
 }
 
 #[derive(Clone, Debug, Clap)]
@@ -84,7 +84,7 @@ pub struct WalletCommand {
 
 #[derive(Clone, Debug, Clap)]
 pub enum WalletSubCommand {
-    Balance,
+    Balance(WalletBalanceCommand),
     Transfer(WalletTransferCommand),
 }
 
@@ -115,6 +115,11 @@ pub struct DeviceRemoveCommand {
 }
 
 #[derive(Clone, Debug, Clap)]
+pub struct DeviceListCommand {
+    pub identifier: Option<Identifier>,
+}
+
+#[derive(Clone, Debug, Clap)]
 pub struct IdListCommand {
     pub identifier: Option<Identifier>,
 }
@@ -126,40 +131,18 @@ pub struct IdProveCommand {
 
 #[derive(Clone, Debug, Clap)]
 pub struct IdRevokeCommand {
-    pub seqno: u32,
+    pub service: Service,
+}
+
+#[derive(Clone, Debug, Clap)]
+pub struct WalletBalanceCommand {
+    pub identifier: Option<Identifier>,
 }
 
 #[derive(Clone, Debug, Clap)]
 pub struct WalletTransferCommand {
     pub identifier: Identifier,
     pub amount: u128,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Identifier {
-    Account(AccountId),
-    Service(Service),
-}
-
-impl core::fmt::Display for Identifier {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        match self {
-            Self::Account(account_id) => write!(f, "{}", account_id.to_string()),
-            Self::Service(service) => service.fmt(f),
-        }
-    }
-}
-
-impl FromStr for Identifier {
-    type Err = ServiceParseError;
-
-    fn from_str(string: &str) -> Result<Self, Self::Err> {
-        if let Ok(Ss58(account_id)) = Ss58::from_str(string) {
-            Ok(Self::Account(account_id))
-        } else {
-            Ok(Self::Service(Service::from_str(string)?))
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -191,6 +174,37 @@ impl FromStr for Ss58 {
         Ok(Self(
             AccountId::from_string(string).map_err(|_| Error::InvalidSs58)?,
         ))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Identifier {
+    Uid(Uid),
+    Account(AccountId),
+    Service(Service),
+}
+
+impl core::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        match self {
+            Self::Uid(uid) => write!(f, "{}", uid),
+            Self::Account(account_id) => write!(f, "{}", account_id.to_string()),
+            Self::Service(service) => service.fmt(f),
+        }
+    }
+}
+
+impl FromStr for Identifier {
+    type Err = ServiceParseError;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        if let Ok(uid) = Uid::from_str(string) {
+            Ok(Self::Uid(uid))
+        } else if let Ok(Ss58(account_id)) = Ss58::from_str(string) {
+            Ok(Self::Account(account_id))
+        } else {
+            Ok(Self::Service(Service::from_str(string)?))
+        }
     }
 }
 

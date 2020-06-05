@@ -8,6 +8,7 @@ use utils_identity::cid::CidBytes;
 pub type AccountId = <<sp_runtime::MultiSignature as Verify>::Signer as IdentifyAccount>::AccountId;
 pub type Signature = sp_runtime::MultiSignature;
 pub type Extra = substrate_subxt::DefaultExtra<Runtime>;
+pub type Uid = u32;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Runtime;
@@ -29,7 +30,7 @@ impl Balances for Runtime {
 }
 
 impl Identity for Runtime {
-    type Uid = u32;
+    type Uid = Uid;
     type Cid = CidBytes;
     type Mask = [u8; 32];
     type Gen = u16;

@@ -3,13 +3,14 @@ use codec::{Decode, Encode, FullCodec};
 use core::convert::TryInto;
 use frame_support::Parameter;
 use libipld::cid::{Cid, Error as CidError};
+use std::str::FromStr;
 use substrate_subxt::sp_runtime::traits::{CheckedAdd, Member};
 use substrate_subxt::system::{System, SystemEventsDecoder};
 use substrate_subxt::{module, Call, Event, Store};
 
 #[module]
 pub trait Identity: System {
-    type Uid: Parameter + Member + Copy + Default + CheckedAdd + From<u8>;
+    type Uid: Parameter + Member + Copy + Default + CheckedAdd + Into<u64> + FromStr;
 
     type Cid: Parameter + Member + Default + From<Cid> + TryInto<Cid, Error = CidError>;
 
@@ -21,9 +22,15 @@ pub trait Identity: System {
 }
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
-pub struct DeviceStore<'a, T: Identity> {
+pub struct UidLookupStore<'a, T: Identity> {
     #[store(returns = Option<T::Uid>)]
-    device: &'a <T as System>::AccountId,
+    key: &'a <T as System>::AccountId,
+}
+
+#[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
+pub struct KeysStore<T: Identity> {
+    #[store(returns = Vec<<T as System>::AccountId>)]
+    uid: T::Uid,
 }
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
@@ -53,23 +60,17 @@ pub struct AccountStore<T: Identity> {
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
 pub struct CreateAccountForCall<'a, T: Identity> {
-    device: &'a <T as System>::AccountId,
+    key: &'a <T as System>::AccountId,
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
-pub struct AddDeviceCall<'a, T: Identity> {
-    device: &'a <T as System>::AccountId,
+pub struct AddKeyCall<'a, T: Identity> {
+    key: &'a <T as System>::AccountId,
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
-pub struct RemoveDeviceCall<'a, T: Identity> {
-    device: &'a <T as System>::AccountId,
-}
-
-#[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
-pub struct SetDeviceMaskCall<'a, T: Identity> {
-    device_mask: &'a T::Mask,
-    gen: T::Gen,
+pub struct RemoveKeyCall<'a, T: Identity> {
+    key: &'a <T as System>::AccountId,
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
@@ -90,22 +91,15 @@ pub struct AccountCreatedEvent<T: Identity> {
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]
-pub struct DeviceAddedEvent<T: Identity> {
+pub struct KeyAddedEvent<T: Identity> {
     uid: T::Uid,
-    device: <T as System>::AccountId,
+    key: <T as System>::AccountId,
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]
-pub struct DeviceRemovedEvent<T: Identity> {
+pub struct KeyRemovedEvent<T: Identity> {
     uid: T::Uid,
-    device: <T as System>::AccountId,
-}
-
-#[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]
-pub struct DeviceMaskChangedEvent<T: Identity> {
-    device: <T as System>::AccountId,
-    mask: T::Mask,
-    gen: T::Gen,
+    key: <T as System>::AccountId,
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]

@@ -2,8 +2,6 @@ use crate::error::{Error, Result};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
-pub const GIST_NAME: &'static str = "substrate-identity-proof.md";
-
 #[derive(Deserialize)]
 struct Gist {
     html_url: String,
@@ -19,6 +17,8 @@ struct Proof {
     html_url: String,
     content: String,
 }
+
+const GIST_NAME: &'static str = "substrate-identity-proof.md";
 
 async fn find_proofs(user: &str) -> Result<Vec<Proof>> {
     let uri = format!("https://api.github.com/users/{}/gists", user);
@@ -42,7 +42,7 @@ pub async fn verify(user: &str, signature: &str) -> Result<String> {
         .await?
         .into_iter()
         .filter_map(|proof| {
-            if let Some(signature2) = proof.content.lines().nth(16) {
+            if let Some(signature2) = proof.content.lines().nth(17) {
                 if signature == signature2 {
                     return Some(proof.html_url);
                 }
@@ -67,12 +67,30 @@ pub async fn resolve(user: &str) -> Result<Vec<String>> {
         .collect())
 }
 
-pub fn proof(username: &str, account_id: &str, object: &str, signature: &str) -> String {
+pub fn proof(
+    genesis: &str,
+    block: &str,
+    uid: &str,
+    username: &str,
+    public: &str,
+    object: &str,
+    signature: &str,
+) -> String {
     format!(
-        include_str!("../github-template.md"),
+        include_str!("../github-proof-template.md"),
+        genesis = genesis,
+        block = block,
+        uid = uid,
         username = username,
-        account_id = account_id,
+        public = public,
         object = object,
         signature = signature,
+    )
+}
+
+pub fn cli_instructions() -> String {
+    format!(
+        include_str!("../github-proof-instructions.md"),
+        gist_name = GIST_NAME,
     )
 }

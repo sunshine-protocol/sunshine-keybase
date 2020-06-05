@@ -6,7 +6,9 @@ use ipld_block_builder::{Cache, Codec};
 use keystore::{DeviceKey, KeyStore, Password};
 use libipld::cid::Cid;
 use libipld::store::Store;
+use std::collections::HashMap;
 use std::time::Duration;
+use std::time::UNIX_EPOCH;
 use substrate_subxt::sp_core::crypto::{Pair, Ss58Codec};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
 use substrate_subxt::system::System;
@@ -19,7 +21,7 @@ mod service;
 mod subxt;
 
 pub use claim::{IdentityInfo, IdentityStatus};
-pub use error::Error;
+pub use error::{Error, Result};
 pub use service::{Service, ServiceParseError};
 pub use subxt::*;
 
@@ -67,7 +69,7 @@ where
         dk: &DeviceKey,
         password: &Password,
         force: bool,
-    ) -> Result<<T as System>::AccountId, Error> {
+    ) -> Result<<T as System>::AccountId> {
         if self.keystore.is_initialized() && !force {
             return Err(Error::KeystoreInitialized);
         }
@@ -76,7 +78,7 @@ where
         Ok(pair.public().into())
     }
 
-    pub fn signer(&self) -> Result<PairSigner<T, S, E, P>, Error> {
+    pub fn signer(&self) -> Result<PairSigner<T, S, E, P>> {
         // fetch device key from disk every time to make sure account is unlocked.
         let dk = self.keystore.device_key()?;
         Ok(PairSigner::new(P::from_seed(&P::Seed::from(
@@ -84,92 +86,44 @@ where
         ))))
     }
 
-    pub fn password(&self) -> Result<Password, Error> {
-        Ok(self.keystore.password()?)
-    }
-
-    pub fn lock(&self) -> Result<(), Error> {
+    pub fn lock(&self) -> Result<()> {
         Ok(self.keystore.lock()?)
     }
 
-    pub fn unlock(&self, password: &Password) -> Result<(), Error> {
+    pub fn unlock(&self, password: &Password) -> Result<()> {
         self.keystore.unlock(password)?;
         Ok(())
     }
 
-    pub async fn create_account_for(&self, device: &<T as System>::AccountId) -> Result<(), Error> {
+    pub async fn create_account_for(&self, key: &<T as System>::AccountId) -> Result<()> {
         let signer = self.signer()?;
         self.subxt
-            .create_account_for_and_watch(&signer, device)
+            .create_account_for_and_watch(&signer, key)
             .await?
             .account_created()?;
         Ok(())
     }
 
-    pub async fn add_device(&self, device: &<T as System>::AccountId) -> Result<(), Error> {
+    pub async fn add_key(&self, key: &<T as System>::AccountId) -> Result<()> {
         let signer = self.signer()?;
         self.subxt
-            .add_device_and_watch(&signer, device)
+            .add_key_and_watch(&signer, key)
             .await?
-            .device_added()?;
+            .key_added()?;
         Ok(())
     }
 
-    pub async fn remove_device(&self, device: &<T as System>::AccountId) -> Result<(), Error> {
+    pub async fn remove_key(&self, key: &<T as System>::AccountId) -> Result<()> {
         let signer = self.signer()?;
         self.subxt
-            .remove_device_and_watch(&signer, device)
+            .remove_key_and_watch(&signer, key)
             .await?
-            .device_removed()?;
+            .key_removed()?;
         Ok(())
     }
 
-    pub async fn account(
-        &self,
-        device: &<T as System>::AccountId,
-    ) -> Result<T::IdAccountData, Error> {
-        if let Some(uid) = self.subxt.device(device, None).await? {
-            Ok(self.subxt.account(uid, None).await?)
-        } else {
-            Ok(T::IdAccountData::default())
-        }
-    }
-
-    async fn identity_cid(
-        &self,
-        account_id: &<T as System>::AccountId,
-    ) -> Result<Option<Cid>, Error> {
-        if let Some(uid) = self.subxt.device(account_id, None).await? {
-            if let Some(bytes) = self.subxt.identity(uid, None).await? {
-                return Ok(Some(bytes.try_into()?));
-            }
-        }
-        Ok(None)
-    }
-
-    async fn create_claim(
-        &mut self,
-        body: ClaimBody,
-        expire_in: Option<Duration>,
-        signer: &PairSigner<T, S, E, P>,
-    ) -> Result<Claim, Error> {
-        let prev = self.identity_cid(signer.account_id()).await?;
-        let claim = UnsignedClaim::new(
-            &mut self.cache,
-            body,
-            prev,
-            expire_in.unwrap_or_else(|| Duration::from_millis(u64::MAX)),
-        )
-        .await?;
-        Claim::new::<S, _>(signer.signer(), claim)
-    }
-
-    async fn submit_claim(
-        &mut self,
-        claim: Claim,
-        signer: &(dyn Signer<T, S, E> + Send + Sync),
-    ) -> Result<(), Error> {
-        let prev = claim.claim().prev().cloned().map(T::Cid::from);
+    async fn set_identity(&mut self, claim: Claim, signer: &PairSigner<T, S, E, P>) -> Result<()> {
+        let prev = claim.claim().prev.clone().map(T::Cid::from);
         let root = self.cache.insert(claim).await?;
         let cid = T::Cid::from(root);
         self.subxt
@@ -179,90 +133,207 @@ where
         Ok(())
     }
 
-    pub async fn prove_ownership(&mut self, service: Service) -> Result<String, Error> {
+    pub async fn fetch_uid(&self, key: &<T as System>::AccountId) -> Result<Option<T::Uid>> {
+        Ok(self.subxt.uid_lookup(key, None).await?)
+    }
+
+    pub async fn fetch_keys(
+        &self,
+        uid: T::Uid,
+        hash: Option<T::Hash>,
+    ) -> Result<Vec<<T as System>::AccountId>> {
+        Ok(self.subxt.keys(uid, hash).await?)
+    }
+
+    pub async fn fetch_account(&self, uid: T::Uid) -> Result<T::IdAccountData> {
+        Ok(self.subxt.account(uid, None).await?)
+    }
+
+    async fn fetch_identity(&self, uid: T::Uid) -> Result<Option<Cid>> {
+        if let Some(bytes) = self.subxt.identity(uid, None).await? {
+            Ok(Some(bytes.try_into()?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn create_claim(
+        &mut self,
+        body: ClaimBody,
+        expire_in: Option<Duration>,
+        signer: &PairSigner<T, S, E, P>,
+        uid: T::Uid,
+    ) -> Result<Claim> {
+        let genesis = self.subxt.genesis().as_ref().to_vec();
+        let block = self
+            .subxt
+            .block_hash(None)
+            .await?
+            .ok_or(Error::NoBlockHash)?
+            .as_ref()
+            .to_vec();
+        let prev = self.fetch_identity(uid).await?;
+        let prev_seqno = if let Some(prev) = prev.as_ref() {
+            self.cache.get(prev).await?.claim().seqno
+        } else {
+            0
+        };
+        let public = signer.account_id().to_ss58check();
+        let expire_in = expire_in
+            .unwrap_or_else(|| Duration::from_millis(u64::MAX))
+            .as_millis() as u64;
+        let ctime = UNIX_EPOCH.elapsed().unwrap().as_millis() as u64;
+        let claim = UnsignedClaim {
+            genesis,
+            block,
+            uid: uid.into(),
+            public,
+            prev,
+            seqno: prev_seqno + 1,
+            ctime,
+            expire_in,
+            body,
+        };
+        let signature: S = signer.signer().sign(&claim.to_bytes()?).into();
+        let signature = Encode::encode(&signature);
+        Ok(Claim::new(claim, signature))
+    }
+
+    pub async fn prove_identity(&mut self, service: Service) -> Result<String> {
         let signer = self.signer()?;
+        let uid = self
+            .fetch_uid(signer.account_id())
+            .await?
+            .ok_or(Error::NoAccount)?;
         let claim = self
-            .create_claim(ClaimBody::Ownership(service.clone()), None, &signer)
+            .create_claim(ClaimBody::Ownership(service.clone()), None, &signer, uid)
             .await?;
-        let account_id = signer.account_id().to_string();
-        let object = claim.claim().to_json()?;
-        let signature = claim.signature();
-        let proof = service.proof(&account_id, &object, &signature);
-        self.submit_claim(claim, &signer).await?;
+        let proof = service.proof(&claim)?;
+        self.set_identity(claim, &signer).await?;
         Ok(proof)
     }
 
-    pub async fn revoke_claim(&mut self, claim: u32) -> Result<(), Error> {
+    pub async fn revoke_identity(&mut self, service: Service) -> Result<()> {
         let signer = self.signer()?;
-        let claim = self
-            .create_claim(ClaimBody::Revoke(claim), None, &signer)
-            .await?;
-        self.submit_claim(claim, &signer).await?;
+        let uid = self
+            .fetch_uid(signer.account_id())
+            .await?
+            .ok_or(Error::NoAccount)?;
+        let id = self
+            .identity(uid)
+            .await?
+            .into_iter()
+            .find(|id| id.service == service && id.status != IdentityStatus::Revoked);
+        if let Some(id) = id {
+            let seqno = id.claims.last().unwrap().claim().seqno;
+            let claim = self
+                .create_claim(ClaimBody::Revoke(seqno), None, &signer, uid)
+                .await?;
+            self.set_identity(claim, &signer).await?;
+        }
         Ok(())
     }
 
-    async fn claims(&mut self, account_id: &<T as System>::AccountId) -> Result<Vec<Claim>, Error> {
-        let mut claims = vec![];
-        let mut next = self.identity_cid(account_id).await?;
-        while let Some(cid) = next {
-            let claim = self.cache.get(&cid).await?;
-            next = claim.claim().prev().cloned();
-            if claim.verify::<S>(account_id).is_ok() {
-                claims.push(claim);
-            }
+    async fn verify_claim(&mut self, uid: T::Uid, claim: &Claim) -> Result<()> {
+        if claim.claim().uid != uid.into() {
+            return Err(Error::InvalidClaim("uid"));
         }
-        Ok(claims)
+        if &claim.claim().genesis[..] != self.subxt.genesis().as_ref() {
+            return Err(Error::InvalidClaim("genesis"));
+        }
+        let prev_seqno = if let Some(prev) = claim.claim().prev.as_ref() {
+            self.cache.get(prev).await?.claim().seqno
+        } else {
+            0
+        };
+        if claim.claim().seqno != prev_seqno + 1 {
+            return Err(Error::InvalidClaim("seqno"));
+        }
+        let block = Decode::decode(&mut &claim.claim().block[..])?;
+        let keys = self.fetch_keys(uid, Some(block)).await?;
+        let key = keys
+            .iter()
+            .find(|k| &k.to_ss58check() == &claim.claim().public)
+            .ok_or(Error::InvalidClaim("key"))?;
+        let bytes = claim.claim().to_bytes()?;
+        let signature: S = Decode::decode(&mut claim.signature())?;
+        if !signature.verify(&bytes[..], key) {
+            return Err(Error::InvalidClaim("signature"));
+        }
+        Ok(())
     }
 
-    pub async fn identity(
-        &mut self,
-        account_id: &<T as System>::AccountId,
-    ) -> Result<Vec<IdentityInfo>, Error> {
-        let claims = self.claims(account_id).await?;
-        let mut identities = vec![];
-        let mut signatures = vec![];
+    pub async fn identity(&mut self, uid: T::Uid) -> Result<Vec<IdentityInfo>> {
+        let mut claims = vec![];
+        let mut next = self.fetch_identity(uid).await?;
+        while let Some(cid) = next {
+            let claim = self.cache.get(&cid).await?;
+            next = claim.claim().prev.clone();
+            self.verify_claim(uid, &claim).await?;
+            claims.push(claim);
+        }
+        let mut ids = HashMap::<Service, Vec<Claim>>::new();
         for claim in claims.iter().rev() {
-            match claim.claim().body() {
+            match claim.claim().body.clone() {
                 ClaimBody::Ownership(service) => {
-                    let status = if claim.claim().expired() {
-                        IdentityStatus::Expired
-                    } else {
-                        IdentityStatus::ProofNotFound
-                    };
-                    identities.push(IdentityInfo {
-                        service: service.clone(),
-                        seqno: claim.claim().seqno(),
-                        status,
-                    });
-                    signatures.push(claim.signature());
+                    ids.entry(service.clone()).or_default().push(claim.clone());
                 }
                 ClaimBody::Revoke(seqno) => {
-                    if let Some(mut id) = identities.iter_mut().find(|id| id.seqno == *seqno) {
-                        id.status = IdentityStatus::Revoked;
+                    if let Some(claim2) = claims.get(seqno as usize - 1) {
+                        if let ClaimBody::Ownership(service) = &claim2.claim().body {
+                            ids.entry(service.clone()).or_default().push(claim.clone());
+                        }
                     }
                 }
             }
         }
-        for (mut id, signature) in identities.iter_mut().zip(signatures.iter()) {
-            if id.status == IdentityStatus::ProofNotFound {
-                if let Ok(proof_url) = id.service.verify(&signature).await {
-                    id.status = IdentityStatus::Active(proof_url);
+        let mut info = vec![];
+        for (service, claims) in ids.into_iter() {
+            let mut status = IdentityStatus::ProofNotFound;
+            let mut proof = None;
+            for claim in &claims {
+                match &claim.claim().body {
+                    ClaimBody::Ownership(_) => {
+                        if claim.claim().expired() {
+                            status = IdentityStatus::Expired;
+                        } else {
+                            proof = Some(claim);
+                        }
+                    }
+                    ClaimBody::Revoke(seqno) => {
+                        if let Some(p) = proof {
+                            if p.claim().seqno == *seqno {
+                                status = IdentityStatus::Revoked;
+                                proof = None;
+                            }
+                        }
+                    }
                 }
             }
+            if status == IdentityStatus::ProofNotFound {
+                if let Some(proof) = proof {
+                    if let Ok(proof_url) = service.verify(proof.signature()).await {
+                        status = IdentityStatus::Active(proof_url);
+                    }
+                }
+            }
+            info.push(IdentityInfo {
+                service,
+                claims,
+                status,
+            });
         }
-        Ok(identities)
+        Ok(info)
     }
 
-    pub async fn resolve(&mut self, service: &Service) -> Result<<T as System>::AccountId, Error> {
-        let accounts = service.resolve().await?;
-        for account in accounts {
-            let account_id = match <T as System>::AccountId::from_string(&account) {
-                Ok(account_id) => account_id,
-                Err(_) => continue,
-            };
-            for id in self.identity(&account_id).await? {
-                if &id.service == service {
-                    return Ok(account_id);
+    pub async fn resolve(&mut self, service: &Service) -> Result<T::Uid> {
+        let uids = service.resolve().await?;
+        for uid in uids {
+            if let Ok(uid) = uid.parse() {
+                for id in self.identity(uid).await? {
+                    if &id.service == service {
+                        return Ok(uid);
+                    }
                 }
             }
         }
@@ -316,11 +387,12 @@ mod tests {
         let keystore = KeyStore::new("/tmp/keystore");
         let account_id = sp_keyring::AccountKeyring::Alice.to_account_id();
         let mut client = Client::<_, _, _, sp_core::sr25519::Pair, _>::new(keystore, subxt, store);
-        assert_eq!(client.claims(&account_id).await.unwrap().len(), 0);
+        let uid = client.fetch_uid(&account_id).await.unwrap().unwrap();
+        assert_eq!(client.identity(uid).await.unwrap().len(), 0);
         client
-            .prove_ownership(Service::Github("dvc94ch".into()))
+            .prove_identity(Service::Github("dvc94ch".into()))
             .await
             .unwrap();
-        assert_eq!(client.claims(&account_id).await.unwrap().len(), 1);
+        assert_eq!(client.identity(uid).await.unwrap().len(), 1);
     }
 }

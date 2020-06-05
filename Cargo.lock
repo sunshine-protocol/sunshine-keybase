@@ -3401,6 +3401,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-utilities"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "804b8d09bdc6eec1789bb8c6143ed334d74d5f71627b24ee7749e318533d79bf"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "os_str_bytes"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3494,6 +3510,7 @@ version = "0.1.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "orml-utilities",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
