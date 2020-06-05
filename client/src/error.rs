@@ -21,16 +21,18 @@ pub enum Error {
 
     #[error("keystore already initialized")]
     KeystoreInitialized,
-    #[error("device mask not found")]
-    NoDeviceMask,
-    #[error("invalid signature")]
-    InvalidSignature,
+    #[error("account not found")]
+    NoAccount,
+    #[error("invalid claim {0}")]
+    InvalidClaim(&'static str),
     #[error("failed to resolve identity")]
     ResolveFailure,
     #[error("network error: {0}")]
     NetworkError(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error("proof not found")]
     ProofNotFound,
+    #[error("failed to get block hash")]
+    NoBlockHash,
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

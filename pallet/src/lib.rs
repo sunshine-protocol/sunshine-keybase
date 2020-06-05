@@ -6,6 +6,7 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::traits::StoredMap;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, Parameter};
 use frame_system::{self as system, ensure_signed, Trait as System};
+use orml_utilities::OrderedSet;
 use sp_runtime::traits::{CheckedAdd, Member};
 
 #[cfg(test)]
@@ -16,7 +17,7 @@ mod tests;
 
 /// The pallet's configuration trait.
 pub trait Trait: System {
-    /// Uid type.
+    /// User ID type.
     type Uid: Parameter + Member + Copy + Default + CheckedAdd + From<u8>;
 
     /// Cid type.
@@ -39,9 +40,13 @@ decl_storage! {
     trait Store for Module<T: Trait> as IdentityModule {
         UidCounter: T::Uid;
 
-        pub Device get(fn device): map
+        pub UidLookup get(fn key): map
             hasher(blake2_128_concat) <T as System>::AccountId
             => Option<T::Uid>;
+
+        pub Keys get(fn keys): map
+            hasher(blake2_128_concat) T::Uid
+            => OrderedSet<<T as System>::AccountId>;
 
         pub Identity get(fn identity): map
             hasher(blake2_128_concat) T::Uid
@@ -72,8 +77,8 @@ decl_event!(
         Gen = <T as Trait>::Gen,
     {
         AccountCreated(Uid),
-        DeviceAdded(Uid, AccountId),
-        DeviceRemoved(Uid, AccountId),
+        KeyAdded(Uid, AccountId),
+        KeyRemoved(Uid, AccountId),
         IdentityChanged(Uid, Cid),
         PasswordChanged(Uid, Gen, Mask),
     }
@@ -83,18 +88,20 @@ decl_error! {
     pub enum Error for Module<T: Trait> {
         /// No account.
         NoAccount,
-        /// Failed to create account.
-        CantCreateAccount,
-        /// Failed to add device.
-        CantAddDevice,
-        /// Failed to remove device.
-        CantRemoveDevice,
-        /// Failed to set device mask.
-        CantSetDeviceMask,
-        /// Failed to change password.
-        CantChangePassword,
-        /// Failed to set identity.
-        CantSetIdentity,
+        /// Uid overflow.
+        UidOverflow,
+        /// Key in use.
+        KeyInUse,
+        /// Unauthorized to remove key.
+        Unauthorized,
+        /// Cant remove self.
+        CantRemoveSelf,
+        /// Prev cid missmatch.
+        PrevCidMissmatch,
+        /// Password gen overflow.
+        PasswordGenOverflow,
+        /// Password gen missmatch.
+        PasswordGenMissmatch,
     }
 }
 
@@ -109,39 +116,41 @@ decl_module! {
 
         /// Create account.
         #[weight = 0]
-        pub fn create_account_for(origin, device: <T as System>::AccountId) -> DispatchResult {
+        pub fn create_account_for(origin, key: <T as System>::AccountId) -> DispatchResult {
             let _ = ensure_signed(origin)?;
-            ensure!(<Device<T>>::get(&device).is_none(), Error::<T>::CantCreateAccount);
+            Self::ensure_key_unused(&key)?;
 
-            let uid = Self::create_account(&device)?;
+            let uid = Self::create_account(&key)?;
             Self::deposit_event(RawEvent::AccountCreated(uid));
-            Self::deposit_event(RawEvent::DeviceAdded(uid, device));
+            Self::deposit_event(RawEvent::KeyAdded(uid, key));
 
             Ok(())
         }
 
-        /// Add a device.
+        /// Add a key.
         #[weight = 0]
-        pub fn add_device(origin, device: <T as System>::AccountId) -> DispatchResult {
+        pub fn add_key(origin, key: <T as System>::AccountId) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
-            ensure!(<Device<T>>::get(&device).is_none(), Error::<T>::CantAddDevice);
+            let uid = Self::ensure_uid(&who)?;
+            Self::ensure_key_unused(&key)?;
 
-            <Device<T>>::insert(device.clone(), uid);
-            Self::deposit_event(RawEvent::DeviceAdded(uid, device));
+            Self::add_key_to_uid(uid, &key);
+            Self::deposit_event(RawEvent::KeyAdded(uid, key));
+
             Ok(())
         }
 
-        /// Remove a device.
+        /// Remove a key.
         #[weight = 0]
-        pub fn remove_device(origin, device: <T as System>::AccountId) -> DispatchResult {
+        pub fn remove_key(origin, key: <T as System>::AccountId) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
-            ensure!(who != device, Error::<T>::CantRemoveDevice);
-            ensure!(<Device<T>>::get(&device) == Some(uid), Error::<T>::CantRemoveDevice);
+            let uid = Self::ensure_uid(&who)?;
+            // Prevent user from locking himself out.
+            ensure!(who != key, Error::<T>::CantRemoveSelf);
+            ensure!(<UidLookup<T>>::get(&key) == Some(uid), Error::<T>::Unauthorized);
 
-            <Device<T>>::remove(&device);
-            Self::deposit_event(RawEvent::DeviceRemoved(uid, device));
+            Self::remove_key_from_uid(uid, &key);
+            Self::deposit_event(RawEvent::KeyRemoved(uid, key));
             Ok(())
         }
 
@@ -149,12 +158,12 @@ decl_module! {
         #[weight = 0]
         pub fn change_password(origin, mask: T::Mask, gen: T::Gen) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
+            let uid = Self::ensure_uid(&who)?;
             ensure!(
                 gen == <PasswordGen<T>>::get(uid)
                     .checked_add(&1u8.into())
-                    .ok_or(Error::<T>::CantChangePassword)?,
-                Error::<T>::CantChangePassword
+                    .ok_or(Error::<T>::PasswordGenOverflow)?,
+                Error::<T>::PasswordGenMissmatch
             );
 
             <PasswordGen<T>>::insert(uid, gen);
@@ -167,8 +176,8 @@ decl_module! {
         #[weight = 0]
         pub fn set_identity(origin, prev_cid: Option<T::Cid>, new_cid: T::Cid) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let uid = <Device<T>>::get(&who).ok_or(Error::<T>::NoAccount)?;
-            ensure!(<Identity<T>>::get(uid) == prev_cid, Error::<T>::CantSetIdentity);
+            let uid = Self::ensure_uid(&who)?;
+            ensure!(<Identity<T>>::get(uid) == prev_cid, Error::<T>::PrevCidMissmatch);
 
             <Identity<T>>::insert(uid, new_cid.clone());
             Self::deposit_event(RawEvent::IdentityChanged(uid, new_cid));
@@ -178,20 +187,44 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    fn create_account(device: &<T as System>::AccountId) -> Result<T::Uid, Error<T>> {
+    fn ensure_uid(key: &<T as System>::AccountId) -> Result<T::Uid, Error<T>> {
+        <UidLookup<T>>::get(&key).ok_or(Error::<T>::NoAccount)
+    }
+
+    fn ensure_key_unused(key: &<T as System>::AccountId) -> Result<(), Error<T>> {
+        if <UidLookup<T>>::get(&key).is_some() {
+            Err(Error::<T>::KeyInUse)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn create_account(key: &<T as System>::AccountId) -> Result<T::Uid, Error<T>> {
         let uid = <UidCounter<T>>::get();
-        let next_uid = uid.checked_add(&1u8.into()).ok_or(Error::<T>::CantCreateAccount)?;
+        let next_uid = uid
+            .checked_add(&1u8.into())
+            .ok_or(Error::<T>::UidOverflow)?;
         let gen = T::Gen::from(0u8);
         <UidCounter<T>>::put(next_uid);
         <PasswordGen<T>>::insert(uid, gen);
-        <Device<T>>::insert(device.clone(), uid);
+        Self::add_key_to_uid(uid, key);
         Ok(uid)
+    }
+
+    fn add_key_to_uid(uid: T::Uid, key: &<T as System>::AccountId) {
+        <UidLookup<T>>::insert(key.clone(), uid);
+        <Keys<T>>::mutate(uid, |keys| keys.insert(key.clone()));
+    }
+
+    fn remove_key_from_uid(uid: T::Uid, key: &<T as System>::AccountId) {
+        <UidLookup<T>>::remove(key);
+        <Keys<T>>::mutate(uid, |keys| keys.remove(key));
     }
 }
 
 impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> for Module<T> {
     fn get(k: &<T as System>::AccountId) -> <T as Trait>::AccountData {
-        if let Some(uid) = <Device<T>>::get(k) {
+        if let Some(uid) = <UidLookup<T>>::get(k) {
             <Account<T>>::get(&uid)
         } else {
             <T as Trait>::AccountData::default()
@@ -199,33 +232,32 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
     }
 
     fn is_explicit(k: &<T as System>::AccountId) -> bool {
-        <Device<T>>::get(k).is_some()
+        <UidLookup<T>>::get(k).is_some()
     }
 
     fn mutate<R>(
         k: &<T as System>::AccountId,
         f: impl FnOnce(&mut <T as Trait>::AccountData) -> R,
     ) -> R {
-        if <Device<T>>::get(k).is_none() {
+        if <UidLookup<T>>::get(k).is_none() {
             Self::create_account(k).ok();
         }
-        if let Some(uid) = <Device<T>>::get(k) {
+        if let Some(uid) = <UidLookup<T>>::get(k) {
             <Account<T>>::mutate(&uid, f)
         } else {
             // This should only happen if uid overflows.
             f(&mut <T as Trait>::AccountData::default())
         }
-
     }
 
     fn mutate_exists<R>(
         k: &<T as System>::AccountId,
         f: impl FnOnce(&mut Option<<T as Trait>::AccountData>) -> R,
     ) -> R {
-        if <Device<T>>::get(k).is_none() {
+        if <UidLookup<T>>::get(k).is_none() {
             Self::create_account(k).ok();
         }
-        if let Some(uid) = <Device<T>>::get(k) {
+        if let Some(uid) = <UidLookup<T>>::get(k) {
             <Account<T>>::mutate_exists(&uid, f)
         } else {
             // This should only happen if uid overflows.
@@ -237,10 +269,10 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
         k: &<T as System>::AccountId,
         f: impl FnOnce(&mut Option<<T as Trait>::AccountData>) -> Result<R, E>,
     ) -> Result<R, E> {
-        if <Device<T>>::get(k).is_none() {
+        if <UidLookup<T>>::get(k).is_none() {
             Self::create_account(k).ok();
         }
-        if let Some(uid) = <Device<T>>::get(k) {
+        if let Some(uid) = <UidLookup<T>>::get(k) {
             <Account<T>>::try_mutate_exists(&uid, f)
         } else {
             // This should only happen if uid overflows.
@@ -249,7 +281,7 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
     }
 
     fn remove(k: &<T as System>::AccountId) {
-        if let Some(uid) = <Device<T>>::get(k) {
+        if let Some(uid) = <UidLookup<T>>::get(k) {
             <Account<T>>::remove(&uid);
         }
     }

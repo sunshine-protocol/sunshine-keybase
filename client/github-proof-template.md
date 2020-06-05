@@ -3,7 +3,8 @@
 I hereby claim:
 
   * I am {username} on github.
-  * I am {account_id} on substrate.
+  * I am {uid} on the substrate chain with genesis hash {genesis}.
+  * I have a public key {public} valid at block with hash {block}.
 
 To claim this, I am signing this object:
 
@@ -11,7 +12,7 @@ To claim this, I am signing this object:
 {object}
 ```
 
-with the key {account_id}, yielding the signature:
+with the key {public}, yielding the signature:
 
 ```
 {signature}

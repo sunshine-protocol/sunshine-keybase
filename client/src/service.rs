@@ -1,10 +1,15 @@
+use crate::claim::Claim;
 use crate::error::Result;
 use crate::github;
 use core::str::FromStr;
-use libipld::DagCbor;
+use libipld::cbor::DagCborCodec;
+use libipld::codec::Codec;
+use libipld::json::DagJsonCodec;
+use libipld::multibase::{encode, Base};
+use libipld::{DagCbor, Ipld};
 use thiserror::Error;
 
-#[derive(Clone, Debug, Eq, PartialEq, DagCbor)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, DagCbor)]
 pub enum Service {
     Github(String),
 }
@@ -22,21 +27,41 @@ impl Service {
         }
     }
 
-    pub async fn verify(&self, signature: &str) -> Result<String> {
+    pub async fn verify(&self, signature: &[u8]) -> Result<String> {
+        let signature = encode(Base::Base64, signature);
         match self {
-            Self::Github(user) => github::verify(&user, signature).await
+            Self::Github(user) => github::verify(&user, &signature).await,
         }
     }
 
     pub async fn resolve(&self) -> Result<Vec<String>> {
         match self {
-            Self::Github(user) => github::resolve(&user).await
+            Self::Github(user) => github::resolve(&user).await,
         }
     }
 
-    pub fn proof(&self, account_id: &str, object: &str, signature: &str) -> String {
+    pub fn proof(&self, claim: &Claim) -> Result<String> {
+        let genesis = encode(Base::Base64, &claim.claim().genesis);
+        let block = encode(Base::Base64, &claim.claim().block);
+        let uid = claim.claim().uid.to_string();
+        let public = &claim.claim().public;
+        let signature = encode(Base::Base64, claim.signature());
+
+        let bytes = DagCborCodec::encode(claim.claim())?;
+        let ipld: Ipld = DagCborCodec::decode(&bytes)?;
+        let bytes = DagJsonCodec::encode(&ipld)?;
+        let object = std::str::from_utf8(&bytes).expect("json codec returns valid utf8");
+
+        Ok(match self {
+            Self::Github(user) => {
+                github::proof(&genesis, &block, &uid, &user, &public, &object, &signature)
+            }
+        })
+    }
+
+    pub fn cli_instructions(&self) -> String {
         match self {
-            Self::Github(user) => github::proof(&user, account_id, object, signature),
+            Self::Github(_) => github::cli_instructions(),
         }
     }
 }

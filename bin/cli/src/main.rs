@@ -1,14 +1,13 @@
 use crate::command::*;
 use crate::error::Error;
-use crate::runtime::{Extra, Runtime, Signature};
+use crate::runtime::{Extra, Runtime, Signature, Uid};
 use clap::Clap;
-use client_identity::{Client, IdentityStatus, Service};
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
 use keybase_keystore::{DeviceKey, KeyStore, Password};
 use std::path::PathBuf;
 use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
-use substrate_subxt::sp_core::sr25519;
+use substrate_subxt::sp_core::{crypto::Ss58Codec, sr25519};
 use substrate_subxt::{ClientBuilder, Signer};
 use textwrap::Wrapper;
 
@@ -46,6 +45,8 @@ impl Paths {
     }
 }
 
+type Client = client_identity::Client<Runtime, Signature, Extra, sr25519::Pair, Store>;
+
 async fn run() -> Result<(), Error> {
     env_logger::init();
     let opts: Opts = Opts::parse();
@@ -56,11 +57,7 @@ async fn run() -> Result<(), Error> {
     let config = Config::from_path(&paths.db).map_err(|err| ipfs_embed::Error::Sled(err))?;
     let store = Store::new(config)?;
 
-    let mut client = Client::<Runtime, Signature, Extra, sr25519::Pair, Store>::new(
-        keystore,
-        subxt.clone(),
-        store,
-    );
+    let mut client = Client::new(keystore, subxt.clone(), store);
 
     match opts.cmd {
         SubCommand::Key(KeyCommand { cmd }) => match cmd {
@@ -92,65 +89,51 @@ async fn run() -> Result<(), Error> {
         },
         SubCommand::Device(DeviceCommand { cmd }) => match cmd {
             DeviceSubCommand::Add(DeviceAddCommand { device }) => {
-                client.add_device(&device.0).await?;
+                client.add_key(&device.0).await?;
             }
             DeviceSubCommand::Remove(DeviceRemoveCommand { device }) => {
-                client.remove_device(&device.0).await?;
+                client.remove_key(&device.0).await?;
             }
-            DeviceSubCommand::List => todo!(),
+            DeviceSubCommand::List(DeviceListCommand { identifier }) => {
+                let uid = resolve(&mut client, identifier).await?;
+                for key in client.fetch_keys(uid, None).await? {
+                    println!("{}", key.to_ss58check());
+                }
+            }
         },
         SubCommand::Id(IdCommand { cmd }) => match cmd {
             IdSubCommand::List(IdListCommand { identifier }) => {
-                let account_id = match identifier {
-                    Some(Identifier::Account(account_id)) => account_id,
-                    Some(Identifier::Service(service)) => client.resolve(&service).await?,
-                    None => client.signer()?.account_id().clone(),
-                };
-                println!("{}", account_id.to_string());
-                for id in client.identity(&account_id).await? {
+                let uid = resolve(&mut client, identifier).await?;
+                println!("{}", uid);
+                for id in client.identity(uid).await? {
                     println!("{}", id);
                 }
             }
             IdSubCommand::Prove(IdProveCommand { service }) => {
                 println!("Claiming {}...", service);
-                let instructions = match service {
-                    Service::Github(_) => {
-                        "Please *publicly* post the following Gist, and name it \
-                         'substrate-identity-proof.md'.\n"
-                    }
-                };
-                let proof = client.prove_ownership(service).await?;
+                let instructions = service.cli_instructions();
+                let proof = client.prove_identity(service).await?;
                 println!("{}", instructions);
                 print!("{}", proof);
             }
-            IdSubCommand::Revoke(IdRevokeCommand { seqno }) => {
-                let signer = client.signer()?;
-                let id = client
-                    .identity(signer.account_id())
-                    .await?
-                    .into_iter()
-                    .find(|id| id.seqno == seqno && id.status != IdentityStatus::Revoked)
-                    .ok_or(Error::SeqNoInvalid)?;
-                println!("Do you really want to revoke {}? [y/n]", id.service);
-                if ask_for_confirmation().await? {
-                    client.revoke_claim(seqno).await?;
-                }
+            IdSubCommand::Revoke(IdRevokeCommand { service }) => {
+                client.revoke_identity(service).await?;
             }
         },
         SubCommand::Wallet(WalletCommand { cmd }) => match cmd {
-            WalletSubCommand::Balance => {
-                let signer = client.signer()?;
-                let balance = client.account(signer.account_id()).await?.free;
+            WalletSubCommand::Balance(WalletBalanceCommand { identifier }) => {
+                let uid = resolve(&mut client, identifier).await?;
+                let balance = client.fetch_account(uid).await?.free;
                 println!("{} of free balance", balance);
             }
             WalletSubCommand::Transfer(WalletTransferCommand { identifier, amount }) => {
                 let signer = client.signer()?;
-                let account_id = match identifier {
-                    Identifier::Account(account_id) => account_id,
-                    Identifier::Service(service) => client.resolve(&service).await?,
-                };
+                let uid = resolve(&mut client, Some(identifier)).await?;
+                let keys = client.fetch_keys(uid, None).await?;
+                // TODO: there is a race here, a key may be revoked before
+                // the transfer completes.
                 let event = subxt
-                    .transfer_and_watch(&signer, &account_id, amount)
+                    .transfer_and_watch(&signer, &keys[0], amount)
                     .await?
                     .transfer()
                     .map_err(|_| Error::TransferEventDecode)?
@@ -163,14 +146,25 @@ async fn run() -> Result<(), Error> {
     Ok(())
 }
 
-async fn ask_for_confirmation() -> Result<bool, Error> {
-    let mut line = String::new();
-    async_std::io::stdin().read_line(&mut line).await?;
-    Ok(&line == "y\n")
-}
-
 fn ask_for_password() -> Result<Password, Error> {
     Ok(Password::from(rpassword::prompt_password_stdout(
         "Enter your password:\n",
     )?))
+}
+
+async fn resolve(client: &mut Client, identifier: Option<Identifier>) -> Result<Uid, Error> {
+    let identifier = if let Some(identifier) = identifier {
+        identifier
+    } else {
+        Identifier::Account(client.signer()?.account_id().clone())
+    };
+    let uid = match identifier {
+        Identifier::Uid(uid) => uid,
+        Identifier::Account(account_id) => client
+            .fetch_uid(&account_id)
+            .await?
+            .ok_or(Error::NoAccount)?,
+        Identifier::Service(service) => client.resolve(&service).await?,
+    };
+    Ok(uid)
 }
