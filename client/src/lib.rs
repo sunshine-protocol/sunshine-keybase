@@ -15,11 +15,12 @@ use substrate_subxt::{PairSigner, SignedExtra, Signer};
 mod claim;
 mod error;
 mod github;
+mod service;
 mod subxt;
 
-pub use claim::{IdentityInfo, IdentityStatus, Service, ServiceParseError};
+pub use claim::{IdentityInfo, IdentityStatus};
 pub use error::Error;
-pub use github::Error as GithubError;
+pub use service::{Service, ServiceParseError};
 pub use subxt::*;
 
 pub struct Client<T, S, E, P, I>
@@ -184,7 +185,9 @@ where
             .create_claim(ClaimBody::Ownership(service.clone()), None, &signer)
             .await?;
         let account_id = signer.account_id().to_string();
-        let proof = service.proof(&account_id, &claim)?;
+        let object = claim.claim().to_json()?;
+        let signature = claim.signature();
+        let proof = service.proof(&account_id, &object, &signature);
         self.submit_claim(claim, &signer).await?;
         Ok(proof)
     }
@@ -216,9 +219,8 @@ where
         account_id: &<T as System>::AccountId,
     ) -> Result<Vec<IdentityInfo>, Error> {
         let claims = self.claims(account_id).await?;
-        let account_id = account_id.to_string();
         let mut identities = vec![];
-        let mut proofs = vec![];
+        let mut signatures = vec![];
         for claim in claims.iter().rev() {
             match claim.claim().body() {
                 ClaimBody::Ownership(service) => {
@@ -227,14 +229,12 @@ where
                     } else {
                         IdentityStatus::ProofNotFound
                     };
-                    if let Ok(proof) = service.proof(&account_id, claim) {
-                        identities.push(IdentityInfo {
-                            service: service.clone(),
-                            seqno: claim.claim().seqno(),
-                            status,
-                        });
-                        proofs.push(proof);
-                    }
+                    identities.push(IdentityInfo {
+                        service: service.clone(),
+                        seqno: claim.claim().seqno(),
+                        status,
+                    });
+                    signatures.push(claim.signature());
                 }
                 ClaimBody::Revoke(seqno) => {
                     if let Some(mut id) = identities.iter_mut().find(|id| id.seqno == *seqno) {
@@ -243,14 +243,10 @@ where
                 }
             }
         }
-        for (mut id, proof) in identities.iter_mut().zip(proofs.iter()) {
+        for (mut id, signature) in identities.iter_mut().zip(signatures.iter()) {
             if id.status == IdentityStatus::ProofNotFound {
-                match &id.service {
-                    Service::Github(username) => {
-                        if let Ok(url) = github::verify_identity(&username, proof).await {
-                            id.status = IdentityStatus::Active(url);
-                        }
-                    }
+                if let Ok(proof_url) = id.service.verify(&signature).await {
+                    id.status = IdentityStatus::Active(proof_url);
                 }
             }
         }
@@ -258,9 +254,7 @@ where
     }
 
     pub async fn resolve(&mut self, service: &Service) -> Result<<T as System>::AccountId, Error> {
-        let accounts = match service {
-            Service::Github(username) => github::resolve_identity(&username).await?,
-        };
+        let accounts = service.resolve().await?;
         for account in accounts {
             let account_id = match <T as System>::AccountId::from_string(&account) {
                 Ok(account_id) => account_id,

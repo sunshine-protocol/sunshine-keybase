@@ -1,16 +1,8 @@
+use crate::error::{Error, Result};
 use serde::Deserialize;
 use std::collections::BTreeMap;
-use thiserror::Error;
 
 pub const GIST_NAME: &'static str = "substrate-identity-proof.md";
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("network error: {0}")]
-    NetworkError(#[from] Box<dyn std::error::Error + Send + Sync>),
-    #[error("proof not found")]
-    ProofNotFound,
-}
 
 #[derive(Deserialize)]
 struct Gist {
@@ -28,7 +20,7 @@ struct Proof {
     content: String,
 }
 
-async fn find_proofs(user: &str) -> Result<Vec<Proof>, Error> {
+async fn find_proofs(user: &str) -> Result<Vec<Proof>> {
     let uri = format!("https://api.github.com/users/{}/gists", user);
     let gists: Vec<Gist> = surf::get(&uri).recv_json().await?;
     let mut proofs = Vec::with_capacity(gists.len());
@@ -45,16 +37,23 @@ async fn find_proofs(user: &str) -> Result<Vec<Proof>, Error> {
     Ok(proofs)
 }
 
-pub async fn verify_identity(user: &str, proof: &str) -> Result<String, Error> {
-    for proof2 in find_proofs(user).await? {
-        if proof2.content == proof {
-            return Ok(proof2.html_url);
-        }
-    }
-    Err(Error::ProofNotFound)
+pub async fn verify(user: &str, signature: &str) -> Result<String> {
+    find_proofs(user)
+        .await?
+        .into_iter()
+        .filter_map(|proof| {
+            if let Some(signature2) = proof.content.lines().nth(16) {
+                if signature == signature2 {
+                    return Some(proof.html_url);
+                }
+            }
+            None
+        })
+        .next()
+        .ok_or(Error::ProofNotFound)
 }
 
-pub async fn resolve_identity(user: &str) -> Result<Vec<String>, Error> {
+pub async fn resolve(user: &str) -> Result<Vec<String>> {
     Ok(find_proofs(user)
         .await?
         .into_iter()
@@ -66,4 +65,14 @@ pub async fn resolve_identity(user: &str) -> Result<Vec<String>, Error> {
             }
         })
         .collect())
+}
+
+pub fn proof(username: &str, account_id: &str, object: &str, signature: &str) -> String {
+    format!(
+        include_str!("../github-template.md"),
+        username = username,
+        account_id = account_id,
+        object = object,
+        signature = signature,
+    )
 }

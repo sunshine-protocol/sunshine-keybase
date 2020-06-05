@@ -27,6 +27,10 @@ pub enum Error {
     InvalidSignature,
     #[error("failed to resolve identity")]
     ResolveFailure,
-    #[error(transparent)]
-    Github(#[from] crate::github::Error),
+    #[error("network error: {0}")]
+    NetworkError(#[from] Box<dyn std::error::Error + Send + Sync>),
+    #[error("proof not found")]
+    ProofNotFound,
 }
+
+pub type Result<T> = core::result::Result<T, Error>;

@@ -71,18 +71,14 @@ async fn run() -> Result<(), Error> {
                     DeviceKey::generate()
                 };
                 let account_id = client.set_device_key(&dk, &ask_for_password()?, force)?;
-                if suri.is_some() {
-                    client.create_account_for(&account_id).await?;
-                } else {
-                    let account_id = account_id.to_string();
-                    println!("Your device id is {}", &account_id);
-                    let p = "Creating an account requires making a `create_account_for` \
-                             transaction. Your wallet contains insufficient funds for paying \
-                             the transaction fee. Ask someone to scan the qr code with your \
-                             device id to create an account for you.";
-                    println!("{}\n", Wrapper::with_termwidth().fill(p));
-                    qr2term::print_qr(&account_id)?;
-                }
+                let account_id = account_id.to_string();
+                println!("Your device id is {}", &account_id);
+                let p = "Creating an account requires making a `create_account_for` \
+                         transaction. Your wallet contains insufficient funds for paying \
+                         the transaction fee. Ask someone to scan the qr code with your \
+                         device id to create an account for you.";
+                println!("{}\n", Wrapper::with_termwidth().fill(p));
+                qr2term::print_qr(&account_id)?;
             }
             KeySubCommand::Unlock => {
                 client.unlock(&ask_for_password()?)?;
