@@ -163,9 +163,7 @@ async fn run() -> Result<(), Error> {
                 println!("transfered {} to {}", event.amount, event.to.to_string());
             }
         },
-        SubCommand::Run => {
-            loop {}
-        }
+        SubCommand::Run => loop {},
     }
     Ok(())
 }
