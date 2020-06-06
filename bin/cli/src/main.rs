@@ -4,6 +4,7 @@ use crate::runtime::{Extra, Runtime, Signature, Uid};
 use clap::Clap;
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
+use keybase_keystore::bip39::{Language, Mnemonic};
 use keybase_keystore::{DeviceKey, KeyStore, Password};
 use std::path::PathBuf;
 use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
@@ -61,24 +62,45 @@ async fn run() -> Result<(), Error> {
 
     match opts.cmd {
         SubCommand::Key(KeyCommand { cmd }) => match cmd {
-            KeySubCommand::Init(KeyInitCommand { force, suri }) => {
-                let dk = if let Some(suri) = &suri {
-                    DeviceKey::from_seed(suri.0)
+            KeySubCommand::Set(KeySetCommand {
+                force,
+                suri,
+                paperkey,
+            }) => {
+                if client.has_device_key() && !force {
+                    return Err(Error::HasDeviceKey);
+                }
+                let password = ask_for_password("Please enter a new password (8+ characters):\n")?;
+                if password.expose_secret().len() < 8 {
+                    return Err(Error::PasswordTooShort);
+                }
+                let dk = if paperkey {
+                    let mnemonic = ask_for_phrase("Please enter your backup phrase:").await?;
+                    DeviceKey::from_mnemonic(&mnemonic).map_err(|_| Error::InvalidMnemonic)?
                 } else {
-                    DeviceKey::generate()
+                    if let Some(suri) = &suri {
+                        DeviceKey::from_seed(suri.0)
+                    } else {
+                        DeviceKey::generate()
+                    }
                 };
-                let account_id = client.set_device_key(&dk, &ask_for_password()?, force)?;
-                let account_id = account_id.to_string();
-                println!("Your device id is {}", &account_id);
-                let p = "Creating an account requires making a `create_account_for` \
-                         transaction. Your wallet contains insufficient funds for paying \
-                         the transaction fee. Ask someone to scan the qr code with your \
-                         device id to create an account for you.";
-                println!("{}\n", Wrapper::with_termwidth().fill(p));
-                qr2term::print_qr(&account_id)?;
+                let account_id = client.set_device_key(&dk, &password, force)?;
+                let account_id_str = account_id.to_string();
+                println!("Your device id is {}", &account_id_str);
+                if let Some(uid) = client.fetch_uid(&account_id).await? {
+                    println!("Your user id is {}", uid);
+                } else {
+                    let p = "Creating an account requires making a `create_account_for` \
+                             transaction. Your wallet contains insufficient funds for paying \
+                             the transaction fee. Ask someone to scan the qr code with your \
+                             device id to create an account for you.";
+                    println!("{}\n", Wrapper::with_termwidth().fill(p));
+                    qr2term::print_qr(&account_id_str)?;
+                }
             }
             KeySubCommand::Unlock => {
-                client.unlock(&ask_for_password()?)?;
+                let password = ask_for_password("Please enter your password (8+ characters):\n")?;
+                client.unlock(&password)?;
             }
             KeySubCommand::Lock => client.lock()?,
         },
@@ -88,6 +110,17 @@ async fn run() -> Result<(), Error> {
             }
         },
         SubCommand::Device(DeviceCommand { cmd }) => match cmd {
+            DeviceSubCommand::Paperkey => {
+                println!("Generating a new paper key.");
+                let mnemonic = client.add_paperkey().await?;
+                println!("Here is your secret paper key phrase:");
+                let words: Vec<_> = mnemonic.phrase().split(' ').collect();
+                println!("");
+                println!("{}", words[..12].join(" "));
+                println!("{}", words[12..].join(" "));
+                println!("");
+                println!("Write it down and keep somewhere safe.");
+            }
             DeviceSubCommand::Add(DeviceAddCommand { device }) => {
                 client.add_key(&device.0).await?;
             }
@@ -146,10 +179,23 @@ async fn run() -> Result<(), Error> {
     Ok(())
 }
 
-fn ask_for_password() -> Result<Password, Error> {
-    Ok(Password::from(rpassword::prompt_password_stdout(
-        "Enter your password:\n",
-    )?))
+fn ask_for_password(prompt: &str) -> Result<Password, Error> {
+    Ok(Password::from(rpassword::prompt_password_stdout(prompt)?))
+}
+
+async fn ask_for_phrase(prompt: &str) -> Result<Mnemonic, Error> {
+    println!("{}", prompt);
+    let mut words = Vec::with_capacity(24);
+    while words.len() < 24 {
+        let mut line = String::new();
+        async_std::io::stdin().read_line(&mut line).await?;
+        for word in line.split(' ') {
+            words.push(word.trim().to_string());
+        }
+    }
+    println!("");
+    Ok(Mnemonic::from_phrase(&words.join(" "), Language::English)
+        .map_err(|_| Error::InvalidMnemonic)?)
 }
 
 async fn resolve(client: &mut Client, identifier: Option<Identifier>) -> Result<Uid, Error> {

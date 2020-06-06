@@ -33,7 +33,7 @@ pub struct KeyCommand {
 
 #[derive(Clone, Debug, Clap)]
 pub enum KeySubCommand {
-    Init(KeyInitCommand),
+    Set(KeySetCommand),
     Unlock,
     Lock,
 }
@@ -58,6 +58,7 @@ pub struct DeviceCommand {
 
 #[derive(Clone, Debug, Clap)]
 pub enum DeviceSubCommand {
+    Paperkey,
     Add(DeviceAddCommand),
     Remove(DeviceRemoveCommand),
     List(DeviceListCommand),
@@ -89,7 +90,7 @@ pub enum WalletSubCommand {
 }
 
 #[derive(Clone, Debug, Clap)]
-pub struct KeyInitCommand {
+pub struct KeySetCommand {
     /// Overwrite existing keys.
     #[clap(short = "f", long = "force")]
     pub force: bool,
@@ -97,6 +98,10 @@ pub struct KeyInitCommand {
     /// Suri.
     #[clap(long = "suri")]
     pub suri: Option<Suri>,
+
+    /// Paperkey.
+    #[clap(long = "paperkey")]
+    pub paperkey: bool,
 }
 
 #[derive(Clone, Debug, Clap)]

@@ -27,4 +27,10 @@ pub enum Error {
     TransferEventFind,
     #[error("Failed to find an account associated with key.")]
     NoAccount,
+    #[error("Device key is already configured. Use `--force` if you want to overwrite it.")]
+    HasDeviceKey,
+    #[error("Password too short.")]
+    PasswordTooShort,
+    #[error("Invalid paperkey.")]
+    InvalidMnemonic,
 }

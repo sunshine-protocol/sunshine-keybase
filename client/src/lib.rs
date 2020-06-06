@@ -3,6 +3,7 @@ use codec::{Decode, Encode};
 use core::convert::TryInto;
 use core::marker::PhantomData;
 use ipld_block_builder::{Cache, Codec};
+use keystore::bip39::{Language, Mnemonic, MnemonicType};
 use keystore::{DeviceKey, KeyStore, Password};
 use libipld::cid::Cid;
 use libipld::store::Store;
@@ -64,6 +65,10 @@ where
         }
     }
 
+    pub fn has_device_key(&self) -> bool {
+        self.keystore.is_initialized()
+    }
+
     pub fn set_device_key(
         &self,
         dk: &DeviceKey,
@@ -102,6 +107,14 @@ where
             .await?
             .account_created()?;
         Ok(())
+    }
+
+    pub async fn add_paperkey(&self) -> Result<Mnemonic> {
+        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+        let dk = DeviceKey::from_mnemonic(&mnemonic).unwrap();
+        let pair = P::from_seed(&P::Seed::from(*dk.expose_secret()));
+        self.add_key(&pair.public().into()).await?;
+        Ok(mnemonic)
     }
 
     pub async fn add_key(&self, key: &<T as System>::AccountId) -> Result<()> {
