@@ -18,7 +18,7 @@ struct Proof {
     content: String,
 }
 
-const GIST_NAME: &'static str = "substrate-identity-proof.md";
+const GIST_NAME: &str = "substrate-identity-proof.md";
 
 async fn find_proofs(user: &str) -> Result<Vec<Proof>> {
     let uri = format!("https://api.github.com/users/{}/gists", user);
