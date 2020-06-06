@@ -91,7 +91,7 @@ Your user id is 0
 dvc94ch@github https://gist.github.com/da8bbf9c69976a3d750e2c433126852b
 ```
 
-# Receive payments to your public identity
+## Receive payments to your public identity
 
 Transfer a balance from `//Bob` to `dvc94ch@github`:
 ```bash
