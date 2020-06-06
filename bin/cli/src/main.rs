@@ -137,7 +137,7 @@ async fn run() -> Result<(), Error> {
         SubCommand::Id(IdCommand { cmd }) => match cmd {
             IdSubCommand::List(IdListCommand { identifier }) => {
                 let uid = resolve(&mut client, identifier).await?;
-                println!("{}", uid);
+                println!("Your user id is {}", uid);
                 for id in client.identity(uid).await? {
                     println!("{}", id);
                 }
