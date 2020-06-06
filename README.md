@@ -22,7 +22,7 @@ Start a development chain with:
 ./target/release/node-identity --dev
 ```
 
-## Use the cli
+## Setup your account
 
 Set your device key to `//Alice`:
 
@@ -54,6 +54,8 @@ cli-identity device list
 5Fe8Da8o2TQY6heaopRA9Zs2dpiJ2GFtvWThnd89uxYEXK1q
 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
 ```
+
+## Prove your online identity
 
 Add a new online identity:
 
@@ -88,6 +90,8 @@ cli-identity id list
 Your user id is 0
 dvc94ch@github https://gist.github.com/da8bbf9c69976a3d750e2c433126852b
 ```
+
+# Receive payments to your public identity
 
 Transfer a balance from `//Bob` to `dvc94ch@github`:
 ```bash
