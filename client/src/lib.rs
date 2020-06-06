@@ -345,7 +345,9 @@ where
             if let Ok(uid) = uid.parse() {
                 for id in self.identity(uid).await? {
                     if &id.service == service {
-                        return Ok(uid);
+                        if let IdentityStatus::Active(_) = &id.status {
+                            return Ok(uid);
+                        }
                     }
                 }
             }
