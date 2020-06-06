@@ -253,7 +253,7 @@ where
         let keys = self.fetch_keys(uid, Some(block)).await?;
         let key = keys
             .iter()
-            .find(|k| &k.to_ss58check() == &claim.claim().public)
+            .find(|k| k.to_ss58check() == claim.claim().public)
             .ok_or(Error::InvalidClaim("key"))?;
         let bytes = claim.claim().to_bytes()?;
         let signature: S = Decode::decode(&mut claim.signature())?;

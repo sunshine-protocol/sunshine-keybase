@@ -76,7 +76,7 @@ impl FromStr for Service {
     type Err = ServiceParseError;
 
     fn from_str(string: &str) -> core::result::Result<Self, Self::Err> {
-        let mut parts = string.split("@");
+        let mut parts = string.split('@');
         let username = parts.next().ok_or(ServiceParseError::Invalid)?;
         if username.is_empty() {
             return Err(ServiceParseError::Invalid);

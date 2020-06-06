@@ -54,7 +54,7 @@ async fn run() -> Result<(), Error> {
 
     let keystore = KeyStore::new(&paths.keystore);
     let subxt = ClientBuilder::new().build().await?;
-    let config = Config::from_path(&paths.db).map_err(|err| ipfs_embed::Error::Sled(err))?;
+    let config = Config::from_path(&paths.db).map_err(ipfs_embed::Error::Sled)?;
     let store = Store::new(config)?;
 
     let mut client = Client::new(keystore, subxt.clone(), store);
@@ -141,7 +141,9 @@ async fn run() -> Result<(), Error> {
                 println!("transfered {} to {}", event.amount, event.to.to_string());
             }
         },
-        SubCommand::Run => loop {},
+        SubCommand::Run => loop {
+            async_std::task::sleep(std::time::Duration::from_millis(100)).await
+        },
     }
     Ok(())
 }
