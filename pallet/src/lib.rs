@@ -188,7 +188,11 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     fn ensure_uid(key: &<T as System>::AccountId) -> Result<T::Uid, Error<T>> {
-        <UidLookup<T>>::get(&key).ok_or(Error::<T>::NoAccount)
+        let uid = <UidLookup<T>>::get(&key).ok_or(Error::<T>::NoAccount)?;
+        if !<Keys<T>>::get(uid).contains(key) {
+            return Err(Error::<T>::Unauthorized);
+        }
+        Ok(uid)
     }
 
     fn ensure_key_unused(key: &<T as System>::AccountId) -> Result<(), Error<T>> {
@@ -217,7 +221,9 @@ impl<T: Trait> Module<T> {
     }
 
     fn remove_key_from_uid(uid: T::Uid, key: &<T as System>::AccountId) {
-        <UidLookup<T>>::remove(key);
+        // The lookup can't be removed in case someone sends a transaction
+        // to an old key or the same key being added to a different account
+        // after being revoked.
         <Keys<T>>::mutate(uid, |keys| keys.remove(key));
     }
 }

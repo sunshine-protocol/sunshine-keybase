@@ -130,8 +130,6 @@ async fn run() -> Result<(), Error> {
                 let signer = client.signer()?;
                 let uid = resolve(&mut client, Some(identifier)).await?;
                 let keys = client.fetch_keys(uid, None).await?;
-                // TODO: there is a race here, a key may be revoked before
-                // the transfer completes.
                 let event = subxt
                     .transfer_and_watch(&signer, &keys[0], amount)
                     .await?
