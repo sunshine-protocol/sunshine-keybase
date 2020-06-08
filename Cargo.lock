@@ -2331,6 +2331,7 @@ dependencies = [
 name = "keybase-keystore"
 version = "0.1.0"
 dependencies = [
+ "async-std",
  "bip39",
  "rand 0.7.3",
  "secrecy",
