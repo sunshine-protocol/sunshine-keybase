@@ -5,6 +5,7 @@ authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 
 [dependencies]
+async-std = { version = "=1.5.0", features = ["attributes"] }
 bip39 = "0.6.0-beta.1"
 rand = "0.7.3"
 secrecy = "0.6.0"

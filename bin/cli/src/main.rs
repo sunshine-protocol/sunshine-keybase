@@ -53,7 +53,7 @@ async fn run() -> Result<(), Error> {
     let opts: Opts = Opts::parse();
     let paths = Paths::new(opts.path)?;
 
-    let keystore = KeyStore::new(&paths.keystore);
+    let keystore = KeyStore::open(&paths.keystore).await?;
     let subxt = ClientBuilder::new().build().await?;
     let config = Config::from_path(&paths.db).map_err(ipfs_embed::Error::Sled)?;
     let store = Store::new(config)?;
@@ -67,7 +67,7 @@ async fn run() -> Result<(), Error> {
                 suri,
                 paperkey,
             }) => {
-                if client.has_device_key() && !force {
+                if client.has_device_key().await && !force {
                     return Err(Error::HasDeviceKey);
                 }
                 let password = ask_for_password("Please enter a new password (8+ characters):\n")?;
@@ -84,7 +84,7 @@ async fn run() -> Result<(), Error> {
                         DeviceKey::generate()
                     }
                 };
-                let account_id = client.set_device_key(&dk, &password, force)?;
+                let account_id = client.set_device_key(&dk, &password, force).await?;
                 let account_id_str = account_id.to_string();
                 println!("Your device id is {}", &account_id_str);
                 if let Some(uid) = client.fetch_uid(&account_id).await? {
@@ -100,9 +100,9 @@ async fn run() -> Result<(), Error> {
             }
             KeySubCommand::Unlock => {
                 let password = ask_for_password("Please enter your password (8+ characters):\n")?;
-                client.unlock(&password)?;
+                client.unlock(&password).await?;
             }
-            KeySubCommand::Lock => client.lock()?,
+            KeySubCommand::Lock => client.lock().await?,
         },
         SubCommand::Account(AccountCommand { cmd }) => match cmd {
             AccountSubCommand::Create(AccountCreateCommand { device }) => {
@@ -160,7 +160,7 @@ async fn run() -> Result<(), Error> {
                 println!("{} of free balance", balance);
             }
             WalletSubCommand::Transfer(WalletTransferCommand { identifier, amount }) => {
-                let signer = client.signer()?;
+                let signer = client.signer().await?;
                 let uid = resolve(&mut client, Some(identifier)).await?;
                 let keys = client.fetch_keys(uid, None).await?;
                 let event = subxt
@@ -202,7 +202,7 @@ async fn resolve(client: &mut Client, identifier: Option<Identifier>) -> Result<
     let identifier = if let Some(identifier) = identifier {
         identifier
     } else {
-        Identifier::Account(client.signer()?.account_id().clone())
+        Identifier::Account(client.signer().await?.account_id().clone())
     };
     let uid = match identifier {
         Identifier::Uid(uid) => uid,

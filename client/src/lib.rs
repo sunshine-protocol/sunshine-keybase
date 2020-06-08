@@ -66,43 +66,43 @@ where
         }
     }
 
-    pub fn has_device_key(&self) -> bool {
-        self.keystore.is_initialized()
+    pub async fn has_device_key(&self) -> bool {
+        self.keystore.is_initialized().await
     }
 
-    pub fn set_device_key(
+    pub async fn set_device_key(
         &self,
         dk: &DeviceKey,
         password: &Password,
         force: bool,
     ) -> Result<<T as System>::AccountId> {
-        if self.keystore.is_initialized() && !force {
+        if self.keystore.is_initialized().await && !force {
             return Err(Error::KeystoreInitialized);
         }
         let pair = P::from_seed(&P::Seed::from(*dk.expose_secret()));
-        self.keystore.initialize(&dk, &password)?;
+        self.keystore.initialize(&dk, &password).await?;
         Ok(pair.public().into())
     }
 
-    pub fn signer(&self) -> Result<PairSigner<T, S, E, P>> {
+    pub async fn signer(&self) -> Result<PairSigner<T, S, E, P>> {
         // fetch device key from disk every time to make sure account is unlocked.
-        let dk = self.keystore.device_key()?;
+        let dk = self.keystore.device_key().await?;
         Ok(PairSigner::new(P::from_seed(&P::Seed::from(
             *dk.expose_secret(),
         ))))
     }
 
-    pub fn lock(&self) -> Result<()> {
-        Ok(self.keystore.lock()?)
+    pub async fn lock(&self) -> Result<()> {
+        Ok(self.keystore.lock().await?)
     }
 
-    pub fn unlock(&self, password: &Password) -> Result<()> {
-        self.keystore.unlock(password)?;
+    pub async fn unlock(&self, password: &Password) -> Result<()> {
+        self.keystore.unlock(password).await?;
         Ok(())
     }
 
     pub async fn create_account_for(&self, key: &<T as System>::AccountId) -> Result<()> {
-        let signer = self.signer()?;
+        let signer = self.signer().await?;
         self.subxt
             .create_account_for_and_watch(&signer, key)
             .await?
@@ -119,7 +119,7 @@ where
     }
 
     pub async fn add_key(&self, key: &<T as System>::AccountId) -> Result<()> {
-        let signer = self.signer()?;
+        let signer = self.signer().await?;
         self.subxt
             .add_key_and_watch(&signer, key)
             .await?
@@ -128,7 +128,7 @@ where
     }
 
     pub async fn remove_key(&self, key: &<T as System>::AccountId) -> Result<()> {
-        let signer = self.signer()?;
+        let signer = self.signer().await?;
         self.subxt
             .remove_key_and_watch(&signer, key)
             .await?
@@ -217,7 +217,7 @@ where
     }
 
     pub async fn prove_identity(&self, service: Service) -> Result<String> {
-        let signer = self.signer()?;
+        let signer = self.signer().await?;
         let uid = self
             .fetch_uid(signer.account_id())
             .await?
@@ -231,7 +231,7 @@ where
     }
 
     pub async fn revoke_identity(&self, service: Service) -> Result<()> {
-        let signer = self.signer()?;
+        let signer = self.signer().await?;
         let uid = self
             .fetch_uid(signer.account_id())
             .await?
@@ -406,7 +406,7 @@ mod tests {
         env_logger::try_init().ok();
         let subxt = ClientBuilder::<Runtime>::new().build().await.unwrap();
         let store = MemStore::default();
-        let keystore = KeyStore::new("/tmp/keystore");
+        let keystore = KeyStore::open("/tmp/keystore").await.unwrap();
         let account_id = sp_keyring::AccountKeyring::Alice.to_account_id();
         let client = Client::<_, _, _, sp_core::sr25519::Pair, _>::new(keystore, subxt, store);
         let uid = client.fetch_uid(&account_id).await.unwrap().unwrap();
