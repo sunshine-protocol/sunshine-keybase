@@ -6446,6 +6446,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.8.0"
+source = "git+https://github.com/paritytech/substrate-subxt#91203b91d3ba40fcb001d31ca5bba52b7303d19e"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -6472,6 +6473,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.8.0"
+source = "git+https://github.com/paritytech/substrate-subxt#91203b91d3ba40fcb001d31ca5bba52b7303d19e"
 dependencies = [
  "heck",
  "proc-macro-crate",

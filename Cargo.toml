@@ -2,4 +2,4 @@
 members = ["bin/cli", "bin/node", "client", "keystore", "pallet", "utils"]
 
 [patch.crates-io]
-substrate-subxt = { path = "../substrate-subxt" }
+substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt" }
