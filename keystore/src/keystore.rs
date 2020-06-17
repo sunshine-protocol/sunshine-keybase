@@ -163,6 +163,12 @@ pub struct KeyStore {
     pdk: SecretFile,
 }
 
+impl Default for KeyStore {
+    fn default() -> KeyStore {
+        KeyStore::new("tmp/keystore")
+    }
+}
+
 impl KeyStore {
     /// Creates a new keystore.
     pub fn new<T: AsRef<Path>>(path: T) -> Self {

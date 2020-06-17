@@ -1,0 +1,17 @@
+[package]
+name = "client-ffi"
+version = "0.1.0"
+authors = ["David Craven <david@craven.ch>, Shady Khalifa <shekohex@gmail.com>, Amar Singh <asinghchrony@protonmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+ffi_helpers = "0.1.0"
+image = { version = "0.22.4", default-features = false, features = ["png_codec"] }
+client = { package = "client-identity", path = "../client" }
+keystore = { package = "keybase-keystore", path = "../keystore" }
+
+[build-dependencies]
+cbindgen = "0.14.0"
