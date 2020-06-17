@@ -165,7 +165,9 @@ pub struct KeyStore {
 
 impl Default for KeyStore {
     fn default() -> KeyStore {
-        KeyStore::new("tmp/keystore")
+        let mut path = std::env::temp_dir();
+        path.push("keystore");
+        KeyStore::new(path)
     }
 }
 
