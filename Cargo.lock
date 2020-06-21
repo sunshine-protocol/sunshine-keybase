@@ -7186,6 +7186,7 @@ version = "0.1.0"
 dependencies = [
  "libipld",
  "parity-scale-codec",
+ "serde",
 ]
 
 [[package]]

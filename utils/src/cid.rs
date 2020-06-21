@@ -3,6 +3,13 @@ use codec::{Decode, Encode};
 use core::convert::TryFrom;
 #[cfg(feature = "std")]
 use libipld::cid::{Cid, Error};
+#[cfg(feature = "std")]
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+#[cfg(feature = "std")]
+use std::fmt;
 
 pub const CID_LENGTH: usize = 38;
 
@@ -13,6 +20,51 @@ pub struct CidBytes([u8; CID_LENGTH]);
 impl CidBytes {
     pub fn to_cid(&self) -> Result<Cid, Error> {
         Cid::try_from(&self.0[..])
+    }
+}
+
+#[cfg(feature = "std")]
+impl Serialize for CidBytes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.as_ref().serialize(serializer)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for CidBytes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        pub struct CidVisitor;
+
+        impl<'de> Visitor<'de> for CidVisitor {
+            type Value = CidBytes;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("byte vector of length 38usize")
+            }
+
+            fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                if value.len() == 38usize {
+                    let mut buf = [0; CID_LENGTH];
+                    buf.copy_from_slice(&value[..]);
+                    Ok(CidBytes(buf))
+                } else {
+                    Err(E::custom(format!(
+                        "byte vector len is {} dne 38",
+                        value.len()
+                    )))
+                }
+            }
+        }
+        deserializer.deserialize_bytes(CidVisitor)
     }
 }
 
