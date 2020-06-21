@@ -1,4 +1,7 @@
-# Substrate Identity Module
+# Sunshine Identity Module
+
+
+implementation of [Keybase Local Key Security](https://book.keybase.io/docs/crypto/local-key-security) on substrate, using [ipfs-rust/ipfs-embed](https://github.com/ipfs-rust/ipfs-embed)
 
 ## Build
 
