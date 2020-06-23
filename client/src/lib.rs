@@ -1,4 +1,5 @@
 use crate::claim::{Claim, ClaimBody, UnsignedClaim};
+use async_std::sync::Mutex;
 use codec::{Decode, Encode};
 use core::convert::TryInto;
 use core::marker::PhantomData;
@@ -40,7 +41,7 @@ where
     _marker: PhantomData<P>,
     keystore: KeyStore,
     subxt: substrate_subxt::Client<T, S, E>,
-    cache: Cache<I, Codec, Claim>,
+    cache: Mutex<Cache<I, Codec, Claim>>,
 }
 
 impl<T, S, E, P, I> Client<T, S, E, P, I>
@@ -61,7 +62,7 @@ where
             _marker: PhantomData,
             keystore,
             subxt,
-            cache: Cache::new(store, Codec::new(), 32),
+            cache: Mutex::new(Cache::new(store, Codec::new(), 32)),
         }
     }
 
@@ -135,9 +136,11 @@ where
         Ok(())
     }
 
-    async fn set_identity(&mut self, claim: Claim, signer: &PairSigner<T, S, E, P>) -> Result<()> {
+    async fn set_identity(&self, claim: Claim, signer: &PairSigner<T, S, E, P>) -> Result<()> {
         let prev = claim.claim().prev.clone().map(T::Cid::from);
-        let root = self.cache.insert(claim).await?;
+        let mut cache = self.cache.lock().await;
+        let root = cache.insert(claim).await?;
+        drop(cache);
         let cid = T::Cid::from(root);
         self.subxt
             .set_identity_and_watch(signer, &prev, &cid)
@@ -171,7 +174,7 @@ where
     }
 
     async fn create_claim(
-        &mut self,
+        &self,
         body: ClaimBody,
         expire_in: Option<Duration>,
         signer: &PairSigner<T, S, E, P>,
@@ -187,7 +190,8 @@ where
             .to_vec();
         let prev = self.fetch_identity(uid).await?;
         let prev_seqno = if let Some(prev) = prev.as_ref() {
-            self.cache.get(prev).await?.claim().seqno
+            let mut cache = self.cache.lock().await;
+            cache.get(prev).await?.claim().seqno
         } else {
             0
         };
@@ -212,7 +216,7 @@ where
         Ok(Claim::new(claim, signature))
     }
 
-    pub async fn prove_identity(&mut self, service: Service) -> Result<String> {
+    pub async fn prove_identity(&self, service: Service) -> Result<String> {
         let signer = self.signer()?;
         let uid = self
             .fetch_uid(signer.account_id())
@@ -226,7 +230,7 @@ where
         Ok(proof)
     }
 
-    pub async fn revoke_identity(&mut self, service: Service) -> Result<()> {
+    pub async fn revoke_identity(&self, service: Service) -> Result<()> {
         let signer = self.signer()?;
         let uid = self
             .fetch_uid(signer.account_id())
@@ -247,7 +251,7 @@ where
         Ok(())
     }
 
-    async fn verify_claim(&mut self, uid: T::Uid, claim: &Claim) -> Result<()> {
+    async fn verify_claim(&self, uid: T::Uid, claim: &Claim) -> Result<()> {
         if claim.claim().uid != uid.into() {
             return Err(Error::InvalidClaim("uid"));
         }
@@ -255,7 +259,8 @@ where
             return Err(Error::InvalidClaim("genesis"));
         }
         let prev_seqno = if let Some(prev) = claim.claim().prev.as_ref() {
-            self.cache.get(prev).await?.claim().seqno
+            let mut cache = self.cache.lock().await;
+            cache.get(prev).await?.claim().seqno
         } else {
             0
         };
@@ -276,11 +281,13 @@ where
         Ok(())
     }
 
-    pub async fn identity(&mut self, uid: T::Uid) -> Result<Vec<IdentityInfo>> {
+    pub async fn identity(&self, uid: T::Uid) -> Result<Vec<IdentityInfo>> {
         let mut claims = vec![];
         let mut next = self.fetch_identity(uid).await?;
         while let Some(cid) = next {
-            let claim = self.cache.get(&cid).await?;
+            let mut cache = self.cache.lock().await;
+            let claim = cache.get(&cid).await?;
+            drop(cache);
             next = claim.claim().prev.clone();
             self.verify_claim(uid, &claim).await?;
             claims.push(claim);
@@ -339,7 +346,7 @@ where
         Ok(info)
     }
 
-    pub async fn resolve(&mut self, service: &Service) -> Result<T::Uid> {
+    pub async fn resolve(&self, service: &Service) -> Result<T::Uid> {
         let uids = service.resolve().await?;
         for uid in uids {
             if let Ok(uid) = uid.parse() {
@@ -401,7 +408,7 @@ mod tests {
         let store = MemStore::default();
         let keystore = KeyStore::new("/tmp/keystore");
         let account_id = sp_keyring::AccountKeyring::Alice.to_account_id();
-        let mut client = Client::<_, _, _, sp_core::sr25519::Pair, _>::new(keystore, subxt, store);
+        let client = Client::<_, _, _, sp_core::sr25519::Pair, _>::new(keystore, subxt, store);
         let uid = client.fetch_uid(&account_id).await.unwrap().unwrap();
         assert_eq!(client.identity(uid).await.unwrap().len(), 0);
         client
