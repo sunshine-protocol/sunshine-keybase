@@ -1,5 +1,13 @@
 [workspace]
-members = ["bin/cli", "bin/node", "client", "keystore", "pallet", "utils"]
+members = [
+  "bin/cli",
+  "bin/node",
+  "client",
+  "keystore",
+  "pallet",
+  "utils",
+  "client-ffi",
+  ]
 
 [patch.crates-io]
 substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt" }

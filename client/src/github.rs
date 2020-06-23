@@ -22,7 +22,7 @@ const GIST_NAME: &str = "substrate-identity-proof.md";
 
 async fn find_proofs(user: &str) -> Result<Vec<Proof>> {
     let uri = format!("https://api.github.com/users/{}/gists", user);
-    let gists: Vec<Gist> = surf::get(&uri).recv_json().await?;
+    let gists: Vec<Gist> = ureq::get(&uri).call().into_json_deserialize()?;
     let mut proofs = Vec::with_capacity(gists.len());
     let urls = gists.into_iter().filter_map(|mut g| {
         g.files
@@ -30,8 +30,8 @@ async fn find_proofs(user: &str) -> Result<Vec<Proof>> {
             .map(|file| (g.html_url, file.raw_url))
     });
     for (html_url, raw_url) in urls {
-        let mut res = surf::get(&raw_url).await?;
-        let content = res.body_string().await?;
+        let res = ureq::get(&raw_url).call();
+        let content = res.into_string()?;
         proofs.push(Proof { html_url, content });
     }
     Ok(proofs)
