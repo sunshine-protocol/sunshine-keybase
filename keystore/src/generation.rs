@@ -1,6 +1,8 @@
 use crate::error::Error;
 use crate::file::{AuthSecretFile, NoiseFile, SecretFile};
-use crate::types::{DeviceKey, EncryptedDeviceKey, EncryptedRandomKey, Password, RandomKey, PublicDeviceKey, Mask};
+use crate::types::{
+    DeviceKey, EncryptedDeviceKey, EncryptedRandomKey, Mask, Password, PublicDeviceKey, RandomKey,
+};
 use async_std::path::{Path, PathBuf};
 
 pub struct Generation {
