@@ -63,7 +63,7 @@ pub unsafe extern "C" fn error_message_utf8(buf: *mut raw::c_char, length: i32) 
 /// ### Safety
 /// This assumes that the path is non-null c string.
 #[no_mangle]
-pub unsafe extern "C" fn init_client(port: i64, path: *const raw::c_char) -> i32 {
+pub unsafe extern "C" fn client_init(port: i64, path: *const raw::c_char) -> i32 {
     let root = cstr!(path);
     let paths = Paths::new(root);
     let isolate = Isolate::new(port);
@@ -81,5 +81,16 @@ pub unsafe extern "C" fn init_client(port: i64, path: *const raw::c_char) -> i32
         isolate.post(CLIENT_OK);
         CLIENT_OK
     });
+    CLIENT_OK
+}
+
+/// Set a new Key for this device if not already exist.
+///
+/// suri is used for testing only.
+///
+/// ### Safety
+/// Suri coud be null for indicating that we don't have to use it
+#[no_mangle]
+pub unsafe extern "C" fn client_key_set(port: i64, suri: *const raw::c_char) -> i32 {
     CLIENT_OK
 }

@@ -40,3 +40,23 @@ macro_rules! cstr {
         error!(CStr::from_ptr($ptr).to_str(), $error)
     }};
 }
+
+#[macro_export]
+macro_rules! client {
+    ($isolate:expr) => {
+        client!($isolate, $crate::CLIENT_UNINIT, $crate::CLIENT_UNINIT);
+    };
+    ($isolate:expr, $post:expr) => {
+        client!($isolate, $post, $crate::CLIENT_UNINIT);
+    };
+    ($isolate:expr, $post:expr, $err:expr) => {{
+        let mut client = CLIENT.lock().await;
+        match client.as_mut() {
+            Some(client) => client,
+            None => {
+                $isolate.post($post);
+                return $err;
+            }
+        }
+    }};
+}
