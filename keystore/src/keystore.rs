@@ -1,8 +1,8 @@
 use crate::error::Error;
 use crate::generation::Generation;
 use crate::types::Mask;
-use async_std::prelude::*;
 use async_std::path::{Path, PathBuf};
+use async_std::prelude::*;
 
 pub struct KeyStore {
     path: PathBuf,
@@ -32,7 +32,7 @@ impl KeyStore {
                 let mut ugen: Option<Generation> = None;
                 let mut rgens = vec![];
                 for gen in gens {
-                    if let Ok(_) = gen.device_key().await {
+                    if gen.device_key().await.is_ok() {
                         if let Some(ugen2) = ugen {
                             if ugen2.gen() < gen.gen() {
                                 rgens.push(ugen2);
@@ -127,14 +127,18 @@ mod tests {
         let p3 = Password::from("wrong password".to_string());
         store.lock().await.unwrap();
         match store.unlock(&p3).await {
-            Err(Error::Locked) => {},
+            Err(Error::Locked) => {}
             Ok(_) => panic!("should fail"),
-            r => { r.unwrap(); }
+            r => {
+                r.unwrap();
+            }
         }
         match store.device_key().await {
-            Err(Error::Locked) => {},
+            Err(Error::Locked) => {}
             Ok(_) => panic!("should fail"),
-            r => { r.unwrap(); }
+            r => {
+                r.unwrap();
+            }
         }
     }
 }
