@@ -1,4 +1,5 @@
 use crate::error::{Error, Result};
+use async_std::task;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
@@ -22,7 +23,8 @@ const GIST_NAME: &str = "substrate-identity-proof.md";
 
 async fn find_proofs(user: &str) -> Result<Vec<Proof>> {
     let uri = format!("https://api.github.com/users/{}/gists", user);
-    let gists: Vec<Gist> = ureq::get(&uri).call().into_json_deserialize()?;
+    let gists: Vec<Gist> =
+        task::spawn_blocking(move || ureq::get(&uri).call().into_json_deserialize()).await?;
     let mut proofs = Vec::with_capacity(gists.len());
     let urls = gists.into_iter().filter_map(|mut g| {
         g.files
@@ -30,7 +32,7 @@ async fn find_proofs(user: &str) -> Result<Vec<Proof>> {
             .map(|file| (g.html_url, file.raw_url))
     });
     for (html_url, raw_url) in urls {
-        let res = ureq::get(&raw_url).call();
+        let res = task::spawn_blocking(move || ureq::get(&raw_url).call()).await;
         let content = res.into_string()?;
         proofs.push(Proof { html_url, content });
     }
