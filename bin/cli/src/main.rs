@@ -1,6 +1,6 @@
 use crate::command::*;
 use crate::error::Error;
-use crate::runtime::{Extra, Runtime, Signature, Uid};
+use crate::runtime::{Runtime, Uid};
 use clap::Clap;
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
@@ -32,7 +32,7 @@ impl Paths {
         let root = if let Some(root) = root {
             root
         } else {
-            dirs::config_dir()
+            dirs2::config_dir()
                 .ok_or(Error::ConfigDirNotFound)?
                 .join("cli-identity")
         };
@@ -46,7 +46,7 @@ impl Paths {
     }
 }
 
-type Client = client_identity::Client<Runtime, Signature, Extra, sr25519::Pair, Store>;
+type Client = client_identity::Client<Runtime, sr25519::Pair, Store>;
 
 async fn run() -> Result<(), Error> {
     env_logger::init();
