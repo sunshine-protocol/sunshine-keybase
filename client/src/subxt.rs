@@ -16,7 +16,7 @@ pub trait Identity: System {
 
     type Mask: Parameter + Member + Default + From<[u8; 32]> + Into<[u8; 32]>;
 
-    type Gen: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Ord;
+    type Gen: Parameter + Member + Copy + Default + CheckedAdd + From<u16> + Into<u16> + Ord;
 
     type IdAccountData: Member + FullCodec + Clone + Default;
 }
@@ -49,7 +49,7 @@ pub struct PasswordGenStore<T: Identity> {
 pub struct PasswordMaskStore<T: Identity> {
     #[store(returns = Option<T::Mask>)]
     uid: T::Uid,
-    gen: T::Uid,
+    gen: T::Gen,
 }
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]

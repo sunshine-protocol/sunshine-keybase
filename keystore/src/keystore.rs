@@ -62,7 +62,7 @@ impl KeyStore {
     }
 
     /// Creates a new generation from a password mask.
-    pub async fn apply_mask(&mut self, mask: &Mask, gen: u32) -> Result<(), Error> {
+    pub async fn apply_mask(&mut self, mask: &Mask, gen: u16) -> Result<(), Error> {
         if self.gen() + 1 != gen {
             return Err(Error::GenMissmatch);
         }

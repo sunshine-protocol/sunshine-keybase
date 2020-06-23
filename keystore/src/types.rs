@@ -96,6 +96,14 @@ impl Password {
     }
 }
 
+impl PartialEq for Password {
+    fn eq(&self, other: &Password) -> bool {
+        self.expose_secret() == other.expose_secret()
+    }
+}
+
+impl Eq for Password {}
+
 impl From<String> for Password {
     fn from(s: String) -> Password {
         Self::new(&SecretString::new(s))

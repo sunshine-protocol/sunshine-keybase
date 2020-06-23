@@ -748,6 +748,7 @@ dependencies = [
  "env_logger",
  "frame-support",
  "ipld-block-builder",
+ "jsonrpsee",
  "keybase-keystore",
  "libipld",
  "node-identity",
