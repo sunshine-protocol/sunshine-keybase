@@ -47,7 +47,7 @@ pub struct AccountCommand {
 #[derive(Clone, Debug, Clap)]
 pub enum AccountSubCommand {
     Create(AccountCreateCommand),
-    //Password(ChangePasswordCommand),
+    Password,
 }
 
 #[derive(Clone, Debug, Clap)]

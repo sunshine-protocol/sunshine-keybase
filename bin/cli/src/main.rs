@@ -70,7 +70,7 @@ async fn run() -> Result<(), Error> {
                 if client.has_device_key().await && !force {
                     return Err(Error::HasDeviceKey);
                 }
-                let password = ask_for_password("Please enter a new password (8+ characters):\n")?;
+                let password = ask_for_new_password()?;
                 if password.expose_secret().len() < 8 {
                     return Err(Error::PasswordTooShort);
                 }
@@ -107,6 +107,11 @@ async fn run() -> Result<(), Error> {
         SubCommand::Account(AccountCommand { cmd }) => match cmd {
             AccountSubCommand::Create(AccountCreateCommand { device }) => {
                 client.create_account_for(&device.0).await?;
+            }
+            AccountSubCommand::Password => {
+                let password = ask_for_new_password()?;
+                client.change_password(&password).await?;
+                client.update_password().await?;
             }
         },
         SubCommand::Device(DeviceCommand { cmd }) => match cmd {
@@ -177,6 +182,15 @@ async fn run() -> Result<(), Error> {
         },
     }
     Ok(())
+}
+
+fn ask_for_new_password() -> Result<Password, Error> {
+    let password = ask_for_password("Please enter a new password (8+ characters):\n")?;
+    let password2 = ask_for_password("Please confirm your new password:\n")?;
+    if password != password2 {
+        return Err(Error::PasswordMissmatch);
+    }
+    Ok(password)
 }
 
 fn ask_for_password(prompt: &str) -> Result<Password, Error> {
