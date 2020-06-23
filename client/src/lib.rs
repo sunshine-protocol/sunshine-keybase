@@ -1,4 +1,5 @@
 use crate::claim::{Claim, ClaimBody, UnsignedClaim};
+use async_std::sync::Mutex;
 use codec::{Decode, Encode};
 use core::convert::TryInto;
 use core::marker::PhantomData;
@@ -40,7 +41,7 @@ where
     _marker: PhantomData<P>,
     keystore: KeyStore,
     subxt: substrate_subxt::Client<T, S, E>,
-    cache: Cache<I, Codec, Claim>,
+    cache: Mutex<Cache<I, Codec, Claim>>,
 }
 
 impl<T, S, E, P, I> Client<T, S, E, P, I>
@@ -61,47 +62,47 @@ where
             _marker: PhantomData,
             keystore,
             subxt,
-            cache: Cache::new(store, Codec::new(), 32),
+            cache: Mutex::new(Cache::new(store, Codec::new(), 32)),
         }
     }
 
-    pub fn has_device_key(&self) -> bool {
-        self.keystore.is_initialized()
+    pub async fn has_device_key(&self) -> bool {
+        self.keystore.is_initialized().await
     }
 
-    pub fn set_device_key(
+    pub async fn set_device_key(
         &self,
         dk: &DeviceKey,
         password: &Password,
         force: bool,
     ) -> Result<<T as System>::AccountId> {
-        if self.keystore.is_initialized() && !force {
+        if self.keystore.is_initialized().await && !force {
             return Err(Error::KeystoreInitialized);
         }
         let pair = P::from_seed(&P::Seed::from(*dk.expose_secret()));
-        self.keystore.initialize(&dk, &password)?;
+        self.keystore.initialize(&dk, &password).await?;
         Ok(pair.public().into())
     }
 
-    pub fn signer(&self) -> Result<PairSigner<T, S, E, P>> {
+    pub async fn signer(&self) -> Result<PairSigner<T, S, E, P>> {
         // fetch device key from disk every time to make sure account is unlocked.
-        let dk = self.keystore.device_key()?;
+        let dk = self.keystore.device_key().await?;
         Ok(PairSigner::new(P::from_seed(&P::Seed::from(
             *dk.expose_secret(),
         ))))
     }
 
-    pub fn lock(&self) -> Result<()> {
-        Ok(self.keystore.lock()?)
+    pub async fn lock(&self) -> Result<()> {
+        Ok(self.keystore.lock().await?)
     }
 
-    pub fn unlock(&self, password: &Password) -> Result<()> {
-        self.keystore.unlock(password)?;
+    pub async fn unlock(&self, password: &Password) -> Result<()> {
+        self.keystore.unlock(password).await?;
         Ok(())
     }
 
     pub async fn create_account_for(&self, key: &<T as System>::AccountId) -> Result<()> {
-        let signer = self.signer()?;
+        let signer = self.signer().await?;
         self.subxt
             .create_account_for_and_watch(&signer, key)
             .await?
@@ -118,7 +119,7 @@ where
     }
 
     pub async fn add_key(&self, key: &<T as System>::AccountId) -> Result<()> {
-        let signer = self.signer()?;
+        let signer = self.signer().await?;
         self.subxt
             .add_key_and_watch(&signer, key)
             .await?
@@ -127,7 +128,7 @@ where
     }
 
     pub async fn remove_key(&self, key: &<T as System>::AccountId) -> Result<()> {
-        let signer = self.signer()?;
+        let signer = self.signer().await?;
         self.subxt
             .remove_key_and_watch(&signer, key)
             .await?
@@ -135,9 +136,11 @@ where
         Ok(())
     }
 
-    async fn set_identity(&mut self, claim: Claim, signer: &PairSigner<T, S, E, P>) -> Result<()> {
+    async fn set_identity(&self, claim: Claim, signer: &PairSigner<T, S, E, P>) -> Result<()> {
         let prev = claim.claim().prev.clone().map(T::Cid::from);
-        let root = self.cache.insert(claim).await?;
+        let mut cache = self.cache.lock().await;
+        let root = cache.insert(claim).await?;
+        drop(cache);
         let cid = T::Cid::from(root);
         self.subxt
             .set_identity_and_watch(signer, &prev, &cid)
@@ -171,7 +174,7 @@ where
     }
 
     async fn create_claim(
-        &mut self,
+        &self,
         body: ClaimBody,
         expire_in: Option<Duration>,
         signer: &PairSigner<T, S, E, P>,
@@ -187,7 +190,8 @@ where
             .to_vec();
         let prev = self.fetch_identity(uid).await?;
         let prev_seqno = if let Some(prev) = prev.as_ref() {
-            self.cache.get(prev).await?.claim().seqno
+            let mut cache = self.cache.lock().await;
+            cache.get(prev).await?.claim().seqno
         } else {
             0
         };
@@ -212,8 +216,8 @@ where
         Ok(Claim::new(claim, signature))
     }
 
-    pub async fn prove_identity(&mut self, service: Service) -> Result<String> {
-        let signer = self.signer()?;
+    pub async fn prove_identity(&self, service: Service) -> Result<String> {
+        let signer = self.signer().await?;
         let uid = self
             .fetch_uid(signer.account_id())
             .await?
@@ -226,8 +230,8 @@ where
         Ok(proof)
     }
 
-    pub async fn revoke_identity(&mut self, service: Service) -> Result<()> {
-        let signer = self.signer()?;
+    pub async fn revoke_identity(&self, service: Service) -> Result<()> {
+        let signer = self.signer().await?;
         let uid = self
             .fetch_uid(signer.account_id())
             .await?
@@ -247,7 +251,7 @@ where
         Ok(())
     }
 
-    async fn verify_claim(&mut self, uid: T::Uid, claim: &Claim) -> Result<()> {
+    async fn verify_claim(&self, uid: T::Uid, claim: &Claim) -> Result<()> {
         if claim.claim().uid != uid.into() {
             return Err(Error::InvalidClaim("uid"));
         }
@@ -255,7 +259,8 @@ where
             return Err(Error::InvalidClaim("genesis"));
         }
         let prev_seqno = if let Some(prev) = claim.claim().prev.as_ref() {
-            self.cache.get(prev).await?.claim().seqno
+            let mut cache = self.cache.lock().await;
+            cache.get(prev).await?.claim().seqno
         } else {
             0
         };
@@ -276,11 +281,13 @@ where
         Ok(())
     }
 
-    pub async fn identity(&mut self, uid: T::Uid) -> Result<Vec<IdentityInfo>> {
+    pub async fn identity(&self, uid: T::Uid) -> Result<Vec<IdentityInfo>> {
         let mut claims = vec![];
         let mut next = self.fetch_identity(uid).await?;
         while let Some(cid) = next {
-            let claim = self.cache.get(&cid).await?;
+            let mut cache = self.cache.lock().await;
+            let claim = cache.get(&cid).await?;
+            drop(cache);
             next = claim.claim().prev.clone();
             self.verify_claim(uid, &claim).await?;
             claims.push(claim);
@@ -339,7 +346,7 @@ where
         Ok(info)
     }
 
-    pub async fn resolve(&mut self, service: &Service) -> Result<T::Uid> {
+    pub async fn resolve(&self, service: &Service) -> Result<T::Uid> {
         let uids = service.resolve().await?;
         for uid in uids {
             if let Ok(uid) = uid.parse() {
@@ -399,9 +406,9 @@ mod tests {
         env_logger::try_init().ok();
         let subxt = ClientBuilder::<Runtime>::new().build().await.unwrap();
         let store = MemStore::default();
-        let keystore = KeyStore::new("/tmp/keystore");
+        let keystore = KeyStore::open("/tmp/keystore").await.unwrap();
         let account_id = sp_keyring::AccountKeyring::Alice.to_account_id();
-        let mut client = Client::<_, _, _, sp_core::sr25519::Pair, _>::new(keystore, subxt, store);
+        let client = Client::<_, _, _, sp_core::sr25519::Pair, _>::new(keystore, subxt, store);
         let uid = client.fetch_uid(&account_id).await.unwrap().unwrap();
         assert_eq!(client.identity(uid).await.unwrap().len(), 0);
         client
