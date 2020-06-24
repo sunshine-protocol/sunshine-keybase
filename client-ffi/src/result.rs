@@ -1,9 +1,0 @@
-pub const CLIENT_UNKNOWN: i32 = -1;
-pub const CLIENT_OK: i32 = 0;
-pub const CLIENT_BAD_CSTR: i32 = 1;
-pub const CLIENT_SUBXT_CREATE_ERR: i32 = 2;
-pub const CLIENT_IPFS_CONFIG_ERR: i32 = 3;
-pub const CLIENT_IPFS_STORE_ERR: i32 = 4;
-pub const CLIENT_UNINIT: i32 = 5;
-pub const CLIENT_HAS_DEVICE_KEY: i32 = 6;
-pub const CLIENT_PASSWORD_TOO_SHORT: i32 = 7;

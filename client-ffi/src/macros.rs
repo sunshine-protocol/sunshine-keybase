@@ -35,10 +35,13 @@ macro_rules! cstr {
     ($ptr:expr) => {
         cstr!($ptr, $crate::CLIENT_BAD_CSTR);
     };
-    ($ptr:expr, $error:expr) => {{
-        ffi_helpers::null_pointer_check!($ptr);
-        error!(CStr::from_ptr($ptr).to_str(), $error)
-    }};
+    ($ptr:expr, $error:expr) => {
+        unsafe {
+            ffi_helpers::null_pointer_check!($ptr);
+            #[allow(clippy::not_unsafe_ptr_arg_deref)]
+            error!(CStr::from_ptr($ptr).to_str(), $error)
+        }
+    };
 }
 
 #[macro_export]
@@ -49,14 +52,26 @@ macro_rules! client {
     ($isolate:expr, $post:expr) => {
         client!($isolate, $post, $crate::CLIENT_UNINIT);
     };
-    ($isolate:expr, $post:expr, $err:expr) => {{
-        let mut client = CLIENT.lock().await;
-        match client.as_mut() {
-            Some(client) => client,
-            None => {
-                $isolate.post($post);
-                return $err;
+    ($isolate:expr, $post:expr, $err:expr) => {
+        // this safe since we get a immutable ref for the client
+        unsafe {
+            match $crate::CLIENT {
+                Some(ref client) => client,
+                None => {
+                    $isolate.post($post);
+                    return $err;
+                }
             }
         }
-    }};
+    };
+}
+
+#[macro_export]
+macro_rules! enum_result {
+    ($($err:ident = $val:expr),+ $(,)?) => {
+        $(
+            #[allow(dead_code)]
+            pub const $err: i32 = $val;
+        )+
+    };
 }
