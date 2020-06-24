@@ -1,4 +1,5 @@
-use rand::{thread_rng, Rng};
+use async_std::task;
+use rand::{thread_rng, AsByteSliceMut, Rng};
 use secrecy::{ExposeSecret, SecretString};
 use strobe_rs::{AuthError, SecParam, Strobe};
 use zeroize::Zeroize;
@@ -42,10 +43,8 @@ impl Secret {
         Self::new(res)
     }
 
-    pub fn generate() -> Self {
-        let mut res = [0; SECRET_LEN];
-        thread_rng().fill(&mut res);
-        Self::new(res)
+    pub async fn generate() -> Self {
+        Self::new(random().await)
     }
 
     pub fn kdf(input: &SecretString) -> Self {
@@ -65,13 +64,14 @@ impl Secret {
         Self::new(res)
     }
 
-    pub fn auth_encrypt(&self, key: &Self) -> AuthSecret {
+    pub async fn auth_encrypt(&self, key: &Self) -> AuthSecret {
         let mut auth = [0; AUTH_SECRET_LEN];
         let (ct, rest) = auth.split_at_mut(SECRET_LEN);
         let (nonce, tag) = rest.split_at_mut(NONCE_LEN);
 
         ct.copy_from_slice(self.expose_secret());
-        thread_rng().fill(nonce);
+        let nonce_buf: [u8; NONCE_LEN] = random().await;
+        nonce.copy_from_slice(&nonce_buf);
 
         let mut s = Strobe::new(b"DiscoAEAD", SecParam::B128);
         s.ad(key.expose_secret(), false);
@@ -131,4 +131,12 @@ impl AuthSecret {
         s.recv_mac(&mut tag, false)?;
         Ok(Secret::new(pt))
     }
+}
+
+pub async fn random<T: Default + AsByteSliceMut + Send + 'static>() -> T {
+    task::spawn_blocking(|| {
+        let mut buf = T::default();
+        thread_rng().fill(&mut buf);
+        buf
+    }).await
 }

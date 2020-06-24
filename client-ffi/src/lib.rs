@@ -132,11 +132,11 @@ pub extern "C" fn client_key_set(
     };
     let dk = if !phrase.is_empty() {
         let mnemonic = result!(Mnemonic::from_phrase(phrase, Language::English));
-        result!(DeviceKey::from_mnemonic(&mnemonic))
+        Some(result!(DeviceKey::from_mnemonic(&mnemonic)))
     } else if let Some(seed) = suri {
-        DeviceKey::from_seed(seed)
+        Some(DeviceKey::from_seed(seed))
     } else {
-        DeviceKey::generate()
+        None
     };
     let password = Password::from(password.to_owned());
     if password.expose_secret().len() < 8 {
@@ -144,6 +144,11 @@ pub extern "C" fn client_key_set(
     }
     let client = client!(isolate);
     let t = isolate.task(async move {
+        let dk = if let Some(dk) = dk {
+            dk
+        } else {
+            DeviceKey::generate().await
+        };
         // dose not compile
         let account_id = result!(client.set_device_key(&dk, &password, false).await);
         CLIENT_OK
