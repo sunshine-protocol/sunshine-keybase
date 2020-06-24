@@ -6,7 +6,7 @@
 /**
  * Check if the current client has a device key already or not
  */
-int32_t client_has_device_key(int64_t port);
+void client_has_device_key(int64_t port);
 
 /**
  * Setup the Sunshine identity client using the provided path as the base path

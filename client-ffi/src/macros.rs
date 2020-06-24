@@ -15,15 +15,14 @@ macro_rules! error {
 }
 
 #[macro_export]
-macro_rules! isolate_err {
-    ($result:expr, $isolate:expr) => {
-        isolate_err!($result, $isolate, $crate::CLIENT_UNKNOWN);
+macro_rules! result {
+    ($result:expr) => {
+        isolate_err!($result, $crate::CLIENT_UNKNOWN);
     };
-    ($result:expr, $isolate:expr, $error:expr) => {
+    ($result:expr, $error:expr) => {
         match $result {
             Ok(value) => value,
-            Err(e) => {
-                $isolate.post(e.to_string());
+            Err(_) => {
                 return $error;
             }
         }

@@ -74,35 +74,34 @@ pub extern "C" fn client_init(port: i64, path: *const raw::c_char) -> i32 {
     let root = cstr!(path);
     let paths = Paths::new(root);
     let isolate = Isolate::new(port);
-    task::spawn(async move {
-        let keystore = KeyStore::open(&paths.keystore).await;
-        let keystore = isolate_err!(keystore, isolate, CLIENT_KEYSTORE_OPEN_ERR);
-        let subxt = ClientBuilder::new().build().await;
-        let subxt = isolate_err!(subxt, isolate, CLIENT_SUBXT_CREATE_ERR);
-        let config = Config::from_path(&paths.db).map_err(ipfs_embed::Error::Sled);
-        let config = isolate_err!(config, isolate, CLIENT_IPFS_CONFIG_ERR);
-        let store = Store::new(config);
-        let store = isolate_err!(store, isolate, CLIENT_IPFS_STORE_ERR);
+    let t = isolate.task(async move {
+        let keystore = result!(
+            KeyStore::open(&paths.keystore).await,
+            CLIENT_KEYSTORE_OPEN_ERR
+        );
+        let subxt = result!(ClientBuilder::new().build().await, CLIENT_SUBXT_CREATE_ERR);
+        let config = result!(Config::from_path(&paths.db), CLIENT_IPFS_CONFIG_ERR);
+        let store = result!(Store::new(config), CLIENT_IPFS_STORE_ERR);
         let client = Client::new(keystore, subxt, store);
         unsafe {
             CLIENT.replace(client);
         }
-        isolate.post(CLIENT_OK);
         CLIENT_OK
     });
+    task::spawn(t);
     CLIENT_OK
 }
 
 /// Check if the current client has a device key already or not
 #[no_mangle]
-pub extern "C" fn client_has_device_key(port: i64) -> i32 {
+pub extern "C" fn client_has_device_key(port: i64) {
     let isolate = Isolate::new(port);
-    task::spawn(async move {
+    let t = isolate.task(async move {
         let client = client!(isolate);
         isolate.post(client.has_device_key().await);
         CLIENT_OK
     });
-    CLIENT_OK
+    task::spawn(t);
 }
 
 /// Set a new Key for this device if not already exist.
@@ -118,16 +117,16 @@ pub extern "C" fn client_key_set(
     password: *const raw::c_char,
 ) -> i32 {
     let isolate = Isolate::new(port);
-    let suri = cstr!(suri);
     let password = cstr!(password);
-    task::spawn(async move {
+    let suri = cstr!(suri);
+    let t = isolate.task(async move {
         let client = client!(isolate);
         let password = Password::from(password.to_owned());
         if password.expose_secret().len() < 8 {
-            isolate.post(CLIENT_PASSWORD_TOO_SHORT);
             return CLIENT_PASSWORD_TOO_SHORT;
         }
         CLIENT_OK
     });
+    task::spawn(t);
     CLIENT_OK
 }
