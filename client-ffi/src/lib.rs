@@ -12,6 +12,9 @@ use substrate_subxt::{ClientBuilder, Signer};
 
 mod runtime;
 use runtime::{Extra, Runtime, Signature, Uid};
+use suri::Suri;
+
+mod suri;
 
 mod macros;
 
@@ -109,22 +112,40 @@ pub extern "C" fn client_has_device_key(port: i64) {
 /// suri is used for testing only.
 ///
 /// ### Safety
-/// Suri coud be empty string for indicating that we don't have to use it
+/// suri could be empty string for indicating that we don't have to use it
+/// phrase could be emoty string for indicating that we don't have to create a device key from it.
 #[no_mangle]
 pub extern "C" fn client_key_set(
     port: i64,
     suri: *const raw::c_char,
     password: *const raw::c_char,
+    phrase: *const raw::c_char,
 ) -> i32 {
     let isolate = Isolate::new(port);
     let password = cstr!(password);
+    let phrase = cstr!(phrase);
     let suri = cstr!(suri);
+    let suri = if suri.is_empty() {
+        None
+    } else {
+        Some(result!(suri.parse::<Suri>()).0)
+    };
+    let dk = if !phrase.is_empty() {
+        let mnemonic = result!(Mnemonic::from_phrase(phrase, Language::English));
+        result!(DeviceKey::from_mnemonic(&mnemonic))
+    } else if let Some(seed) = suri {
+        DeviceKey::from_seed(seed)
+    } else {
+        DeviceKey::generate()
+    };
+    let password = Password::from(password.to_owned());
+    if password.expose_secret().len() < 8 {
+        return CLIENT_PASSWORD_TOO_SHORT;
+    }
+    let client = client!(isolate);
     let t = isolate.task(async move {
-        let client = client!(isolate);
-        let password = Password::from(password.to_owned());
-        if password.expose_secret().len() < 8 {
-            return CLIENT_PASSWORD_TOO_SHORT;
-        }
+        // dose not compile
+        let account_id = result!(client.set_device_key(&dk, &password, false).await);
         CLIENT_OK
     });
     task::spawn(t);

@@ -17,7 +17,7 @@ macro_rules! error {
 #[macro_export]
 macro_rules! result {
     ($result:expr) => {
-        isolate_err!($result, $crate::CLIENT_UNKNOWN);
+        result!($result, $crate::CLIENT_UNKNOWN);
     };
     ($result:expr, $error:expr) => {
         match $result {
