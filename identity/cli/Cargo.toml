@@ -1,0 +1,21 @@
+[package]
+name = "identity-cli"
+version = "0.1.0"
+authors = ["David Craven <david@craven.ch>"]
+edition = "2018"
+
+[dependencies]
+async-std = { version = "=1.5.0", features = ["attributes"] }
+async-trait = "0.1.36"
+clap = "3.0.0-beta.1"
+client-identity = { path = "../client" }
+codec = { version = "1.3.0", package = "parity-scale-codec" }
+dirs2 = "3.0.1"
+env_logger = "0.7.1"
+keystore = { path = "../../keystore", package = "keybase-keystore" }
+libipld = "0.3.0"
+qr2term = "0.2.1"
+rpassword = "4.0.5"
+substrate-subxt = "0.9.0"
+textwrap = { version = "0.11.0", features = ["term_size"] }
+thiserror = "1.0.20"
