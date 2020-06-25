@@ -1,5 +1,5 @@
 [package]
-name = "runtime-identity"
+name = "test-runtime"
 version = "0.1.0"
 authors = ["Anonymous"]
 edition = "2018"
@@ -37,8 +37,9 @@ sp-std = { version = "2.0.0-rc3", default-features = false }
 sp-transaction-pool = { version = "2.0.0-rc3", default-features = false }
 sp-version = { version = "2.0.0-rc3", default-features = false }
 
-identity = { version = "0.1.0", default-features = false, package = "pallet-identity", path = "../../../pallet" }
-utils-identity = { version = "0.1.0", default-features = false, path = "../../../utils" }
+faucet = { version = "0.1.0", default-features = false, package = "pallet-faucet", path = "../../faucet/pallet" }
+identity = { version = "0.1.0", default-features = false, package = "pallet-identity", path = "../../identity/pallet" }
+utils-identity = { version = "0.1.0", default-features = false, path = "../../identity/utils" }
 
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner" }
@@ -49,6 +50,7 @@ std = [
     "aura/std",
     "balances/std",
     "codec/std",
+    "faucet/std",
     "frame-executive/std",
     "frame-support/std",
     "grandpa/std",

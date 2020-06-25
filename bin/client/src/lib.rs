@@ -1,9 +1,13 @@
+use client_faucet::Faucet;
 use client_identity::Identity;
 use substrate_subxt::balances::{AccountData, Balances};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{sp_core, sp_runtime};
 use utils_identity::cid::CidBytes;
+
+pub use client_faucet as faucet;
+pub use client_identity as identity;
 
 pub type AccountId = <<sp_runtime::MultiSignature as Verify>::Signer as IdentifyAccount>::AccountId;
 pub type Uid = u32;
@@ -35,7 +39,38 @@ impl Identity for Runtime {
     type IdAccountData = AccountData<<Self as Balances>::Balance>;
 }
 
+impl Faucet for Runtime {}
+
 impl substrate_subxt::Runtime for Runtime {
     type Signature = sp_runtime::MultiSignature;
     type Extra = substrate_subxt::DefaultExtra<Self>;
+}
+
+#[cfg(feature = "mock")]
+pub mod mock {
+    use substrate_subxt::client::{DatabaseConfig, Role, SubxtClient, SubxtClientConfig};
+    pub use sp_keyring::AccountKeyring;
+    pub use tempdir::TempDir;
+
+    pub type TestNode = jsonrpsee::Client;
+
+    pub fn test_node() -> (TestNode, TempDir) {
+        env_logger::try_init().ok();
+        let tmp = TempDir::new("sunshine-identity-").expect("failed to create tempdir");
+        let config = SubxtClientConfig {
+            impl_name: "test-client",
+            impl_version: "0.1.0",
+            author: "sunshine",
+            copyright_start_year: 2020,
+            db: DatabaseConfig::RocksDb {
+                path: tmp.path().into(),
+                cache_size: 128,
+            },
+            builder: test_node::service::new_full,
+            chain_spec: test_node::chain_spec::development_config(),
+            role: Role::Authority(AccountKeyring::Alice),
+        };
+        let client = SubxtClient::new(config).unwrap().into();
+        (client, tmp)
+    }
 }
