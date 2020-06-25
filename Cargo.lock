@@ -3593,6 +3593,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-faucet"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-finality-tracker"
 version = "2.0.0-rc3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
