@@ -6,6 +6,7 @@ members = [
     "bin/runtime",
     "faucet/client",
     "faucet/pallet",
+    "identity/cli",
     "identity/client",
     "identity/pallet",
     "identity/utils",
