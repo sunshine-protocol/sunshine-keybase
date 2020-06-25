@@ -1,7 +1,6 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 use allo_isolate::Isolate;
 use async_std::task;
-use ffi_helpers::null_pointer_check;
 use ipfs_embed::{Config, Store};
 use keystore::bip39::{Language, Mnemonic};
 use keystore::{DeviceKey, KeyStore, Password};
@@ -18,7 +17,7 @@ mod suri;
 
 mod macros;
 
-type Client = client::Client<Runtime, Signature, Extra, sr25519::Pair, Store>;
+type Client = client::Client<Runtime, sr25519::Pair, Store>;
 
 static mut CLIENT: Option<Client> = None;
 

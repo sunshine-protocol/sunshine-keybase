@@ -11,7 +11,7 @@ pub(crate) type Extra = substrate_subxt::DefaultExtra<Runtime>;
 pub(crate) type Uid = u32;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct Runtime;
+pub struct Runtime;
 
 impl System for Runtime {
     type Index = u32;
@@ -35,4 +35,9 @@ impl Identity for Runtime {
     type Mask = [u8; 32];
     type Gen = u16;
     type IdAccountData = AccountData<<Self as Balances>::Balance>;
+}
+
+impl substrate_subxt::Runtime for Runtime {
+    type Signature = sp_runtime::MultiSignature;
+    type Extra = substrate_subxt::DefaultExtra<Self>;
 }
