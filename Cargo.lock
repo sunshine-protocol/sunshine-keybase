@@ -720,24 +720,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "cli-identity"
+name = "client-faucet"
 version = "0.1.0"
 dependencies = [
  "async-std",
- "clap 3.0.0-beta.1",
- "client-identity",
- "dirs2",
  "env_logger",
- "exitfailure",
- "ipfs-embed",
- "keybase-keystore",
- "qr2term",
- "rpassword",
+ "parity-scale-codec",
  "sp-keyring",
  "substrate-subxt",
- "textwrap",
- "thiserror",
- "utils-identity",
+ "test-node",
 ]
 
 [[package]]
@@ -751,7 +742,6 @@ dependencies = [
  "jsonrpsee",
  "keybase-keystore",
  "libipld",
- "node-identity",
  "parity-scale-codec",
  "serde",
  "serde_json",
@@ -759,6 +749,7 @@ dependencies = [
  "substrate-subxt",
  "surf",
  "tempdir",
+ "test-node",
  "thiserror",
  "utils-identity",
 ]
@@ -3346,35 +3337,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "node-identity"
-version = "0.1.0"
-dependencies = [
- "futures 0.3.5",
- "log",
- "parking_lot 0.11.0",
- "runtime-identity",
- "sc-basic-authorship",
- "sc-cli",
- "sc-client-api",
- "sc-consensus",
- "sc-consensus-aura",
- "sc-executor",
- "sc-finality-grandpa",
- "sc-network",
- "sc-service",
- "sc-transaction-pool",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-core",
- "sp-finality-grandpa",
- "sp-inherents",
- "sp-runtime",
- "sp-transaction-pool",
- "structopt",
- "substrate-build-script-utils",
-]
-
-[[package]]
 name = "nodrop"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4695,39 +4657,6 @@ checksum = "99371657d3c8e4d816fb6221db98fa408242b0b53bac08f8676a41f8554fe99f"
 dependencies = [
  "libc",
  "winapi 0.3.8",
-]
-
-[[package]]
-name = "runtime-identity"
-version = "0.1.0"
-dependencies = [
- "frame-executive",
- "frame-support",
- "frame-system",
- "pallet-aura",
- "pallet-balances",
- "pallet-grandpa",
- "pallet-identity",
- "pallet-randomness-collective-flip",
- "pallet-sudo",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-core",
- "sp-inherents",
- "sp-io",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-std",
- "sp-transaction-pool",
- "sp-version",
- "substrate-wasm-builder-runner",
- "utils-identity",
 ]
 
 [[package]]
@@ -6635,8 +6564,9 @@ dependencies = [
 
 [[package]]
 name = "substrate-subxt"
-version = "0.8.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=events-sub#456578a56c3b344a4b613b04371c8cb4af9785bc"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c26c2f596f7bf0a1d7ab1d43bcf9b03c5d8595cda175b032b58435755bb54d2"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -6664,7 +6594,8 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-client"
 version = "0.1.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=events-sub#456578a56c3b344a4b613b04371c8cb4af9785bc"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d64656086c017e5427d8f4c5fa435a10198199b355546487c3a31a0311e1aea"
 dependencies = [
  "async-std",
  "futures 0.1.29",
@@ -6680,8 +6611,9 @@ dependencies = [
 
 [[package]]
 name = "substrate-subxt-proc-macro"
-version = "0.8.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=events-sub#456578a56c3b344a4b613b04371c8cb4af9785bc"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4866e68aa6eafb2d37c57552f18d205ccad5d77b7d71c8fbe63c9c58eee2f5fd"
 dependencies = [
  "heck",
  "proc-macro-crate",
@@ -6848,6 +6780,100 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb6bfa289a4d7c5766392812c0a1f4c1ba45afa1ad47803c11e1f407d846d75f"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "test-cli"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "clap 3.0.0-beta.1",
+ "client-identity",
+ "dirs2",
+ "env_logger",
+ "exitfailure",
+ "ipfs-embed",
+ "keybase-keystore",
+ "qr2term",
+ "rpassword",
+ "sp-keyring",
+ "substrate-subxt",
+ "test-client",
+ "textwrap",
+ "thiserror",
+]
+
+[[package]]
+name = "test-client"
+version = "0.1.0"
+dependencies = [
+ "client-faucet",
+ "client-identity",
+ "substrate-subxt",
+ "utils-identity",
+]
+
+[[package]]
+name = "test-node"
+version = "0.1.0"
+dependencies = [
+ "futures 0.3.5",
+ "log",
+ "parking_lot 0.11.0",
+ "sc-basic-authorship",
+ "sc-cli",
+ "sc-client-api",
+ "sc-consensus",
+ "sc-consensus-aura",
+ "sc-executor",
+ "sc-finality-grandpa",
+ "sc-network",
+ "sc-service",
+ "sc-transaction-pool",
+ "sp-consensus",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-finality-grandpa",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-transaction-pool",
+ "structopt",
+ "substrate-build-script-utils",
+ "test-runtime",
+]
+
+[[package]]
+name = "test-runtime"
+version = "0.1.0"
+dependencies = [
+ "frame-executive",
+ "frame-support",
+ "frame-system",
+ "pallet-aura",
+ "pallet-balances",
+ "pallet-faucet",
+ "pallet-grandpa",
+ "pallet-identity",
+ "pallet-randomness-collective-flip",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-block-builder",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-session",
+ "sp-std",
+ "sp-transaction-pool",
+ "sp-version",
+ "substrate-wasm-builder-runner",
+ "utils-identity",
 ]
 
 [[package]]

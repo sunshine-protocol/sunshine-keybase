@@ -1,11 +1,11 @@
 use crate::error::Error;
-use crate::runtime::{AccountId, Uid};
 use clap::Clap;
 use client_identity::{Service, ServiceParseError};
 use std::path::PathBuf;
 use std::str::FromStr;
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::sp_core::{sr25519, Pair};
+use test_client::{AccountId, Uid};
 
 #[derive(Clone, Debug, Clap)]
 pub struct Opts {

@@ -44,6 +44,8 @@ pub use timestamp::Call as TimestampCall;
 
 /// Importing the identity pallet
 pub use identity;
+/// Importing the faucet pallet
+pub use faucet;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -264,6 +266,10 @@ impl identity::Trait for Runtime {
     type Event = Event;
 }
 
+impl faucet::Trait for Runtime {
+    const MINT_UNIT: Self::Balance = 1_000_000;
+}
+
 construct_runtime!(
     pub enum Runtime where
         Block = Block,
@@ -280,6 +286,8 @@ construct_runtime!(
         Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
         // Used for the identity module.
         Identity: identity::{Module, Call, Storage, Event<T>},
+        // Faucet for the testnet.
+        Faucet: faucet::{Module, Call},
     }
 );
 

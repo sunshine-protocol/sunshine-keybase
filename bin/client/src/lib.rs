@@ -1,3 +1,4 @@
+use client_faucet::Faucet;
 use client_identity::Identity;
 use substrate_subxt::balances::{AccountData, Balances};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
@@ -34,6 +35,8 @@ impl Identity for Runtime {
     type Gen = u16;
     type IdAccountData = AccountData<<Self as Balances>::Balance>;
 }
+
+impl Faucet for Runtime {}
 
 impl substrate_subxt::Runtime for Runtime {
     type Signature = sp_runtime::MultiSignature;

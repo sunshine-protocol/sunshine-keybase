@@ -1,5 +1,5 @@
 [package]
-name = "cli-identity"
+name = "test-cli"
 version = "0.1.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
@@ -8,7 +8,7 @@ edition = "2018"
 async-std = { version = "=1.5.0", features = ["attributes"] }
 exitfailure = "0.5.1"
 clap = "3.0.0-beta.1"
-client-identity = { path = "../../client" }
+client-identity = { path = "../../identity/client" }
 dirs2 = "3.0.1"
 env_logger = "0.7.1"
 ipfs-embed = "0.1.1"
@@ -16,7 +16,7 @@ keybase-keystore = { path = "../../keystore" }
 qr2term = "0.2.1"
 rpassword = "4.0.5"
 sp-keyring = "2.0.0-rc3"
-substrate-subxt = "0.8.0"
+substrate-subxt = "0.9.0"
+test-client = { path = "../client" }
 textwrap = { version = "0.11.0", features = ["term_size"] }
 thiserror = "1.0.20"
-utils-identity = { version = "0.1.0", path = "../../utils" }

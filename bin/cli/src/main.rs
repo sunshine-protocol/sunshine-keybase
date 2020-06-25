@@ -1,6 +1,5 @@
 use crate::command::*;
 use crate::error::Error;
-use crate::runtime::{Runtime, Uid};
 use clap::Clap;
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
@@ -10,11 +9,11 @@ use std::path::PathBuf;
 use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::{crypto::Ss58Codec, sr25519};
 use substrate_subxt::{ClientBuilder, Signer};
+use test_client::{Runtime, Uid};
 use textwrap::Wrapper;
 
 mod command;
 mod error;
-mod runtime;
 
 #[async_std::main]
 async fn main() -> Result<(), ExitDisplay<Error>> {

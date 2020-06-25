@@ -1,5 +1,13 @@
 [workspace]
-members = ["bin/cli", "bin/node", "client", "faucet", "keystore", "pallet", "utils"]
-
-[patch.crates-io]
-substrate-subxt = { git = "https://github.com/dvc94ch/substrate-subxt", branch = "events-sub" }
+members = [
+    "bin/cli",
+    "bin/client",
+    "bin/node",
+    "bin/runtime",
+    "faucet/client",
+    "faucet/pallet",
+    "identity/client",
+    "identity/pallet",
+    "identity/utils",
+    "keystore",
+]
