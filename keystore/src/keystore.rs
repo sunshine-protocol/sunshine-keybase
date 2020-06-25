@@ -94,7 +94,7 @@ mod tests {
         let mut store = KeyStore::open("/tmp/keystore").await.unwrap();
 
         // generate
-        let key = DeviceKey::generate();
+        let key = DeviceKey::generate().await;
         let p1 = Password::from("password".to_string());
         store.initialize(&key, &p1).await.unwrap();
 

@@ -107,7 +107,8 @@ impl NoiseFile {
             }
             file.sync_all()?;
             Ok(())
-        }).await
+        })
+        .await
     }
 
     pub async fn read_secret(&self) -> Result<Secret, Error> {
@@ -148,7 +149,7 @@ mod tests {
 
     #[async_std::test]
     async fn test_secret_file() {
-        let secret = Secret::generate();
+        let secret = Secret::generate().await;
         let file = SecretFile::new("/tmp/secret_file".into());
         file.write(&secret).await.unwrap();
         let secret2 = file.read().await.unwrap();
