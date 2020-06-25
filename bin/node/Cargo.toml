@@ -1,6 +1,6 @@
 [package]
-name = "node-identity"
-version = "2.0.0-rc2"
+name = "test-node"
+version = "0.1.0"
 authors = ["Anonymous"]
 description = "Substrate Node template"
 edition = "2018"
@@ -15,28 +15,28 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 futures = "0.3.5"
 log = "0.4.8"
-structopt = "0.3.14"
-parking_lot = "0.10.2"
+structopt = "0.3.15"
+parking_lot = "0.11.0"
 
-sc-cli = "0.8.0-rc2"
-sp-core = "2.0.0-rc2"
-sc-executor = "0.8.0-rc2"
-sc-service = "0.8.0-rc2"
-sp-inherents = "2.0.0-rc2"
-sc-transaction-pool = "2.0.0-rc2"
-sp-transaction-pool = "2.0.0-rc2"
-sc-network = "0.8.0-rc2"
-sc-consensus-aura = "0.8.0-rc2"
-sp-consensus-aura = "0.8.0-rc2"
-sp-consensus = "0.8.0-rc2"
-sc-consensus = "0.8.0-rc2"
-sc-finality-grandpa = "0.8.0-rc2"
-sp-finality-grandpa = "2.0.0-rc2"
-sc-client-api = "2.0.0-rc2"
-sp-runtime = "2.0.0-rc2"
-sc-basic-authorship = "0.8.0-rc2"
+sc-cli = "0.8.0-rc3"
+sp-core = "2.0.0-rc3"
+sc-executor = "0.8.0-rc3"
+sc-service = "0.8.0-rc3"
+sp-inherents = "2.0.0-rc3"
+sc-transaction-pool = "2.0.0-rc3"
+sp-transaction-pool = "2.0.0-rc3"
+sc-network = "0.8.0-rc3"
+sc-consensus-aura = "0.8.0-rc3"
+sp-consensus-aura = "0.8.0-rc3"
+sp-consensus = "0.8.0-rc3"
+sc-consensus = "0.8.0-rc3"
+sc-finality-grandpa = "0.8.0-rc3"
+sp-finality-grandpa = "2.0.0-rc3"
+sc-client-api = "2.0.0-rc3"
+sp-runtime = "2.0.0-rc3"
+sc-basic-authorship = "0.8.0-rc3"
 
-runtime-identity = { version = "2.0.0-rc2", path = "runtime" }
+test-runtime = { path = "../runtime" }
 
 [build-dependencies]
-substrate-build-script-utils = "2.0.0-rc2"
+substrate-build-script-utils = "2.0.0-rc3"

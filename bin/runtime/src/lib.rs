@@ -8,16 +8,16 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use grandpa::fg_primitives;
-use grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
+use grandpa::{fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
-use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, NumberFor, Saturating, Verify,
-};
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys,
+    traits::{
+        BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, NumberFor, Saturating,
+        Verify,
+    },
     transaction_validity::{TransactionSource, TransactionValidity},
     ApplyExtrinsicResult, MultiSignature,
 };
@@ -44,6 +44,8 @@ pub use timestamp::Call as TimestampCall;
 
 /// Importing the identity pallet
 pub use identity;
+/// Importing the faucet pallet
+pub use faucet;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -130,7 +132,7 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     /// Assume 10% of weight for average on_initialize calls.
-    pub const MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
+    pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
         .saturating_sub(Perbill::from_percent(10)) * MaximumBlockWeight::get();
     pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
     pub const Version: RuntimeVersion = VERSION;
@@ -264,6 +266,10 @@ impl identity::Trait for Runtime {
     type Event = Event;
 }
 
+impl faucet::Trait for Runtime {
+    const MINT_UNIT: Self::Balance = 1_000_000;
+}
+
 construct_runtime!(
     pub enum Runtime where
         Block = Block,
@@ -280,6 +286,8 @@ construct_runtime!(
         Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
         // Used for the identity module.
         Identity: identity::{Module, Call, Storage, Event<T>},
+        // Faucet for the testnet.
+        Faucet: faucet::{Module, Call},
     }
 );
 

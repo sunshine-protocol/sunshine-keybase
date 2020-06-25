@@ -13,7 +13,7 @@ crate-type = ["cdylib", "staticlib"]
 async-std = { version = "=1.5.0", features = ["attributes"] }
 client = { path = "../client", package = "client-identity" }
 ipfs-embed = "0.1.0"
-keystore = { path = "../keystore", package = "keybase-keystore" }
+keystore = { path = "../../keystore", package = "keybase-keystore" }
 substrate-subxt = "0.8.0"
 utils = { path = "../utils", package = "utils-identity" }
 ffi_helpers = "0.1.0"

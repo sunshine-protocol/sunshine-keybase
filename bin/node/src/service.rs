@@ -1,6 +1,5 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
-use runtime_identity::{self, opaque::Block, RuntimeApi};
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
 use sc_executor::native_executor_instance;
@@ -14,12 +13,13 @@ use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use sp_inherents::InherentDataProviders;
 use std::sync::Arc;
 use std::time::Duration;
+use test_runtime::{opaque::Block, RuntimeApi};
 
 // Our native executor instance.
 native_executor_instance!(
     pub Executor,
-    runtime_identity::api::dispatch,
-    runtime_identity::native_version,
+    test_runtime::api::dispatch,
+    test_runtime::native_version,
 );
 
 /// Starts a `ServiceBuilder` for a full service.
@@ -35,17 +35,17 @@ macro_rules! new_full_start {
         let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
         let builder = sc_service::ServiceBuilder::new_full::<
-            runtime_identity::opaque::Block,
-            runtime_identity::RuntimeApi,
+            test_runtime::opaque::Block,
+            test_runtime::RuntimeApi,
             crate::service::Executor,
         >($config)?
         .with_select_chain(|_config, backend| Ok(sc_consensus::LongestChain::new(backend.clone())))?
-        .with_transaction_pool(|config, client, _fetcher, prometheus_registry| {
-            let pool_api = sc_transaction_pool::FullChainApi::new(client.clone());
+        .with_transaction_pool(|builder| {
+            let pool_api = sc_transaction_pool::FullChainApi::new(builder.client().clone());
             Ok(sc_transaction_pool::BasicPool::new(
-                config,
+                builder.config().transaction_pool.clone(),
                 std::sync::Arc::new(pool_api),
-                prometheus_registry,
+                builder.prometheus_registry(),
             ))
         })?
         .with_import_queue(
@@ -152,7 +152,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
     let grandpa_config = sc_finality_grandpa::Config {
         // FIXME #1578 make this available through chainspec
         gossip_duration: Duration::from_millis(333),
-        justification_period: 1,
+        justification_period: 512,
         name: Some(name),
         observer_enabled: false,
         keystore,
@@ -201,15 +201,16 @@ pub fn new_light(config: Configuration) -> Result<impl AbstractService, ServiceE
 
     ServiceBuilder::new_light::<Block, RuntimeApi, Executor>(config)?
         .with_select_chain(|_config, backend| Ok(LongestChain::new(backend.clone())))?
-        .with_transaction_pool(|config, client, fetcher, prometheus_registry| {
-            let fetcher = fetcher
+        .with_transaction_pool(|builder| {
+            let fetcher = builder
+                .fetcher()
                 .ok_or_else(|| "Trying to start light transaction pool without active fetcher")?;
-
-            let pool_api = sc_transaction_pool::LightChainApi::new(client, fetcher);
+            let pool_api =
+                sc_transaction_pool::LightChainApi::new(builder.client().clone(), fetcher.clone());
             let pool = sc_transaction_pool::BasicPool::with_revalidation_type(
-                config,
+                builder.config().transaction_pool.clone(),
                 Arc::new(pool_api),
-                prometheus_registry,
+                builder.prometheus_registry(),
                 sc_transaction_pool::RevalidationType::Light,
             );
             Ok(pool)
