@@ -28,7 +28,7 @@ fn change_password() {
         let key1 = Origin::signed(1);
         let key2 = Origin::signed(2);
         assert_ok!(IdentityModule::create_account_for(Origin::signed(0), 1));
-        assert_ok!(IdentityModule::add_key(key1.clone(), 2));
+        assert_ok!(IdentityModule::add_key(key1, 2));
         assert!(IdentityModule::change_password(key2.clone(), [0; 32], 0).is_err());
         assert_ok!(IdentityModule::change_password(key2, [0; 32], 1));
     });

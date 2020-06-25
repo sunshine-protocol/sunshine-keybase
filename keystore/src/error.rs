@@ -1,5 +1,5 @@
-use thiserror::Error;
 use strobe_rs::AuthError;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {

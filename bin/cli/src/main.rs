@@ -77,12 +77,10 @@ async fn run() -> Result<(), Error> {
                 let dk = if paperkey {
                     let mnemonic = ask_for_phrase("Please enter your backup phrase:").await?;
                     DeviceKey::from_mnemonic(&mnemonic).map_err(|_| Error::InvalidMnemonic)?
+                } else if let Some(suri) = &suri {
+                    DeviceKey::from_seed(suri.0)
                 } else {
-                    if let Some(suri) = &suri {
-                        DeviceKey::from_seed(suri.0)
-                    } else {
-                        DeviceKey::generate()
-                    }
+                    DeviceKey::generate().await
                 };
                 let account_id = client.set_device_key(&dk, &password, force).await?;
                 let account_id_str = account_id.to_string();
@@ -115,10 +113,10 @@ async fn run() -> Result<(), Error> {
                 let mnemonic = client.add_paperkey().await?;
                 println!("Here is your secret paper key phrase:");
                 let words: Vec<_> = mnemonic.phrase().split(' ').collect();
-                println!("");
+                println!();
                 println!("{}", words[..12].join(" "));
                 println!("{}", words[12..].join(" "));
-                println!("");
+                println!();
                 println!("Write it down and keep somewhere safe.");
             }
             DeviceSubCommand::Add(DeviceAddCommand { device }) => {
@@ -193,7 +191,7 @@ async fn ask_for_phrase(prompt: &str) -> Result<Mnemonic, Error> {
             words.push(word.trim().to_string());
         }
     }
-    println!("");
+    println!();
     Ok(Mnemonic::from_phrase(&words.join(" "), Language::English)
         .map_err(|_| Error::InvalidMnemonic)?)
 }

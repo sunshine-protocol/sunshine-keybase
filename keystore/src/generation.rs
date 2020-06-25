@@ -41,9 +41,9 @@ impl Generation {
         let path = self.edk.parent().expect("joined a file name on init; qed");
         async_std::fs::create_dir_all(path).await?;
 
-        let rk = RandomKey::generate();
+        let rk = RandomKey::generate().await;
 
-        let edk = dk.encrypt(&rk);
+        let edk = dk.encrypt(&rk).await;
         self.edk.write(&edk.0).await?;
 
         let pdk = rk.public(&pass);

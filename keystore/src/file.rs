@@ -3,6 +3,7 @@ use async_std::fs::{File, OpenOptions};
 use async_std::io::Error;
 use async_std::path::{Path, PathBuf};
 use async_std::prelude::*;
+use async_std::task;
 use core::ops::Deref;
 use rand::{thread_rng, Rng};
 use strobe_rs::{SecParam, Strobe};
@@ -88,21 +89,26 @@ impl NoiseFile {
     }
 
     pub async fn generate(&self) -> Result<(), Error> {
-        let mut file = File::create(&self.0).await?;
-        #[cfg(unix)]
-        {
-            use std::fs::Permissions;
-            use std::os::unix::fs::PermissionsExt;
-            file.set_permissions(Permissions::from_mode(0o600)).await?;
-        }
-        let mut rng = thread_rng();
-        let mut buf = [0; 4096];
-        for _ in 0..500 {
-            rng.fill(&mut buf);
-            file.write_all(&buf).await?;
-        }
-        file.sync_all().await?;
-        Ok(())
+        let path = self.0.clone();
+        task::spawn_blocking(|| {
+            use std::io::Write;
+            let mut file = std::fs::File::create(path)?;
+            #[cfg(unix)]
+            {
+                use std::fs::Permissions;
+                use std::os::unix::fs::PermissionsExt;
+                file.set_permissions(Permissions::from_mode(0o600))?;
+            }
+            let mut rng = thread_rng();
+            let mut buf = [0; 4096];
+            for _ in 0..500 {
+                rng.fill(&mut buf);
+                file.write_all(&buf)?;
+            }
+            file.sync_all()?;
+            Ok(())
+        })
+        .await
     }
 
     pub async fn read_secret(&self) -> Result<Secret, Error> {
@@ -143,7 +149,7 @@ mod tests {
 
     #[async_std::test]
     async fn test_secret_file() {
-        let secret = Secret::generate();
+        let secret = Secret::generate().await;
         let file = SecretFile::new("/tmp/secret_file".into());
         file.write(&secret).await.unwrap();
         let secret2 = file.read().await.unwrap();

@@ -8,8 +8,8 @@ use thiserror::Error;
 pub struct DeviceKey(Secret);
 
 impl DeviceKey {
-    pub fn generate() -> Self {
-        Self(Secret::generate())
+    pub async fn generate() -> Self {
+        Self(Secret::generate().await)
     }
 
     pub fn from_seed(secret: [u8; SECRET_LEN]) -> Self {
@@ -30,8 +30,8 @@ impl DeviceKey {
         self.0.expose_secret()
     }
 
-    pub(crate) fn encrypt(&self, key: &RandomKey) -> EncryptedDeviceKey {
-        EncryptedDeviceKey(self.0.auth_encrypt(&key.0))
+    pub(crate) async fn encrypt(&self, key: &RandomKey) -> EncryptedDeviceKey {
+        EncryptedDeviceKey(self.0.auth_encrypt(&key.0).await)
     }
 }
 
@@ -50,8 +50,8 @@ impl EncryptedDeviceKey {
 pub(crate) struct RandomKey(Secret);
 
 impl RandomKey {
-    pub fn generate() -> Self {
-        Self(Secret::generate())
+    pub async fn generate() -> Self {
+        Self(Secret::generate().await)
     }
 
     pub fn public(&self, pass: &Password) -> PublicDeviceKey {
