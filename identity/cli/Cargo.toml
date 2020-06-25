@@ -10,8 +10,6 @@ async-trait = "0.1.36"
 clap = "3.0.0-beta.1"
 client-identity = { path = "../client" }
 codec = { version = "1.3.0", package = "parity-scale-codec" }
-dirs2 = "3.0.1"
-env_logger = "0.7.1"
 keystore = { path = "../../keystore", package = "keybase-keystore" }
 libipld = "0.3.0"
 qr2term = "0.2.1"
