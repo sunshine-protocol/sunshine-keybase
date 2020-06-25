@@ -35,6 +35,8 @@ pub enum Error {
     ProofNotFound,
     #[error("failed to get block hash")]
     NoBlockHash,
+    #[error("runtime invalid")]
+    RuntimeInvalid,
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

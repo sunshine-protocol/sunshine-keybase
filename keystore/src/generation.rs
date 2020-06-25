@@ -1,10 +1,12 @@
 use crate::error::Error;
 use crate::file::{AuthSecretFile, NoiseFile, SecretFile};
-use crate::types::{DeviceKey, EncryptedDeviceKey, EncryptedRandomKey, Password, RandomKey, PublicDeviceKey, Mask};
+use crate::types::{
+    DeviceKey, EncryptedDeviceKey, EncryptedRandomKey, Mask, Password, PublicDeviceKey, RandomKey,
+};
 use async_std::path::{Path, PathBuf};
 
 pub struct Generation {
-    gen: u32,
+    gen: u16,
     path: PathBuf,
     edk: AuthSecretFile,
     erk: SecretFile,
@@ -14,7 +16,7 @@ pub struct Generation {
 
 impl Generation {
     /// Creates a generation.
-    pub fn new(path: &Path, gen: u32) -> Self {
+    pub fn new(path: &Path, gen: u16) -> Self {
         let path = path.join(gen.to_string());
         Self {
             gen,
@@ -27,7 +29,7 @@ impl Generation {
     }
 
     /// Returns the generation number.
-    pub fn gen(&self) -> u32 {
+    pub fn gen(&self) -> u16 {
         self.gen
     }
 

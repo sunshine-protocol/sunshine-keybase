@@ -31,6 +31,8 @@ pub enum Error {
     HasDeviceKey,
     #[error("Password too short.")]
     PasswordTooShort,
+    #[error("Passwords don't match.")]
+    PasswordMissmatch,
     #[error("Invalid paperkey.")]
     InvalidMnemonic,
 }
