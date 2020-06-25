@@ -765,25 +765,8 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "parity-scale-codec",
- "substrate-subxt 0.9.0",
+ "substrate-subxt",
  "test-client",
-]
-
-[[package]]
-name = "client-ffi"
-version = "0.1.0"
-dependencies = [
- "allo-isolate",
- "async-std",
- "cbindgen",
- "client-identity",
- "dart-bindgen",
- "ffi_helpers",
- "ipfs-embed",
- "keybase-keystore",
- "lazy_static",
- "substrate-subxt 0.8.0",
- "utils-identity",
 ]
 
 [[package]]
@@ -798,7 +781,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "serde_json",
- "substrate-subxt 0.9.0",
+ "substrate-subxt",
  "test-client",
  "thiserror",
  "ureq",
@@ -1221,6 +1204,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0da54a593b34c71b889ee45f5b5bb900c74148c5f7f8c6a9479ee7899f69603c"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "ffi-identity"
+version = "0.1.0"
+dependencies = [
+ "allo-isolate",
+ "async-std",
+ "cbindgen",
+ "client-identity",
+ "dart-bindgen",
+ "ffi_helpers",
+ "ipfs-embed",
+ "keybase-keystore",
+ "lazy_static",
+ "substrate-subxt",
+ "test-client",
+ "utils-identity",
 ]
 
 [[package]]
@@ -2035,6 +2036,23 @@ dependencies = [
  "tokio 0.2.21",
  "tokio-rustls",
  "webpki",
+]
+
+[[package]]
+name = "identity-cli"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "clap 3.0.0-beta.1",
+ "client-identity",
+ "dirs2",
+ "env_logger",
+ "keybase-keystore",
+ "qr2term",
+ "rpassword",
+ "substrate-subxt",
+ "textwrap",
+ "thiserror",
 ]
 
 [[package]]
@@ -6465,34 +6483,6 @@ dependencies = [
 
 [[package]]
 name = "substrate-subxt"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e04cf049fd3fdc721047a9b0e691d0a4f0725c24bc14de2925626134dc22dc63"
-dependencies = [
- "frame-metadata",
- "frame-support",
- "futures 0.3.5",
- "hex",
- "jsonrpsee",
- "log",
- "num-traits 0.2.12",
- "pallet-indices",
- "parity-scale-codec",
- "sc-rpc-api",
- "serde",
- "serde_json",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
- "sp-transaction-pool",
- "sp-version",
- "substrate-subxt-proc-macro 0.8.0",
- "thiserror",
- "url 2.1.1",
-]
-
-[[package]]
-name = "substrate-subxt"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c26c2f596f7bf0a1d7ab1d43bcf9b03c5d8595cda175b032b58435755bb54d2"
@@ -6515,7 +6505,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-subxt-client",
- "substrate-subxt-proc-macro 0.9.0",
+ "substrate-subxt-proc-macro",
  "thiserror",
  "url 2.1.1",
 ]
@@ -6536,20 +6526,6 @@ dependencies = [
  "serde_json",
  "sp-keyring",
  "thiserror",
-]
-
-[[package]]
-name = "substrate-subxt-proc-macro"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baac8ea91eaadc18a1139fec3e7a3ffc674a65f8873483350d1541f69f28e7f2"
-dependencies = [
- "heck",
- "proc-macro-crate",
- "proc-macro2",
- "quote 1.0.7",
- "syn 1.0.33",
- "synstructure",
 ]
 
 [[package]]
@@ -6718,7 +6694,7 @@ dependencies = [
  "qr2term",
  "rpassword",
  "sp-keyring",
- "substrate-subxt 0.9.0",
+ "substrate-subxt",
  "test-client",
  "textwrap",
  "thiserror",
@@ -6733,7 +6709,7 @@ dependencies = [
  "env_logger",
  "jsonrpsee",
  "sp-keyring",
- "substrate-subxt 0.9.0",
+ "substrate-subxt",
  "tempdir",
  "test-node",
  "utils-identity",

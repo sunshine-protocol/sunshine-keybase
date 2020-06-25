@@ -138,5 +138,6 @@ pub async fn random<T: Default + AsByteSliceMut + Send + 'static>() -> T {
         let mut buf = T::default();
         thread_rng().fill(&mut buf);
         buf
-    }).await
+    })
+    .await
 }

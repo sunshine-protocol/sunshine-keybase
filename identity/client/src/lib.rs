@@ -397,39 +397,26 @@ where
 }
 
 #[cfg(test)]
-pub mod mock {
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use libipld::mem::MemStore;
     use sp_core::sr25519::Pair;
     use sp_core::Pair as _;
     use substrate_subxt::{sp_core, ClientBuilder};
-    use test_client::Runtime;
     use test_client::identity::{Client, Service};
     use test_client::mock::{test_node, AccountKeyring, TempDir, TestNode};
+    use test_client::Runtime;
 
     async fn build_client(node: TestNode) -> (Client<Runtime, Pair, MemStore>, TempDir) {
         let tmp = TempDir::new("sunshine-identity-").expect("failed to create tempdir");
-        let subxt = ClientBuilder::new()
-            .set_client(node)
-            .build()
-            .await
-            .unwrap();
+        let subxt = ClientBuilder::new().set_client(node).build().await.unwrap();
         let store = MemStore::default();
         let keystore = KeyStore::open(tmp.path()).await.unwrap();
         let client = Client::new(keystore, subxt, store);
         (client, tmp)
     }
 
-    async fn test_client() -> (
-        Client<Runtime, Pair, MemStore>,
-        TestNode,
-        TempDir,
-        TempDir,
-    ) {
+    async fn test_client() -> (Client<Runtime, Pair, MemStore>, TestNode, TempDir, TempDir) {
         let (node, tmp1) = test_node();
         let (client, tmp2) = build_client(node.clone()).await;
         let seed = Pair::from_string_with_seed("//Alice", None)
@@ -466,7 +453,7 @@ mod tests {
         let (client2, _tmp3) = build_client(subxt).await;
         client2
             .set_device_key(
-                &DeviceKey::generate(),
+                &DeviceKey::generate().await,
                 &Password::from("password".to_string()),
                 true,
             )
