@@ -9,7 +9,7 @@ members = [
     "identity/client",
     "identity/pallet",
     "identity/utils",
-    "client-ffi", # move it to identity/ffi
+    "identity/ffi",
     "keystore",
 
 ]

@@ -593,10 +593,10 @@ dependencies = [
  "heck",
  "log",
  "proc-macro2",
- "quote 1.0.6",
+ "quote 1.0.7",
  "serde",
  "serde_json",
- "syn 1.0.30",
+ "syn 1.0.33",
  "tempfile",
  "toml",
 ]
@@ -765,7 +765,7 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "parity-scale-codec",
- "substrate-subxt",
+ "substrate-subxt 0.9.0",
  "test-client",
 ]
 
@@ -782,7 +782,7 @@ dependencies = [
  "ipfs-embed",
  "keybase-keystore",
  "lazy_static",
- "substrate-subxt",
+ "substrate-subxt 0.8.0",
  "utils-identity",
 ]
 
@@ -798,8 +798,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "serde_json",
- "substrate-subxt",
- "surf",
+ "substrate-subxt 0.9.0",
  "test-client",
  "thiserror",
  "ureq",
@@ -918,18 +917,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "774ba60a54c213d409d5353bda12d49cd68d14e45036a285234c8d6f91f92570"
 dependencies = [
  "cfg-if",
- "crossbeam-utils 0.7.2",
+ "crossbeam-utils",
  "maybe-uninit",
-]
-
-[[package]]
-name = "crossbeam-utils"
-version = "0.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04973fa96e96579258a5091af6003abde64af786b860f18622b82e026cca60e6"
-dependencies = [
- "cfg-if",
- "lazy_static",
 ]
 
 [[package]]
@@ -1121,12 +1110,6 @@ name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
-
-[[package]]
-name = "dtoa"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 
 [[package]]
 name = "ed25519-dalek"
@@ -3295,9 +3278,9 @@ checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "nom"
-version = "5.1.2"
+version = "4.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffb4262d26ed83a1c0a33a38fe2bb15797329c85770da05e6b828ddb782627af"
+checksum = "2ad2a91a8e869eeb30b9cb3119ae87773a8f4ae617f41b1eb9c154b2905f7bd6"
 dependencies = [
  "memchr",
  "version_check 0.1.5",
@@ -3419,19 +3402,6 @@ name = "openssl-probe"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
-
-[[package]]
-name = "openssl-sys"
-version = "0.9.58"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a842db4709b604f0fe5d1170ae3565899be2ad3d9cbc72dedc789ac0511f78de"
-dependencies = [
- "autocfg 1.0.0",
- "cc",
- "libc",
- "pkg-config",
- "vcpkg",
-]
 
 [[package]]
 name = "orml-utilities"
@@ -4060,7 +4030,7 @@ dependencies = [
  "proc-macro2",
  "quote 1.0.7",
  "syn 1.0.33",
- "version_check",
+ "version_check 0.9.2",
 ]
 
 [[package]]
@@ -4073,7 +4043,7 @@ dependencies = [
  "proc-macro2",
  "quote 1.0.7",
  "syn 1.0.33",
- "version_check",
+ "version_check 0.9.2",
 ]
 
 [[package]]
@@ -6495,6 +6465,34 @@ dependencies = [
 
 [[package]]
 name = "substrate-subxt"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e04cf049fd3fdc721047a9b0e691d0a4f0725c24bc14de2925626134dc22dc63"
+dependencies = [
+ "frame-metadata",
+ "frame-support",
+ "futures 0.3.5",
+ "hex",
+ "jsonrpsee",
+ "log",
+ "num-traits 0.2.12",
+ "pallet-indices",
+ "parity-scale-codec",
+ "sc-rpc-api",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-transaction-pool",
+ "sp-version",
+ "substrate-subxt-proc-macro 0.8.0",
+ "thiserror",
+ "url 2.1.1",
+]
+
+[[package]]
+name = "substrate-subxt"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c26c2f596f7bf0a1d7ab1d43bcf9b03c5d8595cda175b032b58435755bb54d2"
@@ -6517,7 +6515,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-subxt-client",
- "substrate-subxt-proc-macro",
+ "substrate-subxt-proc-macro 0.9.0",
  "thiserror",
  "url 2.1.1",
 ]
@@ -6538,6 +6536,20 @@ dependencies = [
  "serde_json",
  "sp-keyring",
  "thiserror",
+]
+
+[[package]]
+name = "substrate-subxt-proc-macro"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baac8ea91eaadc18a1139fec3e7a3ffc674a65f8873483350d1541f69f28e7f2"
+dependencies = [
+ "heck",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote 1.0.7",
+ "syn 1.0.33",
+ "synstructure",
 ]
 
 [[package]]
@@ -6706,7 +6718,7 @@ dependencies = [
  "qr2term",
  "rpassword",
  "sp-keyring",
- "substrate-subxt",
+ "substrate-subxt 0.9.0",
  "test-client",
  "textwrap",
  "thiserror",
@@ -6721,7 +6733,7 @@ dependencies = [
  "env_logger",
  "jsonrpsee",
  "sp-keyring",
- "substrate-subxt",
+ "substrate-subxt 0.9.0",
  "tempdir",
  "test-node",
  "utils-identity",
@@ -7349,7 +7361,7 @@ version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8aa8506b484aac1c808cfb5e00cf47604457cac40cc49a8689669e1e1092b1ea"
 dependencies = [
- "base64 0.12.1",
+ "base64 0.12.2",
  "chunked_transfer",
  "lazy_static",
  "qstring",
