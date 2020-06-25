@@ -1,7 +1,7 @@
 use crate::{async_trait, AbstractClient, Command, Error, Identity, Pair, Result, Runtime};
 use clap::Clap;
 use client_identity::{resolve, Identifier};
-use core::fmt::Display;
+use core::fmt::{Debug, Display};
 use substrate_subxt::balances::{Balances, TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
@@ -16,7 +16,7 @@ pub struct WalletBalanceCommand {
 impl<T: Runtime + Identity + Balances, P: Pair> Command<T, P> for WalletBalanceCommand
 where
     <T as System>::AccountId: Ss58Codec,
-    <T as Identity>::IdAccountData: Display,
+    <T as Identity>::IdAccountData: Debug,
 {
     async fn exec(&self, client: &dyn AbstractClient<T, P>) -> Result<()> {
         let identifier: Option<Identifier<T>> = if let Some(identifier) = &self.identifier {
@@ -26,7 +26,7 @@ where
         };
         let uid = resolve(client, identifier).await?;
         let account = client.fetch_account(uid).await?;
-        println!("{}", account);
+        println!("{:?}", account);
         Ok(())
     }
 }

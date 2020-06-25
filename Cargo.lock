@@ -771,6 +771,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cli-identity"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "clap 3.0.0-beta.1",
+ "client-identity",
+ "keybase-keystore",
+ "libipld",
+ "parity-scale-codec",
+ "qr2term",
+ "rpassword",
+ "substrate-subxt",
+ "textwrap",
+ "thiserror",
+]
+
+[[package]]
 name = "client-faucet"
 version = "0.1.0"
 dependencies = [
@@ -2047,24 +2065,6 @@ dependencies = [
  "tokio 0.2.21",
  "tokio-rustls",
  "webpki",
-]
-
-[[package]]
-name = "identity-cli"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "async-trait",
- "clap 3.0.0-beta.1",
- "client-identity",
- "keybase-keystore",
- "libipld",
- "parity-scale-codec",
- "qr2term",
- "rpassword",
- "substrate-subxt",
- "textwrap",
- "thiserror",
 ]
 
 [[package]]
@@ -6697,19 +6697,14 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
- "client-identity",
+ "cli-identity",
  "dirs2",
  "env_logger",
  "exitfailure",
  "ipfs-embed",
  "keybase-keystore",
- "qr2term",
- "rpassword",
- "sp-keyring",
  "substrate-subxt",
  "test-client",
- "textwrap",
- "thiserror",
 ]
 
 [[package]]
