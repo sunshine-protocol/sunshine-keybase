@@ -724,11 +724,9 @@ name = "client-faucet"
 version = "0.1.0"
 dependencies = [
  "async-std",
- "env_logger",
  "parity-scale-codec",
- "sp-keyring",
  "substrate-subxt",
- "test-node",
+ "test-client",
 ]
 
 [[package]]
@@ -736,20 +734,16 @@ name = "client-identity"
 version = "0.1.0"
 dependencies = [
  "async-std",
- "env_logger",
  "frame-support",
  "ipld-block-builder",
- "jsonrpsee",
  "keybase-keystore",
  "libipld",
  "parity-scale-codec",
  "serde",
  "serde_json",
- "sp-keyring",
  "substrate-subxt",
  "surf",
- "tempdir",
- "test-node",
+ "test-client",
  "thiserror",
  "utils-identity",
 ]
@@ -6809,7 +6803,12 @@ version = "0.1.0"
 dependencies = [
  "client-faucet",
  "client-identity",
+ "env_logger",
+ "jsonrpsee",
+ "sp-keyring",
  "substrate-subxt",
+ "tempdir",
+ "test-node",
  "utils-identity",
 ]
 

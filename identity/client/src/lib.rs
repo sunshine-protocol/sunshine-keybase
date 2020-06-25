@@ -397,75 +397,24 @@ where
 }
 
 #[cfg(test)]
+pub mod mock {
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use libipld::mem::MemStore;
     use sp_core::sr25519::Pair;
     use sp_core::Pair as _;
-    use sp_keyring::AccountKeyring;
-    use substrate_subxt::balances::{AccountData, Balances};
-    use substrate_subxt::client::{DatabaseConfig, Role, SubxtClient, SubxtClientConfig};
-    use substrate_subxt::system::System;
-    use substrate_subxt::{sp_core, sp_runtime, ClientBuilder};
-    use tempdir::TempDir;
-    use utils_identity::cid::CidBytes;
+    use substrate_subxt::{sp_core, ClientBuilder};
+    use test_client::Runtime;
+    use test_client::identity::{Client, Service};
+    use test_client::mock::{test_node, AccountKeyring, TempDir, TestNode};
 
-    #[derive(Clone, Debug, Eq, PartialEq)]
-    struct Runtime;
-
-    impl substrate_subxt::Runtime for Runtime {
-        type Signature = sp_runtime::MultiSignature;
-        type Extra = substrate_subxt::DefaultExtra<Self>;
-    }
-
-    impl System for Runtime {
-        type Index = u32;
-        type BlockNumber = u32;
-        type Hash = sp_core::H256;
-        type Hashing = sp_runtime::traits::BlakeTwo256;
-        type AccountId =
-            <<sp_runtime::MultiSignature as Verify>::Signer as IdentifyAccount>::AccountId;
-        type Address = Self::AccountId;
-        type Header = sp_runtime::generic::Header<Self::BlockNumber, Self::Hashing>;
-        type Extrinsic = sp_runtime::OpaqueExtrinsic;
-        type AccountData = ();
-    }
-
-    impl Balances for Runtime {
-        type Balance = u128;
-    }
-
-    impl Identity for Runtime {
-        type Uid = u32;
-        type Cid = CidBytes;
-        type Mask = [u8; 32];
-        type Gen = u16;
-        type IdAccountData = AccountData<<Self as Balances>::Balance>;
-    }
-
-    fn build_subxt_client() -> (jsonrpsee::Client, TempDir) {
-        let tmp = TempDir::new("identity-substrate").expect("failed to create tempdir");
-        let config = SubxtClientConfig {
-            impl_name: "client-identity",
-            impl_version: "0.0.1",
-            author: "sunshine",
-            copyright_start_year: 2020,
-            db: DatabaseConfig::RocksDb {
-                path: tmp.path().into(),
-                cache_size: 128,
-            },
-            builder: node_identity::service::new_full,
-            chain_spec: node_identity::chain_spec::development_config(),
-            role: Role::Authority(AccountKeyring::Alice),
-        };
-        let client = SubxtClient::new(config).unwrap().into();
-        (client, tmp)
-    }
-
-    async fn build_client(client: jsonrpsee::Client) -> (Client<Runtime, Pair, MemStore>, TempDir) {
-        let tmp = TempDir::new("identity-keystore").expect("failed to create tempdir");
+    async fn build_client(node: TestNode) -> (Client<Runtime, Pair, MemStore>, TempDir) {
+        let tmp = TempDir::new("sunshine-identity-").expect("failed to create tempdir");
         let subxt = ClientBuilder::new()
-            .set_client(client)
+            .set_client(node)
             .build()
             .await
             .unwrap();
@@ -477,13 +426,12 @@ mod tests {
 
     async fn test_client() -> (
         Client<Runtime, Pair, MemStore>,
-        jsonrpsee::Client,
+        TestNode,
         TempDir,
         TempDir,
     ) {
-        env_logger::try_init().ok();
-        let (subxt, tmp1) = build_subxt_client();
-        let (client, tmp2) = build_client(subxt.clone()).await;
+        let (node, tmp1) = test_node();
+        let (client, tmp2) = build_client(node.clone()).await;
         let seed = Pair::from_string_with_seed("//Alice", None)
             .unwrap()
             .1
@@ -496,7 +444,7 @@ mod tests {
             )
             .await
             .unwrap();
-        (client, subxt, tmp1, tmp2)
+        (client, node, tmp1, tmp2)
     }
 
     #[async_std::test]

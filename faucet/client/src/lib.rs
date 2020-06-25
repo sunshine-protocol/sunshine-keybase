@@ -12,30 +12,32 @@ pub struct MintCall<'a, T: Faucet> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use sp_core::Pair as _;
+    use sp_core::sr25519::Pair;
     use substrate_subxt::{
-        Error,
+        ClientBuilder,
         PairSigner,
+        Signer,
+        sp_core,
     };
-    use sp_keyring::AccountKeyring;
+    use test_client::Runtime;
+    use test_client::faucet::MintCallExt;
+    use test_client::mock::test_node;
 
     #[async_std::test]
-    async fn test_timestamp_set() {
-        env_logger::try_init().ok();
-        let alice = PairSigner::<TestRuntime, _>::new(AccountKeyring::Alice.pair());
-        let (client, _) = test_client().await;
-
-        client
-            .mint_and_watch(&alice, 1)
+    async fn test_mint() {
+        let (node, _) = test_node();
+        let client = ClientBuilder::<Runtime>::new()
+            .set_client(node)
+            .build()
             .await
             .unwrap();
+        //let hans = PairSigner::<Runtime, _>::new(Pair::generate().0);
+        let hans = PairSigner::<Runtime, _>::new(test_client::mock::AccountKeyring::Alice.pair());
 
-        /*assert!(
-            if let Err(Error::BadOrigin) = res {
-                true
-            } else {
-                false
-            }
-        );*/
+        client
+            .mint_and_watch(&hans, hans.account_id())
+            .await
+            .unwrap();
     }
 }
