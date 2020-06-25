@@ -105,26 +105,28 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use sp_keyring::AccountKeyring;
+    use core::str::FromStr;
+    use test_client::Runtime;
+    use test_client::identity::{Identifier, Service, ServiceParseError};
+    use test_client::mock::AccountKeyring;
 
     #[test]
     fn parse_identifer() {
         assert_eq!(
             Identifier::from_str("dvc94ch@github"),
-            Ok(Identifier::Service(Service::Github("dvc94ch".into())))
+            Ok(Identifier::<Runtime>::Service(Service::Github("dvc94ch".into())))
         );
         assert_eq!(
-            Identifier::from_str("dvc94ch@twitter"),
+            Identifier::<Runtime>::from_str("dvc94ch@twitter"),
             Err(ServiceParseError::Unknown("twitter".into()))
         );
         assert_eq!(
-            Identifier::from_str("@dvc94ch"),
+            Identifier::<Runtime>::from_str("@dvc94ch"),
             Err(ServiceParseError::Invalid)
         );
         let alice = AccountKeyring::Alice.to_account_id();
         assert_eq!(
-            Identifier::from_str(&alice.to_string()),
+            Identifier::<Runtime>::from_str(&alice.to_string()),
             Ok(Identifier::Account(alice))
         );
     }

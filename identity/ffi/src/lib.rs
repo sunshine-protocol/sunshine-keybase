@@ -10,11 +10,11 @@ use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::{crypto::Ss58Codec, sr25519};
 use substrate_subxt::{ClientBuilder, Signer};
 
-use client::Suri;
 use test_client::Runtime;
 
 mod macros;
 
+type Suri = client::Suri<sr25519::Pair>;
 type Client = client::Client<Runtime, sr25519::Pair, Store>;
 
 static mut CLIENT: Option<Client> = None;
