@@ -48,8 +48,8 @@ impl substrate_subxt::Runtime for Runtime {
 
 #[cfg(feature = "mock")]
 pub mod mock {
-    use substrate_subxt::client::{DatabaseConfig, Role, SubxtClient, SubxtClientConfig};
     pub use sp_keyring::AccountKeyring;
+    use substrate_subxt::client::{DatabaseConfig, Role, SubxtClient, SubxtClientConfig};
     pub use tempdir::TempDir;
 
     pub type TestNode = jsonrpsee::Client;

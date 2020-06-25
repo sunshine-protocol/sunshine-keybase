@@ -71,11 +71,7 @@ pub fn run() -> sc_cli::Result<()> {
         }
         None => {
             let runner = cli.create_runner(&cli.run)?;
-            runner.run_node(
-                service::new_light,
-                service::new_full,
-                test_runtime::VERSION,
-            )
+            runner.run_node(service::new_light, service::new_full, test_runtime::VERSION)
         }
     }
 }

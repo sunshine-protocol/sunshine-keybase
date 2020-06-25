@@ -42,10 +42,10 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 pub use timestamp::Call as TimestampCall;
 
-/// Importing the identity pallet
-pub use identity;
 /// Importing the faucet pallet
 pub use faucet;
+/// Importing the identity pallet
+pub use identity;
 
 /// An index to a block.
 pub type BlockNumber = u32;

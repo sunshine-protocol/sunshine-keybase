@@ -9,9 +9,8 @@ use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::{crypto::Ss58Codec, sr25519};
 use substrate_subxt::{ClientBuilder, Signer};
 
-mod runtime;
-use runtime::{Extra, Runtime, Signature, Uid};
 use suri::Suri;
+use test_client::Runtime;
 
 mod suri;
 
