@@ -31,13 +31,19 @@ macro_rules! result {
 
 #[macro_export]
 macro_rules! cstr {
+    ($ptr:expr, allow_null) => {
+        if $ptr.is_null() {
+            None
+        } else {
+            Some(cstr!($ptr))
+        }
+    };
     ($ptr:expr) => {
         cstr!($ptr, $crate::CLIENT_BAD_CSTR);
     };
     ($ptr:expr, $error:expr) => {
         unsafe {
             ffi_helpers::null_pointer_check!($ptr);
-            #[allow(clippy::not_unsafe_ptr_arg_deref)]
             error!(CStr::from_ptr($ptr).to_str(), $error)
         }
     };
@@ -45,19 +51,15 @@ macro_rules! cstr {
 
 #[macro_export]
 macro_rules! client {
-    ($isolate:expr) => {
-        client!($isolate, $crate::CLIENT_UNINIT, $crate::CLIENT_UNINIT);
+    () => {
+        client!(err = $crate::CLIENT_UNINIT);
     };
-    ($isolate:expr, $post:expr) => {
-        client!($isolate, $post, $crate::CLIENT_UNINIT);
-    };
-    ($isolate:expr, $post:expr, $err:expr) => {
+    (err = $err:expr) => {
         // this safe since we get a immutable ref for the client
         unsafe {
             match $crate::CLIENT {
                 Some(ref client) => client,
                 None => {
-                    $isolate.post($post);
                     return $err;
                 }
             }

@@ -34,6 +34,8 @@ enum_result! {
   CLIENT_ALREADY_INIT = 8,
   CLIENT_HAS_DEVICE_KEY = 9,
   CLIENT_PASSWORD_TOO_SHORT = 10,
+  CLIENT_BAD_SURI = 11,
+  CLIENT_BAD_MNEMONIC = 12,
 }
 
 struct Paths {
@@ -69,6 +71,8 @@ pub unsafe extern "C" fn error_message_utf8(buf: *mut raw::c_char, length: i32) 
 pub extern "C" fn client_init(port: i64, path: *const raw::c_char) -> i32 {
     // check if we already created the client, and return `CLIENT_ALREADY_INIT`
     // if it is already created to avoid any unwanted work
+    // SAFETY:
+    // this safe we only check that before doing anything else.
     unsafe {
         if CLIENT.is_some() {
             return CLIENT_ALREADY_INIT;
@@ -86,6 +90,8 @@ pub extern "C" fn client_init(port: i64, path: *const raw::c_char) -> i32 {
         let config = result!(Config::from_path(&paths.db), CLIENT_IPFS_CONFIG_ERR);
         let store = result!(Store::new(config), CLIENT_IPFS_STORE_ERR);
         let client = Client::new(keystore, subxt, store);
+        // SAFETY:
+        // this safe since we checked that the client is already not created before.
         unsafe {
             CLIENT.replace(client);
         }
@@ -97,23 +103,19 @@ pub extern "C" fn client_init(port: i64, path: *const raw::c_char) -> i32 {
 
 /// Check if the current client has a device key already or not
 #[no_mangle]
-pub extern "C" fn client_has_device_key(port: i64) {
+pub extern "C" fn client_has_device_key(port: i64) -> i32 {
     let isolate = Isolate::new(port);
-    let t = isolate.task(async move {
-        let client = client!(isolate);
-        isolate.post(client.has_device_key().await);
-        CLIENT_OK
-    });
+    let client = client!();
+    let t = isolate.task(client.has_device_key());
     task::spawn(t);
+    CLIENT_OK
 }
 
 /// Set a new Key for this device if not already exist.
+/// you should call `client_has_device_key` first to see if you have already a key.
 ///
 /// suri is used for testing only.
-///
-/// ### Safety
-/// suri could be empty string for indicating that we don't have to use it
-/// phrase could be emoty string for indicating that we don't have to create a device key from it.
+/// phrase is used to restore a backup
 #[no_mangle]
 pub extern "C" fn client_key_set(
     port: i64,
@@ -123,18 +125,16 @@ pub extern "C" fn client_key_set(
 ) -> i32 {
     let isolate = Isolate::new(port);
     let password = cstr!(password);
-    let phrase = cstr!(phrase);
-    let suri = cstr!(suri);
-    let suri = if suri.is_empty() {
-        None
-    } else {
-        Some(result!(suri.parse::<Suri>()).0)
-    };
-    let dk = if !phrase.is_empty() {
-        let mnemonic = result!(Mnemonic::from_phrase(phrase, Language::English));
-        Some(result!(DeviceKey::from_mnemonic(&mnemonic)))
+    let suri = cstr!(suri, allow_null).and_then(|v| v.parse::<Suri>().ok());
+    let mnemonic =
+        cstr!(phrase, allow_null).and_then(|p| Mnemonic::from_phrase(p, Language::English).ok());
+    let dk = if let Some(mnemonic) = mnemonic {
+        Some(result!(
+            DeviceKey::from_mnemonic(&mnemonic),
+            CLIENT_BAD_MNEMONIC
+        ))
     } else if let Some(seed) = suri {
-        Some(DeviceKey::from_seed(seed))
+        Some(DeviceKey::from_seed(seed.0))
     } else {
         None
     };
@@ -142,16 +142,30 @@ pub extern "C" fn client_key_set(
     if password.expose_secret().len() < 8 {
         return CLIENT_PASSWORD_TOO_SHORT;
     }
-    let client = client!(isolate);
+    let client = client!();
     let t = isolate.task(async move {
         let dk = if let Some(dk) = dk {
             dk
         } else {
             DeviceKey::generate().await
         };
-        // dose not compile
-        let account_id = result!(client.set_device_key(&dk, &password, false).await);
-        CLIENT_OK
+        let account_id = result!(client.set_device_key(&dk, &password, false).await, None);
+        result!(client.fetch_uid(&account_id).await, None)
+    });
+    task::spawn(t);
+    CLIENT_OK
+}
+
+/// Get the account id of the current device as String (if any)
+/// Note: the device key must be in unlocked state otherwise `null` is returuned
+#[no_mangle]
+pub extern "C" fn client_account_id(port: i64) -> i32 {
+    let client = client!();
+    let isolate = Isolate::new(port);
+    let t = isolate.task(async move {
+        // TODO
+        let signer = result!(client.signer().await, None);
+        Some(signer.account_id().to_string())
     });
     task::spawn(t);
     CLIENT_OK

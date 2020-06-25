@@ -4,9 +4,15 @@
 #include <stdlib.h>
 
 /**
+ * Get the account id of the current device as String (if any)
+ * Note: the device key must be in unlocked state otherwise `null` is returuned
+ */
+int32_t client_account_id(int64_t port);
+
+/**
  * Check if the current client has a device key already or not
  */
-void client_has_device_key(int64_t port);
+int32_t client_has_device_key(int64_t port);
 
 /**
  * Setup the Sunshine identity client using the provided path as the base path
@@ -18,12 +24,10 @@ int32_t client_init(int64_t port, const char *path);
 
 /**
  * Set a new Key for this device if not already exist.
+ * you should call `client_has_device_key` first to see if you have already a key.
  *
  * suri is used for testing only.
- *
- * ### Safety
- * suri could be empty string for indicating that we don't have to use it
- * phrase could be emoty string for indicating that we don't have to create a device key from it.
+ * phrase is used to restore a backup
  */
 int32_t client_key_set(int64_t port, const char *suri, const char *password, const char *phrase);
 
