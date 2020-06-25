@@ -6,10 +6,10 @@ use keystore::{DeviceKey, Password};
 use libipld::store::Store;
 use sp_core::crypto::{Pair, Ss58Codec};
 use sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
-use substrate_subxt::{sp_core, sp_runtime, system::System, Runtime, Signer, SignedExtra};
+use substrate_subxt::{sp_core, sp_runtime, system::System, Runtime, SignedExtra, Signer};
 
 #[async_trait]
-pub trait AbstractClient<T: Runtime + Identity, P: Pair> {
+pub trait AbstractClient<T: Runtime + Identity, P: Pair>: Send + Sync {
     async fn has_device_key(&self) -> bool;
     async fn set_device_key(
         &self,
@@ -17,7 +17,7 @@ pub trait AbstractClient<T: Runtime + Identity, P: Pair> {
         password: &Password,
         force: bool,
     ) -> Result<T::AccountId>;
-    async fn signer(&self) -> Result<Box<dyn Signer<T>>>;
+    async fn signer(&self) -> Result<Box<dyn Signer<T> + Send + Sync>>;
     async fn lock(&self) -> Result<()>;
     async fn unlock(&self, password: &Password) -> Result<()>;
     async fn create_account_for(&self, key: &T::AccountId) -> Result<()>;
@@ -32,6 +32,7 @@ pub trait AbstractClient<T: Runtime + Identity, P: Pair> {
     async fn revoke_identity(&self, service: Service) -> Result<()>;
     async fn identity(&self, uid: T::Uid) -> Result<Vec<IdentityInfo>>;
     async fn resolve(&self, service: &Service) -> Result<T::Uid>;
+    fn subxt(&self) -> &substrate_subxt::Client<T>;
 }
 
 #[async_trait]
@@ -61,7 +62,7 @@ where
         self.set_device_key(dk, password, force).await
     }
 
-    async fn signer(&self) -> Result<Box<dyn Signer<T>>> {
+    async fn signer(&self) -> Result<Box<dyn Signer<T> + Send + Sync>> {
         Ok(Box::new(self.signer().await?))
     }
 
@@ -119,5 +120,9 @@ where
 
     async fn resolve(&self, service: &Service) -> Result<T::Uid> {
         self.resolve(service).await
+    }
+
+    fn subxt(&self) -> &substrate_subxt::Client<T> {
+        self.subxt()
     }
 }

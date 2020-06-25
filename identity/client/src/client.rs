@@ -54,6 +54,10 @@ where
         }
     }
 
+    pub fn subxt(&self) -> &substrate_subxt::Client<T> {
+        &self.subxt
+    }
+
     pub async fn has_device_key(&self) -> bool {
         self.keystore.is_initialized().await
     }

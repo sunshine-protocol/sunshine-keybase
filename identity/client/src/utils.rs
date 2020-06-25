@@ -1,6 +1,6 @@
-use crate::{AbstractClient, Identity};
 use crate::error::Error;
 use crate::service::{Service, ServiceParseError};
+use crate::{AbstractClient, Identity};
 use core::fmt::{self, Debug};
 use sp_core::crypto::{Pair, PublicError, SecretStringError, Ss58Codec};
 use std::str::FromStr;
@@ -24,8 +24,7 @@ impl<P: Pair> FromStr for Suri<P> {
     type Err = InvalidSuri;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let (_, seed) = P::from_string_with_seed(string, None)
-            .map_err(|err| InvalidSuri(err))?;
+        let (_, seed) = P::from_string_with_seed(string, None).map_err(|err| InvalidSuri(err))?;
         Ok(Self(seed.unwrap()))
     }
 }

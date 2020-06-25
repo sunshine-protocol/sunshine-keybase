@@ -13,4 +13,4 @@ pub use error::{Error, Result};
 pub use r#abstract::AbstractClient;
 pub use service::{Service, ServiceParseError};
 pub use subxt::*;
-pub use utils::{resolve, Identifier, Suri, Ss58};
+pub use utils::{resolve, Identifier, InvalidSs58, InvalidSuri, Ss58, Suri};
