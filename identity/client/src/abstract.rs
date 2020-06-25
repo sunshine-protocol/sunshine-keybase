@@ -6,7 +6,7 @@ use keystore::{DeviceKey, Password};
 use libipld::store::Store;
 use sp_core::crypto::{Pair, Ss58Codec};
 use sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
-use substrate_subxt::{sp_core, sp_runtime, system::System, PairSigner, Runtime, SignedExtra};
+use substrate_subxt::{sp_core, sp_runtime, system::System, Runtime, Signer, SignedExtra};
 
 #[async_trait]
 pub trait AbstractClient<T: Runtime + Identity, P: Pair> {
@@ -17,7 +17,7 @@ pub trait AbstractClient<T: Runtime + Identity, P: Pair> {
         password: &Password,
         force: bool,
     ) -> Result<T::AccountId>;
-    async fn signer(&self) -> Result<PairSigner<T, P>>;
+    async fn signer(&self) -> Result<Box<dyn Signer<T>>>;
     async fn lock(&self) -> Result<()>;
     async fn unlock(&self, password: &Password) -> Result<()>;
     async fn create_account_for(&self, key: &T::AccountId) -> Result<()>;
@@ -61,8 +61,8 @@ where
         self.set_device_key(dk, password, force).await
     }
 
-    async fn signer(&self) -> Result<PairSigner<T, P>> {
-        self.signer().await
+    async fn signer(&self) -> Result<Box<dyn Signer<T>>> {
+        Ok(Box::new(self.signer().await?))
     }
 
     async fn lock(&self) -> Result<()> {

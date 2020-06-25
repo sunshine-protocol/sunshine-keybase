@@ -5,7 +5,7 @@ mod error;
 mod github;
 mod service;
 mod subxt;
-mod suri;
+mod utils;
 
 pub use claim::{IdentityInfo, IdentityStatus};
 pub use client::Client;
@@ -13,4 +13,4 @@ pub use error::{Error, Result};
 pub use r#abstract::AbstractClient;
 pub use service::{Service, ServiceParseError};
 pub use subxt::*;
-pub use suri::Suri;
+pub use utils::{resolve, Identifier, Suri, Ss58};
