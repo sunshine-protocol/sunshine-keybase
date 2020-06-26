@@ -15,4 +15,4 @@ members = [
 ]
 
 [patch.crates-io]
-substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt", branch = "master" }
+substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt", branch = "aj-substrate-rc4" }

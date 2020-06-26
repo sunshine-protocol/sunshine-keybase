@@ -7,7 +7,7 @@ use ipfs_embed::{Config, Store};
 use keybase_keystore::KeyStore;
 use std::time::Duration;
 use substrate_subxt::sp_core::sr25519;
-use test_client::{faucet, light};
+use test_client::faucet;
 use test_client::Runtime;
 
 mod command;
@@ -38,21 +38,22 @@ async fn run() -> Result<(), Error> {
     #[cfg(feature = "light")]
     let subxt = {
         let db_light = db.open_tree("substrate").unwrap();
-        light::build_light_client(db_light, include_bytes!("../chain-spec.json")).await.unwrap()
+        test_client::light::build_light_client(db_light, include_bytes!("../chain-spec.json"))
+            .await
+            .unwrap()
     };
 
     let config = Config::from_tree(db_ipfs);
     let store = Store::new(config).unwrap();
     let client = Client::new(keystore, subxt, store);
 
-    let mut password_changes = None;
-    if client.has_device_key().await {
-        if let Ok(_) = client.signer().await {
-            let sub = client.subscribe_password_changes().await?;
-            client.update_password().await?;
-            password_changes = Some(sub);
-        }
-    }
+    let mut password_changes = if client.has_device_key().await && client.signer().await.is_ok() {
+        let sub = client.subscribe_password_changes().await?;
+        client.update_password().await?;
+        Some(sub)
+    } else {
+        None
+    };
 
     match opts.cmd {
         SubCommand::Key(KeyCommand { cmd }) => match cmd {
@@ -96,7 +97,7 @@ async fn run() -> Result<(), Error> {
         },
         SubCommand::Run => loop {
             if let Some(sub) = password_changes.as_mut() {
-                if let Some(_) = sub.next().await {
+                if sub.next().await.is_some() {
                     client.update_password().await?;
                 }
             } else {
