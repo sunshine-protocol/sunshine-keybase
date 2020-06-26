@@ -1,4 +1,10 @@
-on: [push, pull_request]
+on:
+  pull_request:
+    branches:
+    - master
+  push:
+    branches:
+    - master
 
 name: sunshine-identity
 
@@ -91,8 +97,9 @@ jobs:
     - name: Install rust toolchain
       uses: hecrj/setup-rust-action@v1
       with:
-        rust-version: stable
+        rust-version: nightly
         components: clippy, rustfmt
+        targets: wasm32-unknown-unknown
 
     - name: cargo fmt
       run: cargo fmt --all -- --check
