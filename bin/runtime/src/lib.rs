@@ -268,6 +268,7 @@ impl identity::Trait for Runtime {
 
 impl faucet::Trait for Runtime {
     const MINT_UNIT: Self::Balance = 1_000_000;
+    type Event = Event;
 }
 
 construct_runtime!(
@@ -287,7 +288,7 @@ construct_runtime!(
         // Used for the identity module.
         Identity: identity::{Module, Call, Storage, Event<T>},
         // Faucet for the testnet.
-        Faucet: faucet::{Module, Call},
+        Faucet: faucet::{Module, Call, Event<T>, ValidateUnsigned},
     }
 );
 

@@ -291,6 +291,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a265e3abeffdce30b2e26b7a11b222fe37c6067404001b434101457d0385eb92"
+dependencies = [
+ "proc-macro2",
+ "quote 1.0.7",
+ "syn 1.0.33",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -585,9 +596,9 @@ dependencies = [
 
 [[package]]
 name = "cbindgen"
-version = "0.14.2"
+version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "104ca409bbff8293739438c71820a2606111b5f8f81835536dc673dfd807369e"
+checksum = "e6e03a705df2e735cc5486f104a48e25a8f72ae06eaea5b7753a81270ed00859"
 dependencies = [
  "clap 2.33.1",
  "heck",
@@ -760,6 +771,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cli-identity"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "clap 3.0.0-beta.1",
+ "client-identity",
+ "keybase-keystore",
+ "libipld",
+ "parity-scale-codec",
+ "qr2term",
+ "rpassword",
+ "substrate-subxt",
+ "textwrap",
+ "thiserror",
+]
+
+[[package]]
 name = "client-faucet"
 version = "0.1.0"
 dependencies = [
@@ -774,6 +803,7 @@ name = "client-identity"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "async-trait",
  "frame-support",
  "ipld-block-builder",
  "keybase-keystore",
@@ -785,7 +815,6 @@ dependencies = [
  "test-client",
  "thiserror",
  "ureq",
- "utils-identity",
 ]
 
 [[package]]
@@ -6466,8 +6495,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c26c2f596f7bf0a1d7ab1d43bcf9b03c5d8595cda175b032b58435755bb54d2"
+source = "git+https://github.com/dvc94ch/substrate-subxt?branch=unsigned#11d111f001b5bc2a06d4e835fe46b11eeccfd40c"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -6495,8 +6523,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-client"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d64656086c017e5427d8f4c5fa435a10198199b355546487c3a31a0311e1aea"
+source = "git+https://github.com/dvc94ch/substrate-subxt?branch=unsigned#11d111f001b5bc2a06d4e835fe46b11eeccfd40c"
 dependencies = [
  "async-std",
  "futures 0.1.29",
@@ -6513,8 +6540,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4866e68aa6eafb2d37c57552f18d205ccad5d77b7d71c8fbe63c9c58eee2f5fd"
+source = "git+https://github.com/dvc94ch/substrate-subxt?branch=unsigned#11d111f001b5bc2a06d4e835fe46b11eeccfd40c"
 dependencies = [
  "heck",
  "proc-macro-crate",
@@ -6667,19 +6693,14 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
- "client-identity",
+ "cli-identity",
  "dirs2",
  "env_logger",
  "exitfailure",
  "ipfs-embed",
  "keybase-keystore",
- "qr2term",
- "rpassword",
- "sp-keyring",
  "substrate-subxt",
  "test-client",
- "textwrap",
- "thiserror",
 ]
 
 [[package]]
