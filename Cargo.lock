@@ -1200,6 +1200,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fail"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3be3c61c59fdc91f5dbc3ea31ee8623122ce80057058be560654c5d410d181a6"
+dependencies = [
+ "lazy_static",
+ "log",
+ "rand 0.7.3",
+]
+
+[[package]]
 name = "failure"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2414,9 +2425,11 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "bip39",
+ "fail",
  "rand 0.7.3",
  "secrecy",
  "strobe-rs",
+ "tempdir",
  "thiserror",
  "zeroize",
 ]

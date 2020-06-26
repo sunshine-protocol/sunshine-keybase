@@ -83,6 +83,10 @@ impl Password {
         Password(Secret::kdf(plain))
     }
 
+    pub async fn generate() -> Self {
+        Self(Secret::generate().await)
+    }
+
     pub fn expose_secret(&self) -> &[u8; SECRET_LEN] {
         self.0.expose_secret()
     }
