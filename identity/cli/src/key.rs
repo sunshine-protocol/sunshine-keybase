@@ -38,13 +38,11 @@ where
         let dk = if self.paperkey {
             let mnemonic = ask_for_phrase("Please enter your backup phrase:").await?;
             DeviceKey::from_mnemonic(&mnemonic).map_err(|_| Error::InvalidMnemonic)?
+        } else if let Some(suri) = &self.suri {
+            let suri: Suri<P> = suri.parse()?;
+            DeviceKey::from_seed(suri.0.into())
         } else {
-            if let Some(suri) = &self.suri {
-                let suri: Suri<P> = suri.parse()?;
-                DeviceKey::from_seed(suri.0.into())
-            } else {
-                DeviceKey::generate().await
-            }
+            DeviceKey::generate().await
         };
         let account_id = client.set_device_key(&dk, &password, self.force).await?;
         let account_id_str = account_id.to_string();

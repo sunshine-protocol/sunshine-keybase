@@ -6,8 +6,7 @@ use ipfs_embed::{Config, Store};
 use keystore::bip39::{Language, Mnemonic};
 use keystore::{DeviceKey, KeyStore, Password};
 use std::{ffi::CStr, os::raw, path::PathBuf};
-use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
-use substrate_subxt::sp_core::{crypto::Ss58Codec, sr25519};
+use substrate_subxt::sp_core::sr25519;
 use substrate_subxt::{ClientBuilder, Signer};
 
 use test_client::Runtime;
