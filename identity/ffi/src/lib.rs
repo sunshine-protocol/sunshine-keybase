@@ -5,10 +5,10 @@ use ipfs_embed::{Config, Store};
 use keystore::bip39::{Language, Mnemonic};
 use keystore::{DeviceKey, KeyStore, Password};
 use std::{ffi::CStr, os::raw, path::PathBuf};
-use substrate_subxt::balances::{TransferCallExt, TransferEventExt};
-use substrate_subxt::sp_core::{crypto::Ss58Codec, sr25519};
+use substrate_subxt::sp_core::sr25519;
 use substrate_subxt::{ClientBuilder, Signer};
 
+use client::Service;
 use test_client::Runtime;
 
 mod macros;
@@ -32,6 +32,12 @@ enum_result! {
   CLIENT_PASSWORD_TOO_SHORT = 10,
   CLIENT_BAD_SURI = 11,
   CLIENT_BAD_MNEMONIC = 12,
+  CLIENT_BAD_UID = 13,
+  CLIENT_FAIL_TO_LOCK = 14,
+  CLIENT_LOCKED_OK = 15,
+  CLIENT_FAIL_TO_UNLOCK = 16,
+  CLIENT_UNLOCKED_OK = 17,
+  CLIENT_UNKNOWN_SERVICE = 18,
 }
 
 struct Paths {
@@ -152,10 +158,103 @@ pub extern "C" fn client_key_set(
     CLIENT_OK
 }
 
-/// Get the account id of the current device as String (if any)
-/// Note: the device key must be in unlocked state otherwise `null` is returuned
+/// Get the UID of identifier as String (if any)
 #[no_mangle]
-pub extern "C" fn client_account_id(port: i64) -> i32 {
+pub extern "C" fn client_resolve_uid(port: i64, identifier: *const raw::c_char) -> i32 {
+    let client = client!();
+    let isolate = Isolate::new(port);
+    let identifier = cstr!(identifier, allow_null).and_then(|v| v.parse().ok());
+    let t = isolate.task(async move {
+        let uid = result!(client::resolve(client, identifier).await, None);
+        Some(uid.to_string())
+    });
+    task::spawn(t);
+    CLIENT_OK
+}
+
+/// Get the a list that contains all the client identity data
+#[no_mangle]
+pub extern "C" fn client_identity(port: i64, uid: *const raw::c_char) -> i32 {
+    let client = client!();
+    let isolate = Isolate::new(port);
+    let uid = result!(cstr!(uid).parse(), CLIENT_BAD_UID);
+    let t = isolate.task(async move {
+        let info: Vec<_> = result!(client.identity(uid).await, None)
+            .into_iter()
+            .map(|v| v.to_string())
+            .collect();
+        Some(info)
+    });
+    task::spawn(t);
+    CLIENT_OK
+}
+
+/// Prove the account identity for the provided service and there id
+///
+/// Current Avalibale Services
+/// Github = 1
+#[no_mangle]
+pub extern "C" fn client_prove_identity(port: i64, service: i32, id: *const raw::c_char) -> i32 {
+    let client = client!();
+    let isolate = Isolate::new(port);
+    let id = cstr!(id);
+    let service = match service {
+        1 => Service::Github(id.to_owned()),
+        _ => return CLIENT_UNKNOWN_SERVICE,
+    };
+    let t = isolate.task(async move {
+        let instructions = service.cli_instructions();
+        let proof = result!(client.prove_identity(service).await, None);
+        Some(vec![instructions, proof])
+    });
+    task::spawn(t);
+    CLIENT_OK
+}
+
+/// Lock the client
+#[no_mangle]
+pub extern "C" fn client_lock(port: i64) -> i32 {
+    let client = client!();
+    let isolate = Isolate::new(port);
+    let t = isolate.task(async move {
+        result!(client.lock().await, CLIENT_FAIL_TO_LOCK);
+        CLIENT_LOCKED_OK
+    });
+    task::spawn(t);
+    CLIENT_OK
+}
+
+/// UnLock the client
+#[no_mangle]
+pub extern "C" fn client_unlock(port: i64, password: *const raw::c_char) -> i32 {
+    let client = client!();
+    let isolate = Isolate::new(port);
+    let password = cstr!(password);
+    let password = Password::from(password.to_owned());
+    let t = isolate.task(async move {
+        result!(client.unlock(&password).await, CLIENT_FAIL_TO_UNLOCK);
+        CLIENT_UNLOCKED_OK
+    });
+    task::spawn(t);
+    CLIENT_OK
+}
+
+/// Add new paperkey from the current account
+#[no_mangle]
+pub extern "C" fn client_add_paperkey(port: i64) -> i32 {
+    let client = client!();
+    let isolate = Isolate::new(port);
+    let t = isolate.task(async move {
+        let mnemonic = result!(client.add_paperkey().await, None);
+        Some(mnemonic.into_phrase())
+    });
+    task::spawn(t);
+    CLIENT_OK
+}
+
+/// Get account id
+#[no_mangle]
+pub extern "C" fn client_signer_account_id(port: i64) -> i32 {
     let client = client!();
     let isolate = Isolate::new(port);
     let t = isolate.task(async move {
