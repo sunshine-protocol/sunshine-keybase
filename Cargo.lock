@@ -6726,10 +6726,14 @@ dependencies = [
  "client-identity",
  "env_logger",
  "jsonrpsee",
+ "sc-service",
+ "sled",
+ "sp-database",
  "sp-keyring",
  "substrate-subxt",
  "tempdir",
  "test-node",
+ "thiserror",
  "utils-identity",
 ]
 
