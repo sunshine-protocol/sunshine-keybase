@@ -5,6 +5,8 @@ authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 
 [dependencies]
+# until subxt supports better event decoding we need to include it as a dependency
+client-identity = { path = "../../identity/client" }
 codec = { version = "1.3.0", package = "parity-scale-codec" }
 substrate-subxt = { version = "0.9.0", features = ["client"] }
 

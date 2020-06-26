@@ -793,6 +793,7 @@ name = "client-faucet"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "client-identity",
  "parity-scale-codec",
  "substrate-subxt",
  "test-client",
