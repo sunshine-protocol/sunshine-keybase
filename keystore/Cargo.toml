@@ -5,10 +5,16 @@ authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 
 [dependencies]
-async-std = { version = "=1.5.0", features = ["attributes", "unstable"] }
+async-std = { version = "=1.5.0", features = ["unstable"] }
 bip39 = "0.6.0-beta.1"
+fail = "0.4.0"
 rand = "0.7.3"
 secrecy = "0.6.0"
 strobe-rs = "0.5.3"
 thiserror = "1.0.20"
 zeroize = "1.1.0"
+
+[dev-dependencies]
+async-std = { version = "=1.5.0", features = ["attributes"] }
+fail = { version = "0.4.0", features = ["failpoints"] }
+tempdir = "0.3.7"

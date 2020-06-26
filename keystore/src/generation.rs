@@ -4,6 +4,7 @@ use crate::types::{
     DeviceKey, EncryptedDeviceKey, EncryptedRandomKey, Mask, Password, PublicDeviceKey, RandomKey,
 };
 use async_std::path::{Path, PathBuf};
+use fail::fail_point;
 
 pub struct Generation {
     gen: u16,
@@ -46,12 +47,25 @@ impl Generation {
         let rk = RandomKey::generate().await;
 
         let edk = dk.encrypt(&rk).await;
-        self.edk.write(&edk.0).await?;
 
         let pdk = rk.public(&pass);
         self.pdk.write(&pdk.0).await?;
 
-        self.unlock(pass).await?;
+        // Unlock
+        // So we can delay writing the private key we unlock manually
+        self.noise.generate().await?;
+        let nk = self.noise.read_secret().await?;
+
+        let erk = rk.encrypt(&nk);
+        self.erk.write(&erk.0).await?;
+        // End unlock
+
+        // Write private key at the end.
+        fail_point!("edk-write-fail", |_| Err(Error::Corrupted));
+        self.edk.write(&edk.0).await?;
+
+        // Make sure keystore is in a valid state.
+        self.device_key().await?;
 
         Ok(())
     }
@@ -116,6 +130,7 @@ impl Generation {
 
     /// Removes a generation.
     pub async fn remove(self) -> Result<(), Error> {
+        fail_point!("gen-rm-fail", |_| Ok(()));
         Ok(async_std::fs::remove_dir_all(&self.path).await?)
     }
 }

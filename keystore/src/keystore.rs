@@ -88,10 +88,15 @@ impl core::ops::Deref for KeyStore {
 mod tests {
     use super::*;
     use crate::types::{DeviceKey, Password};
+    use fail::FailScenario;
+    use tempdir::TempDir;
 
     #[async_std::test]
     async fn test_keystore() {
-        let mut store = KeyStore::open("/tmp/keystore").await.unwrap();
+        fail::cfg("edk-write-fail", "off").unwrap();
+        fail::cfg("gen-rm-fail", "off").unwrap();
+        let tmp = TempDir::new("keystore-").unwrap();
+        let mut store = KeyStore::open(tmp.path()).await.unwrap();
 
         // generate
         let key = DeviceKey::generate().await;
@@ -140,5 +145,84 @@ mod tests {
                 r.unwrap();
             }
         }
+    }
+
+    #[async_std::test]
+    #[ignore] // Fail tests can not be run in parallel
+    async fn test_edk_write_fail_unlock() {
+        fail::cfg("edk-write-fail", "off").unwrap();
+        fail::cfg("gen-rm-fail", "off").unwrap();
+        let tmp = TempDir::new("keystore-").unwrap();
+        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let key = DeviceKey::generate().await;
+        let pass = Password::generate().await;
+        store.initialize(&key, &pass).await.unwrap();
+
+        let scenario = FailScenario::setup();
+
+        fail::cfg("edk-write-fail", "return(())").unwrap();
+        let npass = Password::generate().await;
+        let mask = store.change_password_mask(&npass).await.unwrap();
+        store.apply_mask(&mask, store.gen() + 1).await.ok();
+        store.lock().await.unwrap();
+        store.unlock(&pass).await.unwrap();
+
+        scenario.teardown();
+    }
+
+    #[async_std::test]
+    #[ignore] // Fail tests can not be run in parallel
+    async fn test_edk_write_fail_recovery() {
+        fail::cfg("edk-write-fail", "off").unwrap();
+        fail::cfg("gen-rm-fail", "off").unwrap();
+        let tmp = TempDir::new("keystore-").unwrap();
+        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let key = DeviceKey::generate().await;
+        let pass = Password::generate().await;
+        store.initialize(&key, &pass).await.unwrap();
+
+        let scenario = FailScenario::setup();
+
+        fail::cfg("edk-write-fail", "return(())").unwrap();
+        let npass = Password::generate().await;
+        let mask = store.change_password_mask(&npass).await.unwrap();
+        store.apply_mask(&mask, store.gen() + 1).await.ok();
+
+        let key2 = store.device_key().await.unwrap();
+        assert_eq!(key.expose_secret(), key2.expose_secret());
+
+        let store = KeyStore::open(tmp.path()).await.unwrap();
+        let key2 = store.device_key().await.unwrap();
+        assert_eq!(key.expose_secret(), key2.expose_secret());
+
+        scenario.teardown();
+    }
+
+    #[async_std::test]
+    #[ignore] // Fail tests can not be run in parallel
+    async fn test_gen_remove_fail_recovery() {
+        fail::cfg("edk-write-fail", "off").unwrap();
+        fail::cfg("gen-rm-fail", "off").unwrap();
+        let tmp = TempDir::new("keystore-").unwrap();
+        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let key = DeviceKey::generate().await;
+        let pass = Password::generate().await;
+        store.initialize(&key, &pass).await.unwrap();
+
+        let scenario = FailScenario::setup();
+
+        fail::cfg("gen-rm-fail", "return(())").unwrap();
+        let npass = Password::generate().await;
+        let mask = store.change_password_mask(&npass).await.unwrap();
+        store.apply_mask(&mask, store.gen() + 1).await.ok();
+
+        let key2 = store.device_key().await.unwrap();
+        assert_eq!(key.expose_secret(), key2.expose_secret());
+
+        let store = KeyStore::open(tmp.path()).await.unwrap();
+        let key2 = store.device_key().await.unwrap();
+        assert_eq!(key.expose_secret(), key2.expose_secret());
+
+        scenario.teardown();
     }
 }
