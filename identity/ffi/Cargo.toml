@@ -16,10 +16,9 @@ dart-bindgen = "0.1"
 allo-isolate = "0.1.2"
 async-std = { version = "=1.5.0", features = ["attributes"] }
 client = { path = "../client", package = "client-identity" }
-ffi_helpers = "0.1.0"
+ffi_helpers = "0.2.0"
 ipfs-embed = "0.1.1"
 keystore = { path = "../../keystore", package = "keybase-keystore" }
-lazy_static = "1.4"
 substrate-subxt = "0.9.0"
 test-client = { path = "../../bin/client" }
 utils = { path = "../utils", package = "utils-identity" }
