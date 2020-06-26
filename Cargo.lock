@@ -6714,6 +6714,7 @@ dependencies = [
  "exitfailure",
  "ipfs-embed",
  "keybase-keystore",
+ "sled",
  "substrate-subxt",
  "test-client",
 ]
@@ -6726,10 +6727,14 @@ dependencies = [
  "client-identity",
  "env_logger",
  "jsonrpsee",
+ "sc-service",
+ "sled",
+ "sp-database",
  "sp-keyring",
  "substrate-subxt",
  "tempdir",
  "test-node",
+ "thiserror",
  "utils-identity",
 ]
 

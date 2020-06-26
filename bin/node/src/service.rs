@@ -26,6 +26,7 @@ native_executor_instance!(
 ///
 /// Use this macro if you don't actually need the full service, but just the builder in order to
 /// be able to perform chain operations.
+#[macro_export]
 macro_rules! new_full_start {
     ($config:expr) => {{
         use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;

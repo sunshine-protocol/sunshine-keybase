@@ -5,11 +5,9 @@ use cli_identity::{key::KeySetCommand, set_device_key, Command, Error};
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
 use keybase_keystore::KeyStore;
-use std::path::PathBuf;
 use std::time::Duration;
 use substrate_subxt::sp_core::sr25519;
-use substrate_subxt::ClientBuilder;
-use test_client::faucet;
+use test_client::{faucet, light};
 use test_client::Runtime;
 
 mod command;
@@ -19,44 +17,33 @@ async fn main() -> Result<(), ExitDisplay<Error>> {
     Ok(run().await?)
 }
 
-struct Paths {
-    _root: PathBuf,
-    keystore: PathBuf,
-    db: PathBuf,
-}
-
-impl Paths {
-    fn new(root: Option<PathBuf>) -> Result<Self, Error> {
-        let root = if let Some(root) = root {
-            root
-        } else {
-            dirs2::config_dir()
-                .ok_or(Error::ConfigDirNotFound)?
-                .join("cli-identity")
-        };
-        let keystore = root.join("keystore");
-        let db = root.join("db");
-        Ok(Paths {
-            _root: root,
-            keystore,
-            db,
-        })
-    }
-}
-
 type Client = test_client::identity::Client<Runtime, sr25519::Pair, Store>;
 
 async fn run() -> Result<(), Error> {
     env_logger::init();
     let opts: Opts = Opts::parse();
-    let paths = Paths::new(opts.path)?;
+    let root = if let Some(root) = opts.path {
+        root
+    } else {
+        dirs2::config_dir()
+            .ok_or(Error::ConfigDirNotFound)?
+            .join("sunshine-identity")
+    };
+    let keystore = KeyStore::open(root.join("keystore")).await?;
+    let db = sled::open(root.join("db")).unwrap();
+    let db_ipfs = db.open_tree("ipfs").unwrap();
 
-    let keystore = KeyStore::open(&paths.keystore).await?;
-    let subxt = ClientBuilder::new().build().await?;
-    let config = Config::from_path(&paths.db).unwrap();
+    #[cfg(not(feature = "light"))]
+    let subxt = substrate_subxt::ClientBuilder::new().build().await?;
+    #[cfg(feature = "light")]
+    let subxt = {
+        let db_light = db.open_tree("substrate").unwrap();
+        light::build_light_client(db_light, include_bytes!("../chain-spec.json")).await.unwrap()
+    };
+
+    let config = Config::from_tree(db_ipfs);
     let store = Store::new(config).unwrap();
-
-    let client = Client::new(keystore, subxt.clone(), store);
+    let client = Client::new(keystore, subxt, store);
 
     let mut password_changes = None;
     if client.has_device_key().await {

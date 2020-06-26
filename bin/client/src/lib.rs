@@ -8,6 +8,8 @@ use utils_identity::cid::CidBytes;
 
 pub use client_faucet as faucet;
 pub use client_identity as identity;
+#[cfg(feature = "light")]
+pub mod light;
 
 pub type AccountId = <<sp_runtime::MultiSignature as Verify>::Signer as IdentifyAccount>::AccountId;
 pub type Uid = u32;
