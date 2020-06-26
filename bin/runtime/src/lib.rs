@@ -267,7 +267,7 @@ impl identity::Trait for Runtime {
 }
 
 impl faucet::Trait for Runtime {
-    const MINT_UNIT: Self::Balance = 1_000_000;
+    const MINT_UNIT: Self::Balance = 1_000_000_000;
     type Event = Event;
 }
 

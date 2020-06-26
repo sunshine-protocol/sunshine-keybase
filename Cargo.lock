@@ -809,6 +809,7 @@ dependencies = [
  "ipld-block-builder",
  "keybase-keystore",
  "libipld",
+ "log",
  "parity-scale-codec",
  "serde",
  "serde_json",

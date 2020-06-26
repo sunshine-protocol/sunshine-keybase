@@ -1,10 +1,12 @@
 use crate::command::*;
+use async_std::task;
 use clap::Clap;
 use cli_identity::{key::KeySetCommand, set_device_key, Command, Error};
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
 use keybase_keystore::KeyStore;
 use std::path::PathBuf;
+use std::time::Duration;
 use substrate_subxt::sp_core::sr25519;
 use substrate_subxt::ClientBuilder;
 use test_client::faucet;
@@ -56,6 +58,15 @@ async fn run() -> Result<(), Error> {
 
     let client = Client::new(keystore, subxt.clone(), store);
 
+    let mut password_changes = None;
+    if client.has_device_key().await {
+        if let Ok(_) = client.signer().await {
+            let sub = client.subscribe_password_changes().await?;
+            client.update_password().await?;
+            password_changes = Some(sub);
+        }
+    }
+
     match opts.cmd {
         SubCommand::Key(KeyCommand { cmd }) => match cmd {
             KeySubCommand::Set(KeySetCommand {
@@ -96,6 +107,14 @@ async fn run() -> Result<(), Error> {
             WalletSubCommand::Balance(cmd) => cmd.exec(&client).await,
             WalletSubCommand::Transfer(cmd) => cmd.exec(&client).await,
         },
-        SubCommand::Run(cmd) => cmd.exec(&client).await,
+        SubCommand::Run => loop {
+            if let Some(sub) = password_changes.as_mut() {
+                if let Some(_) = sub.next().await {
+                    client.update_password().await?;
+                }
+            } else {
+                task::sleep(Duration::from_millis(100)).await
+            }
+        },
     }
 }
