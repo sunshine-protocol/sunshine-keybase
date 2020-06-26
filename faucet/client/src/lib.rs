@@ -54,4 +54,5 @@ mod tests {
             .unwrap();
         let hans = PairSigner::<Runtime, _>::new(Pair::generate().0);
         faucet::mint(&client, hans.account_id()).await.unwrap();
+    }
 }
