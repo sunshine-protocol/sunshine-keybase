@@ -161,7 +161,6 @@ pub extern "C" fn client_account_id(port: i64) -> i32 {
     let client = client!();
     let isolate = Isolate::new(port);
     let t = isolate.task(async move {
-        // TODO
         let signer = result!(client.signer().await, None);
         Some(signer.account_id().to_string())
     });

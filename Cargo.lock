@@ -1218,7 +1218,6 @@ dependencies = [
  "ffi_helpers",
  "ipfs-embed",
  "keybase-keystore",
- "lazy_static",
  "substrate-subxt",
  "test-client",
  "utils-identity",
@@ -2036,23 +2035,6 @@ dependencies = [
  "tokio 0.2.21",
  "tokio-rustls",
  "webpki",
-]
-
-[[package]]
-name = "identity-cli"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "clap 3.0.0-beta.1",
- "client-identity",
- "dirs2",
- "env_logger",
- "keybase-keystore",
- "qr2term",
- "rpassword",
- "substrate-subxt",
- "textwrap",
- "thiserror",
 ]
 
 [[package]]
