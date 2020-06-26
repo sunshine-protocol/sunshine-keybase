@@ -44,7 +44,7 @@ pub async fn ask_for_phrase(prompt: &str) -> Result<Mnemonic> {
             words.push(word.trim().to_string());
         }
     }
-    println!("");
+    println!();
     Ok(Mnemonic::from_phrase(&words.join(" "), Language::English)
         .map_err(|_| Error::InvalidMnemonic)?)
 }

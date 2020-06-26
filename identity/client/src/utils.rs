@@ -24,7 +24,7 @@ impl<P: Pair> FromStr for Suri<P> {
     type Err = InvalidSuri;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let (_, seed) = P::from_string_with_seed(string, None).map_err(|err| InvalidSuri(err))?;
+        let (_, seed) = P::from_string_with_seed(string, None).map_err(InvalidSuri)?;
         Ok(Self(seed.unwrap()))
     }
 }
@@ -44,7 +44,7 @@ where
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         Ok(Self(
-            <T::AccountId as Ss58Codec>::from_string(string).map_err(|err| InvalidSs58(err))?,
+            <T::AccountId as Ss58Codec>::from_string(string).map_err(InvalidSs58)?,
         ))
     }
 }
