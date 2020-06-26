@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 
+[features]
+light = ["test-client/light"]
+
 [dependencies]
 async-std = { version = "=1.5.0", features = ["attributes"] }
 exitfailure = "0.5.1"
@@ -13,5 +16,6 @@ dirs2 = "3.0.1"
 env_logger = "0.7.1"
 ipfs-embed = "0.1.1"
 keybase-keystore = { path = "../../keystore" }
+sled = "0.32.0"
 substrate-subxt = "0.9.0"
 test-client = { path = "../client" }

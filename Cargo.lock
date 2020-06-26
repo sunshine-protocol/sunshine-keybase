@@ -6714,6 +6714,7 @@ dependencies = [
  "exitfailure",
  "ipfs-embed",
  "keybase-keystore",
+ "sled",
  "substrate-subxt",
  "test-client",
 ]
