@@ -13,7 +13,6 @@ use keystore::bip39::{Language, Mnemonic};
 use keystore::{DeviceKey, Password};
 use substrate_subxt::system::System;
 
-
 pub(crate) use async_trait::async_trait;
 pub(crate) use client_identity::{AbstractClient, Identity};
 pub(crate) use substrate_subxt::sp_core::Pair;
