@@ -6496,7 +6496,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.9.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=unsigned#11d111f001b5bc2a06d4e835fe46b11eeccfd40c"
+source = "git+https://github.com/paritytech/substrate-subxt#4ee7fb11ad376d72f225fd068ea1a6445f6cc36c"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -6524,7 +6524,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-client"
 version = "0.1.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=unsigned#11d111f001b5bc2a06d4e835fe46b11eeccfd40c"
+source = "git+https://github.com/paritytech/substrate-subxt#4ee7fb11ad376d72f225fd068ea1a6445f6cc36c"
 dependencies = [
  "async-std",
  "futures 0.1.29",
@@ -6541,7 +6541,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.9.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=unsigned#11d111f001b5bc2a06d4e835fe46b11eeccfd40c"
+source = "git+https://github.com/paritytech/substrate-subxt#4ee7fb11ad376d72f225fd068ea1a6445f6cc36c"
 dependencies = [
  "heck",
  "proc-macro-crate",
