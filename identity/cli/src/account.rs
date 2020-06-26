@@ -31,8 +31,6 @@ impl<T: Runtime + Identity, P: Pair> Command<T, P> for AccountPasswordCommand {
     async fn exec(&self, client: &dyn AbstractClient<T, P>) -> Result<()> {
         let password = ask_for_new_password()?;
         client.change_password(&password).await?;
-        // TODO
-        //client.update_password().await?;
         Ok(())
     }
 }

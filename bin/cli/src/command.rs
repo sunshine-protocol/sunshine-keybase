@@ -1,5 +1,5 @@
 use clap::Clap;
-use cli_identity::{account, device, id, key, run, wallet};
+use cli_identity::{account, device, id, key, wallet};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Clap)]
@@ -17,7 +17,7 @@ pub enum SubCommand {
     Device(DeviceCommand),
     Id(IdCommand),
     Wallet(WalletCommand),
-    Run(run::RunCommand),
+    Run,
 }
 
 #[derive(Clone, Debug, Clap)]

@@ -12,6 +12,7 @@ frame-support = "2.0.0-rc3"
 ipld-block-builder = "0.3.0"
 keystore = { path = "../../keystore", package = "keybase-keystore" }
 libipld = { version = "0.3.0", features = ["dag-json"] }
+log = "0.4.8"
 serde = { version = "1.0.114", features = ["derive"] }
 # TODO export error in libipld
 serde_json = "1.0.55"

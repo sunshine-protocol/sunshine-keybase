@@ -6,7 +6,9 @@ use keystore::{DeviceKey, Password};
 use libipld::store::Store;
 use sp_core::crypto::{Pair, Ss58Codec};
 use sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
-use substrate_subxt::{sp_core, sp_runtime, system::System, Runtime, SignedExtra, Signer};
+use substrate_subxt::{
+    sp_core, sp_runtime, system::System, EventSubscription, Runtime, SignedExtra, Signer,
+};
 
 #[async_trait]
 pub trait AbstractClient<T: Runtime + Identity, P: Pair>: Send + Sync {
@@ -25,6 +27,8 @@ pub trait AbstractClient<T: Runtime + Identity, P: Pair>: Send + Sync {
     async fn add_key(&self, key: &T::AccountId) -> Result<()>;
     async fn remove_key(&self, key: &T::AccountId) -> Result<()>;
     async fn change_password(&self, password: &Password) -> Result<()>;
+    async fn update_password(&self) -> Result<()>;
+    async fn subscribe_password_changes(&self) -> Result<EventSubscription<T>>;
     async fn fetch_uid(&self, key: &T::AccountId) -> Result<Option<T::Uid>>;
     async fn fetch_keys(&self, uid: T::Uid, hash: Option<T::Hash>) -> Result<Vec<T::AccountId>>;
     async fn fetch_account(&self, uid: T::Uid) -> Result<T::IdAccountData>;
@@ -92,6 +96,14 @@ where
 
     async fn change_password(&self, password: &Password) -> Result<()> {
         self.change_password(password).await
+    }
+
+    async fn update_password(&self) -> Result<()> {
+        self.update_password().await
+    }
+
+    async fn subscribe_password_changes(&self) -> Result<EventSubscription<T>> {
+        self.subscribe_password_changes().await
     }
 
     async fn fetch_uid(&self, key: &T::AccountId) -> Result<Option<T::Uid>> {

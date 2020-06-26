@@ -3,7 +3,6 @@ pub mod device;
 mod error;
 pub mod id;
 pub mod key;
-pub mod run;
 pub mod wallet;
 
 pub use crate::error::*;

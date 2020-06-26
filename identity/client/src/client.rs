@@ -2,7 +2,7 @@ use crate::claim::{Claim, ClaimBody, IdentityInfo, IdentityStatus, UnsignedClaim
 use crate::error::{Error, Result};
 use crate::service::Service;
 use crate::subxt::*;
-use async_std::sync::Mutex;
+use async_std::sync::{Mutex, RwLock};
 use codec::{Decode, Encode};
 use core::convert::TryInto;
 use core::marker::PhantomData;
@@ -17,7 +17,7 @@ use std::time::UNIX_EPOCH;
 use substrate_subxt::sp_core::crypto::{Pair, Ss58Codec};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
 use substrate_subxt::system::System;
-use substrate_subxt::{PairSigner, Runtime, SignedExtra, Signer};
+use substrate_subxt::{EventSubscription, EventsDecoder, PairSigner, Runtime, SignedExtra, Signer};
 
 pub struct Client<T, P, I>
 where
@@ -27,7 +27,7 @@ where
     I: Store,
 {
     _marker: PhantomData<P>,
-    keystore: KeyStore,
+    keystore: RwLock<KeyStore>,
     subxt: substrate_subxt::Client<T>,
     cache: Mutex<Cache<I, Codec, Claim>>,
 }
@@ -48,7 +48,7 @@ where
     pub fn new(keystore: KeyStore, subxt: substrate_subxt::Client<T>, store: I) -> Self {
         Self {
             _marker: PhantomData,
-            keystore,
+            keystore: RwLock::new(keystore),
             subxt,
             cache: Mutex::new(Cache::new(store, Codec::new(), 32)),
         }
@@ -59,7 +59,7 @@ where
     }
 
     pub async fn has_device_key(&self) -> bool {
-        self.keystore.is_initialized().await
+        self.keystore.read().await.is_initialized().await
     }
 
     pub async fn set_device_key(
@@ -72,24 +72,28 @@ where
             return Err(Error::KeystoreInitialized);
         }
         let pair = P::from_seed(&P::Seed::from(*dk.expose_secret()));
-        self.keystore.initialize(&dk, &password).await?;
+        self.keystore
+            .read()
+            .await
+            .initialize(&dk, &password)
+            .await?;
         Ok(pair.public().into())
     }
 
     pub async fn signer(&self) -> Result<PairSigner<T, P>> {
         // fetch device key from disk every time to make sure account is unlocked.
-        let dk = self.keystore.device_key().await?;
+        let dk = self.keystore.read().await.device_key().await?;
         Ok(PairSigner::new(P::from_seed(&P::Seed::from(
             *dk.expose_secret(),
         ))))
     }
 
     pub async fn lock(&self) -> Result<()> {
-        Ok(self.keystore.lock().await?)
+        Ok(self.keystore.read().await.lock().await?)
     }
 
     pub async fn unlock(&self, password: &Password) -> Result<()> {
-        self.keystore.unlock(password).await?;
+        self.keystore.read().await.unlock(password).await?;
         Ok(())
     }
 
@@ -130,33 +134,47 @@ where
 
     pub async fn change_password(&self, password: &Password) -> Result<()> {
         let signer = self.signer().await?;
-        let mask = self.keystore.change_password_mask(password).await?;
-        let gen = self.keystore.gen() + 1;
+        let keystore = self.keystore.read().await;
+        let mask = keystore.change_password_mask(password).await?;
+        let gen = keystore.gen() + 1;
+        drop(keystore);
         self.subxt
             .change_password_and_watch(&signer, &T::Mask::from(*mask), T::Gen::from(gen))
             .await?;
         Ok(())
     }
 
-    pub async fn update_password(&mut self) -> Result<()> {
+    pub async fn update_password(&self) -> Result<()> {
         let signer = self.signer().await?;
         let uid = self
             .fetch_uid(signer.account_id())
             .await?
             .ok_or(Error::NoAccount)?;
         let pgen = self.subxt.password_gen(uid, None).await?.into();
-        let gen = self.keystore.gen();
+        let gen = self.keystore.read().await.gen();
         for g in gen..pgen {
+            log::info!("Password change detected: reencrypting keystore");
             let mask = self
                 .subxt
                 .password_mask(uid, T::Gen::from(g + 1), None)
                 .await?
                 .ok_or(Error::RuntimeInvalid)?;
             self.keystore
+                .write()
+                .await
                 .apply_mask(&Mask::new(mask.into()), g + 1)
                 .await?;
         }
         Ok(())
+    }
+
+    pub async fn subscribe_password_changes(&self) -> Result<EventSubscription<T>> {
+        let subscription = self.subxt.subscribe_events().await.unwrap();
+        let mut decoder = EventsDecoder::<T>::new(self.subxt.metadata().clone());
+        decoder.with_identity();
+        let mut subscription = EventSubscription::<T>::new(subscription, decoder);
+        subscription.filter_event::<PasswordChangedEvent<_>>();
+        Ok(subscription)
     }
 
     async fn set_identity(&self, claim: Claim, signer: &PairSigner<T, P>) -> Result<()> {
@@ -448,7 +466,7 @@ mod tests {
 
     #[async_std::test]
     async fn change_password() {
-        let (mut client1, subxt, _tmp1, _tmp2) = test_client().await;
+        let (client1, subxt, _tmp1, _tmp2) = test_client().await;
         let (client2, _tmp3) = build_client(subxt).await;
         client2
             .set_device_key(
@@ -460,9 +478,13 @@ mod tests {
             .unwrap();
         let signer2 = client2.signer().await.unwrap();
         client1.add_key(signer2.account_id()).await.unwrap();
+        let mut sub = client1.subscribe_password_changes().await.unwrap();
 
         let password = Password::from("password2".to_string());
         client2.change_password(&password).await.unwrap();
+
+        let event = sub.next().await;
+        assert!(event.is_some());
         client1.update_password().await.unwrap();
         client1.lock().await.unwrap();
         client1.unlock(&password).await.unwrap();

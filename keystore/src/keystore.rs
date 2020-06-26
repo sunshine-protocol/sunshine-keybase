@@ -124,6 +124,8 @@ mod tests {
 
         // make sure key is the same after lock/unlock
         store.lock().await.unwrap();
+
+        let store = KeyStore::open(tmp.path()).await.unwrap();
         store.unlock(&p2).await.unwrap();
         let key2 = store.device_key().await.unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());
