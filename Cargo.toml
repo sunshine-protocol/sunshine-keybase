@@ -12,5 +12,7 @@ members = [
     "identity/utils",
     "identity/ffi",
     "keystore",
-
 ]
+
+[patch.crates-io]
+substrate-subxt = { git = "https://github.com/dvc94ch/substrate-subxt", branch = "unsigned" }

@@ -1,5 +1,5 @@
 use clap::Clap;
-use cli_identity::{account, device, id, key, wallet, run};
+use cli_identity::{account, device, id, key, run, wallet};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Clap)]

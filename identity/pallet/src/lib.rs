@@ -120,10 +120,7 @@ decl_module! {
             let _ = ensure_signed(origin)?;
             Self::ensure_key_unused(&key)?;
 
-            let uid = Self::create_account(&key)?;
-            Self::deposit_event(RawEvent::AccountCreated(uid));
-            Self::deposit_event(RawEvent::KeyAdded(uid, key));
-
+            Self::create_account(key)?;
             Ok(())
         }
 
@@ -134,9 +131,7 @@ decl_module! {
             let uid = Self::ensure_uid(&who)?;
             Self::ensure_key_unused(&key)?;
 
-            Self::add_key_to_uid(uid, &key);
-            Self::deposit_event(RawEvent::KeyAdded(uid, key));
-
+            Self::add_key_to_uid(uid, key);
             Ok(())
         }
 
@@ -149,8 +144,7 @@ decl_module! {
             ensure!(who != key, Error::<T>::CantRemoveSelf);
             ensure!(<UidLookup<T>>::get(&key) == Some(uid), Error::<T>::Unauthorized);
 
-            Self::remove_key_from_uid(uid, &key);
-            Self::deposit_event(RawEvent::KeyRemoved(uid, key));
+            Self::remove_key_from_uid(uid, key);
             Ok(())
         }
 
@@ -203,7 +197,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    fn create_account(key: &<T as System>::AccountId) -> Result<T::Uid, Error<T>> {
+    fn create_account(key: <T as System>::AccountId) -> Result<T::Uid, Error<T>> {
         let uid = <UidCounter<T>>::get();
         let next_uid = uid
             .checked_add(&1u8.into())
@@ -211,20 +205,23 @@ impl<T: Trait> Module<T> {
         let gen = T::Gen::from(0u8);
         <UidCounter<T>>::put(next_uid);
         <PasswordGen<T>>::insert(uid, gen);
+        Self::deposit_event(RawEvent::AccountCreated(uid));
         Self::add_key_to_uid(uid, key);
         Ok(uid)
     }
 
-    fn add_key_to_uid(uid: T::Uid, key: &<T as System>::AccountId) {
+    fn add_key_to_uid(uid: T::Uid, key: <T as System>::AccountId) {
         <UidLookup<T>>::insert(key.clone(), uid);
         <Keys<T>>::mutate(uid, |keys| keys.insert(key.clone()));
+        Self::deposit_event(RawEvent::KeyAdded(uid, key));
     }
 
-    fn remove_key_from_uid(uid: T::Uid, key: &<T as System>::AccountId) {
+    fn remove_key_from_uid(uid: T::Uid, key: <T as System>::AccountId) {
         // The lookup can't be removed in case someone sends a transaction
         // to an old key or the same key being added to a different account
         // after being revoked.
-        <Keys<T>>::mutate(uid, |keys| keys.remove(key));
+        <Keys<T>>::mutate(uid, |keys| keys.remove(&key));
+        Self::deposit_event(RawEvent::KeyRemoved(uid, key));
     }
 }
 
@@ -246,7 +243,7 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
         f: impl FnOnce(&mut <T as Trait>::AccountData) -> R,
     ) -> R {
         if <UidLookup<T>>::get(k).is_none() {
-            Self::create_account(k).ok();
+            Self::create_account(k.clone()).ok();
         }
         if let Some(uid) = <UidLookup<T>>::get(k) {
             <Account<T>>::mutate(&uid, f)
@@ -261,7 +258,7 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
         f: impl FnOnce(&mut Option<<T as Trait>::AccountData>) -> R,
     ) -> R {
         if <UidLookup<T>>::get(k).is_none() {
-            Self::create_account(k).ok();
+            Self::create_account(k.clone()).ok();
         }
         if let Some(uid) = <UidLookup<T>>::get(k) {
             <Account<T>>::mutate_exists(&uid, f)
@@ -276,7 +273,7 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
         f: impl FnOnce(&mut Option<<T as Trait>::AccountData>) -> Result<R, E>,
     ) -> Result<R, E> {
         if <UidLookup<T>>::get(k).is_none() {
-            Self::create_account(k).ok();
+            Self::create_account(k.clone()).ok();
         }
         if let Some(uid) = <UidLookup<T>>::get(k) {
             <Account<T>>::try_mutate_exists(&uid, f)

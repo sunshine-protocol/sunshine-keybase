@@ -61,6 +61,7 @@ pub const MINT_UNIT: u128 = 10_000_000;
 pub type AccountStore = <Test as balances::Trait>::AccountStore;
 impl Trait for Test {
     const MINT_UNIT: Self::Balance = MINT_UNIT;
+    type Event = ();
 }
 pub type FaucetModule = Module<Test>;
 pub type BalancesModule = balances::Module<Test>;

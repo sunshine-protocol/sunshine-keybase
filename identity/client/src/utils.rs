@@ -106,15 +106,17 @@ where
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
-    use test_client::Runtime;
     use test_client::identity::{Identifier, Service, ServiceParseError};
     use test_client::mock::AccountKeyring;
+    use test_client::Runtime;
 
     #[test]
     fn parse_identifer() {
         assert_eq!(
             Identifier::from_str("dvc94ch@github"),
-            Ok(Identifier::<Runtime>::Service(Service::Github("dvc94ch".into())))
+            Ok(Identifier::<Runtime>::Service(Service::Github(
+                "dvc94ch".into()
+            )))
         );
         assert_eq!(
             Identifier::<Runtime>::from_str("dvc94ch@twitter"),
