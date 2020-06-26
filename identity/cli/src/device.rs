@@ -72,10 +72,10 @@ impl<T: Runtime + Identity, P: Pair> Command<T, P> for DevicePaperkeyCommand {
         let mnemonic = client.add_paperkey().await?;
         println!("Here is your secret paper key phrase:");
         let words: Vec<_> = mnemonic.phrase().split(' ').collect();
-        println!("");
+        println!();
         println!("{}", words[..12].join(" "));
         println!("{}", words[12..].join(" "));
-        println!("");
+        println!();
         println!("Write it down and keep somewhere safe.");
         Ok(())
     }

@@ -1,12 +1,13 @@
 use crate::command::*;
 use clap::Clap;
-use cli_identity::{Command, Error};
+use cli_identity::{key::KeySetCommand, set_device_key, Command, Error};
 use exitfailure::ExitDisplay;
 use ipfs_embed::{Config, Store};
 use keybase_keystore::KeyStore;
 use std::path::PathBuf;
 use substrate_subxt::sp_core::sr25519;
 use substrate_subxt::ClientBuilder;
+use test_client::faucet;
 use test_client::Runtime;
 
 mod command;
@@ -57,7 +58,22 @@ async fn run() -> Result<(), Error> {
 
     match opts.cmd {
         SubCommand::Key(KeyCommand { cmd }) => match cmd {
-            KeySubCommand::Set(cmd) => cmd.exec(&client).await,
+            KeySubCommand::Set(KeySetCommand {
+                paperkey,
+                suri,
+                force,
+            }) => {
+                let account_id = set_device_key(&client, paperkey, suri.as_deref(), force).await?;
+                println!("your device key is {}", account_id.to_string());
+                let amount = faucet::mint(client.subxt(), &account_id)
+                    .await?
+                    .unwrap()
+                    .amount;
+                println!("minted {} tokens into your account", amount);
+                let uid = client.fetch_uid(&account_id).await?.unwrap();
+                println!("your user id is {}", uid);
+                Ok(())
+            }
             KeySubCommand::Unlock(cmd) => cmd.exec(&client).await,
             KeySubCommand::Lock(cmd) => cmd.exec(&client).await,
         },

@@ -8,7 +8,6 @@ use std::{ffi::CStr, os::raw, path::PathBuf};
 use substrate_subxt::sp_core::sr25519;
 use substrate_subxt::{ClientBuilder, Signer};
 
-use client::Service;
 use test_client::Runtime;
 
 mod macros;
