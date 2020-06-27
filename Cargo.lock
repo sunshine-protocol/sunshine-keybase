@@ -1021,9 +1021,9 @@ dependencies = [
 
 [[package]]
 name = "dart-bindgen"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bab9aec28e1bc47b26f5cd0c88df0d2c962b36b171ca6aa28148588c6207b4a"
+checksum = "e0bdf9e176897030c5a4182e1c7a5f303b3bce1272f92e572b3192069c85ab8b"
 dependencies = [
  "clang",
  "log",
