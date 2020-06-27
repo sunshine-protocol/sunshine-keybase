@@ -1,10 +1,10 @@
 on:
   pull_request:
     branches:
-    - master
+      - master
   push:
     branches:
-    - master
+      - master
 
 name: sunshine-identity
 
@@ -14,35 +14,31 @@ jobs:
       fail-fast: false
       matrix:
         toolchain:
-        #- rust: stable
-        - rust: nightly
+          #- rust: stable
+          - rust: nightly
         platform:
-        - target: x86_64-unknown-linux-gnu
-          host: ubuntu-latest
-          cross: false
+          - target: x86_64-unknown-linux-gnu
+            host: ubuntu-latest
+            cross: false
 
-       # - target: x86_64-apple-darwin
-       #   host: macos-latest
-       #   cross: false
-
-       # - target: x86_64-pc-windows-msvc
-       #   host: windows-latest
-       #   cross: false
-
-       # - target: armv7-linux-androideabi
-       #   host: ubuntu-latest
-       #   cross: true
-       # - target: aarch64-linux-android
-       #   host: ubuntu-latest
-       #   cross: true
-
-       # - target: aarch64-apple-ios
-       #   host: macos-latest
-       #   cross: true
-
-       # - target: wasm32-unknown-unknown
-       #   host: ubuntu-latest
-       #   cross: true
+        # - target: x86_64-apple-darwin
+        #   host: macos-latest
+        #   cross: false
+        # - target: x86_64-pc-windows-msvc
+        #   host: windows-latest
+        #   cross: false
+        # - target: armv7-linux-androideabi
+        #   host: ubuntu-latest
+        #   cross: true
+        # - target: aarch64-linux-android
+        #   host: ubuntu-latest
+        #   cross: true
+        # - target: aarch64-apple-ios
+        #   host: macos-latest
+        #   cross: true
+        # - target: wasm32-unknown-unknown
+        #   host: ubuntu-latest
+        #   cross: true
     env:
       RUST_BACKTRACE: 1
       CARGO_INCREMENTAL: 0
@@ -51,58 +47,68 @@ jobs:
 
     runs-on: ${{ matrix.platform.host }}
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v2
+      - name: install packages on ubuntu
+        if: matrix.platform.host == 'ubuntu-latest'
+        run: sudo apt-get install libclang-dev
+      - name: install packages on macos
+        if: matrix.platform.host == 'macos-latest'
+        run: brew install llvm
+      - name: install packages on windows
+        if: matrix.platform.host == 'windows-latest'
+        run: choco install llvm
 
-    - name: Cache cargo folder
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo
-        key: ${{ matrix.platform.target }}-cargo-${{ matrix.toolchain.rust }}
+      - name: Checkout sources
+        uses: actions/checkout@v2
 
-    - name: Install rust toolchain
-      uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: ${{ matrix.toolchain.rust }}
-        targets: ${{ matrix.platform.target }}, wasm32-unknown-unknown
+      - name: Cache cargo folder
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo
+          key: ${{ matrix.platform.target }}-cargo-${{ matrix.toolchain.rust }}
 
-    - name: Install cargo-ndk
-      if: contains(matrix.platform.target, 'android')
-      run: cargo install cargo-ndk
+      - name: Install rust toolchain
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.toolchain.rust }}
+          targets: ${{ matrix.platform.target }}, wasm32-unknown-unknown
 
-    - name: Build
-      if: contains(matrix.platform.target, 'android') == false
-      run: cargo build --all --target ${{ matrix.platform.target }}
+      - name: Install cargo-ndk
+        if: contains(matrix.platform.target, 'android')
+        run: cargo install cargo-ndk
 
-    - name: Build android
-      if: contains(matrix.platform.target, 'android')
-      run: cargo ndk --android-platform 29 --target ${{ matrix.platform.target }} build --all
+      - name: Build
+        if: contains(matrix.platform.target, 'android') == false
+        run: cargo build --all --target ${{ matrix.platform.target }}
 
-    - name: Rust tests
-      if: matrix.platform.cross == false
-      run: cargo test --all
+      - name: Build android
+        if: contains(matrix.platform.target, 'android')
+        run: cargo ndk --android-platform 29 --target ${{ matrix.platform.target }} build --all
+
+      - name: Rust tests
+        if: matrix.platform.cross == false
+        run: cargo test --all
 
   lint-rust:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v2
+      - name: Checkout sources
+        uses: actions/checkout@v2
 
-    - name: Cache cargo folder
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo
-        key: lint-cargo
+      - name: Cache cargo folder
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo
+          key: lint-cargo
 
-    - name: Install rust toolchain
-      uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: nightly
-        components: clippy, rustfmt
-        targets: wasm32-unknown-unknown
+      - name: Install rust toolchain
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: nightly
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
 
-    - name: cargo fmt
-      run: cargo fmt --all -- --check
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
 
-    - name: cargo clippy
-      run: cargo clippy --workspace --examples --tests -- -D warnings
+      - name: cargo clippy
+        run: cargo clippy --workspace --examples --tests -- -D warnings
