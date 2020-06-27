@@ -1,0 +1,3 @@
+{
+  "dart.analysisExcludedFolders": ["identity/ffi"]
+}
