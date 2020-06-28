@@ -4,10 +4,6 @@ version = "0.1.0"
 authors = ["Shady Khalifa <shekohex@gmail.com>"]
 edition = "2018"
 
-[lib]
-name = "libidentity"
-crate-type = ["cdylib", "staticlib"]
-
 [dependencies]
 allo-isolate = "0.1.2"
 async-std = { version = "=1.5.0", features = ["attributes"] }
