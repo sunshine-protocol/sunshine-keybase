@@ -8,10 +8,6 @@ edition = "2018"
 name = "libidentity"
 crate-type = ["cdylib", "staticlib"]
 
-[build-dependencies]
-cbindgen = "0.14.3"
-dart-bindgen = "0.1.1"
-
 [dependencies]
 allo-isolate = "0.1.2"
 async-std = { version = "=1.5.0", features = ["attributes"] }
@@ -20,5 +16,4 @@ ffi_helpers = "0.2.0"
 ipfs-embed = "0.1.1"
 keystore = { path = "../../keystore", package = "keybase-keystore" }
 substrate-subxt = "0.9.0"
-test-client = { path = "../../bin/client" }
 utils = { path = "../utils", package = "utils-identity" }
