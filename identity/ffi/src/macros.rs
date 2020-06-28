@@ -1,13 +1,13 @@
 #[macro_export]
 macro_rules! __error {
     ($result:expr) => {
-        __error!($result, CLIENT_UNKNOWN);
+        $crate::__error!($result, CLIENT_UNKNOWN);
     };
     ($result:expr, $error:expr) => {
         match $result {
             Ok(value) => value,
             Err(e) => {
-                ffi_helpers::update_last_error(e);
+                $crate::ffi_helpers::update_last_error(e);
                 return $error;
             }
         }
@@ -17,7 +17,7 @@ macro_rules! __error {
 #[macro_export]
 macro_rules! __result {
     ($result:expr) => {
-        __result!($result, CLIENT_UNKNOWN);
+        $crate::__result!($result, CLIENT_UNKNOWN);
     };
     ($result:expr, $error:expr) => {
         match $result {
@@ -35,16 +35,16 @@ macro_rules! __cstr {
         if $ptr.is_null() {
             None
         } else {
-            Some(__cstr!($ptr))
+            Some($crate::__cstr!($ptr))
         }
     };
     ($ptr:expr) => {
-        __cstr!($ptr, CLIENT_BAD_CSTR);
+        $crate::__cstr!($ptr, CLIENT_BAD_CSTR);
     };
     ($ptr:expr, $error:expr) => {
         unsafe {
-            ffi_helpers::null_pointer_check!($ptr);
-            __error!(CStr::from_ptr($ptr).to_str(), $error)
+            $crate::ffi_helpers::null_pointer_check!($ptr);
+            $crate::__error!(CStr::from_ptr($ptr).to_str(), $error)
         }
     };
 }
@@ -52,7 +52,7 @@ macro_rules! __cstr {
 #[macro_export]
 macro_rules! __client {
     () => {
-        __client!(err = CLIENT_UNINIT);
+        $crate::__client!(err = CLIENT_UNINIT);
     };
     (err = $err:expr) => {
         // this safe since we get a immutable ref for the client
