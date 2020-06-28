@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! __error {
     ($result:expr) => {
-        __error!($result, $crate::CLIENT_UNKNOWN);
+        __error!($result, CLIENT_UNKNOWN);
     };
     ($result:expr, $error:expr) => {
         match $result {
@@ -17,7 +17,7 @@ macro_rules! __error {
 #[macro_export]
 macro_rules! __result {
     ($result:expr) => {
-        __result!($result, $crate::CLIENT_UNKNOWN);
+        __result!($result, CLIENT_UNKNOWN);
     };
     ($result:expr, $error:expr) => {
         match $result {
@@ -39,7 +39,7 @@ macro_rules! __cstr {
         }
     };
     ($ptr:expr) => {
-        __cstr!($ptr, $crate::CLIENT_BAD_CSTR);
+        __cstr!($ptr, CLIENT_BAD_CSTR);
     };
     ($ptr:expr, $error:expr) => {
         unsafe {
@@ -52,12 +52,12 @@ macro_rules! __cstr {
 #[macro_export]
 macro_rules! __client {
     () => {
-        __client!(err = $crate::CLIENT_UNINIT);
+        __client!(err = CLIENT_UNINIT);
     };
     (err = $err:expr) => {
         // this safe since we get a immutable ref for the client
         unsafe {
-            match $crate::CLIENT {
+            match CLIENT {
                 Some(ref client) => client,
                 None => {
                     return $err;
