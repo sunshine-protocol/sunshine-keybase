@@ -595,24 +595,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cbindgen"
-version = "0.14.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6e03a705df2e735cc5486f104a48e25a8f72ae06eaea5b7753a81270ed00859"
-dependencies = [
- "clap 2.33.1",
- "heck",
- "log",
- "proc-macro2",
- "quote 1.0.7",
- "serde",
- "serde_json",
- "syn 1.0.33",
- "tempfile",
- "toml",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -691,16 +673,6 @@ dependencies = [
  "multibase",
  "multihash",
  "unsigned-varint 0.3.3",
-]
-
-[[package]]
-name = "clang"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edaa418fdc81a329f3c8258a4e8776f7d2c31682147c5bda1c5c37ab8e818114"
-dependencies = [
- "clang-sys",
- "libc",
 ]
 
 [[package]]
@@ -1020,17 +992,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dart-bindgen"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0bdf9e176897030c5a4182e1c7a5f303b3bce1272f92e572b3192069c85ab8b"
-dependencies = [
- "clang",
- "log",
- "thiserror",
-]
-
-[[package]]
 name = "data-encoding"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1254,14 +1215,11 @@ version = "0.1.0"
 dependencies = [
  "allo-isolate",
  "async-std",
- "cbindgen",
  "client-identity",
- "dart-bindgen",
  "ffi_helpers",
  "ipfs-embed",
  "keybase-keystore",
  "substrate-subxt",
- "test-client",
  "utils-identity",
 ]
 
