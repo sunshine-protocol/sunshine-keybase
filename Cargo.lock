@@ -1220,6 +1220,7 @@ dependencies = [
  "ipfs-embed",
  "keybase-keystore",
  "substrate-subxt",
+ "test-client",
  "utils-identity",
 ]
 

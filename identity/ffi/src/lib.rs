@@ -1,17 +1,11 @@
+pub use {allo_isolate, async_std, client, ffi_helpers, ipfs_embed, keystore, substrate_subxt};
+
 mod macros;
-pub use allo_isolate::Isolate;
-pub use async_std::task;
-pub use client;
-pub use ffi_helpers;
-pub use ipfs_embed::{Config, Store};
-pub use keystore::bip39::{Language, Mnemonic};
-pub use keystore::{DeviceKey, KeyStore, Password};
-pub use substrate_subxt::sp_core::sr25519;
-pub use substrate_subxt::{ClientBuilder, Signer};
+
 /// Generate the FFI for the provided runtime
 ///
 /// ### Example
-/// ```ignore
+/// ```
 /// use test_client::Runtime;
 /// ffi_identity::impl_ffi!(runtime: Runtime);
 /// ```

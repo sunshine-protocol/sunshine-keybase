@@ -13,3 +13,6 @@ ipfs-embed = "0.1.1"
 keystore = { path = "../../keystore", package = "keybase-keystore" }
 substrate-subxt = "0.9.0"
 utils = { path = "../utils", package = "utils-identity" }
+
+[dev-dependencies]
+test-client = { path = "../../bin/client" }
