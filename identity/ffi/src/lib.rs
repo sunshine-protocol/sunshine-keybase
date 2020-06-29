@@ -219,7 +219,7 @@ macro_rules! impl_ffi {
             let isolate = Isolate::new(port);
             let id = $crate::__cstr!(id);
             let service = match service {
-                1 => ::client::Service::Github(id.to_owned()),
+                1 => client::Service::Github(id.to_owned()),
                 _ => return CLIENT_UNKNOWN_SERVICE,
             };
             let t = isolate.task(async move {
