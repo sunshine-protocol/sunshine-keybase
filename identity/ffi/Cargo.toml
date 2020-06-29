@@ -11,7 +11,7 @@ client = { path = "../client", package = "client-identity" }
 ffi_helpers = "0.2.0"
 ipfs-embed = "0.1.1"
 keystore = { path = "../../keystore", package = "keybase-keystore" }
-substrate-subxt = "0.9.0"
+substrate-subxt = "0.10.0"
 utils = { path = "../utils", package = "utils-identity" }
 
 [dev-dependencies]
