@@ -20,8 +20,9 @@ macro_rules! impl_ffi {
         use $crate::keystore::{DeviceKey, KeyStore, Password};
         use $crate::substrate_subxt::sp_core::sr25519;
         use $crate::substrate_subxt::{ClientBuilder, Signer};
-        type Suri = $crate::client::Suri<sr25519::Pair>;
-        type Client = $crate::client::Client<$runtime, sr25519::Pair, Store>;
+        use $crate::client;
+        type Suri = client::Suri<sr25519::Pair>;
+        type Client = client::Client<$runtime, sr25519::Pair, Store>;
 
         static mut CLIENT: Option<Client> = None;
 
