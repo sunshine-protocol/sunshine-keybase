@@ -150,7 +150,9 @@ mod tests {
     #[async_std::test]
     async fn test_secret_file() {
         let secret = Secret::generate().await;
-        let file = SecretFile::new("/tmp/secret_file".into());
+        let mut secret_file = std::env::temp_dir();
+        secret_file.push("secret_file");
+        let file = SecretFile::new(secret_file.into());
         file.write(&secret).await.unwrap();
         let secret2 = file.read().await.unwrap();
         assert_eq!(secret.expose_secret(), secret2.expose_secret());
@@ -158,7 +160,9 @@ mod tests {
 
     #[async_std::test]
     async fn test_noise_file() {
-        let noise = NoiseFile::new(PathBuf::from("/tmp/noise_file"));
+        let mut noise_file = std::env::temp_dir();
+        noise_file.push("noise_file");
+        let noise = NoiseFile::new(noise_file.into());
         noise.generate().await.unwrap();
         let n1 = noise.read_secret().await.unwrap();
         let n2 = noise.read_secret().await.unwrap();
