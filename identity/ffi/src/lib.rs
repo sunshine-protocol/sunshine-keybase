@@ -1,4 +1,6 @@
-pub use {allo_isolate, async_std, client, ffi_helpers, ipfs_embed, keystore, substrate_subxt};
+pub use {
+    allo_isolate, async_std, client, ffi_helpers, ipfs_embed, keystore, substrate_subxt, utils,
+};
 
 mod macros;
 
@@ -15,12 +17,12 @@ macro_rules! impl_ffi {
         use ::std::{ffi::CStr, os::raw, path::PathBuf};
         use $crate::allo_isolate::Isolate;
         use $crate::async_std::task;
+        use $crate::client;
         use $crate::ipfs_embed::{Config, Store};
         use $crate::keystore::bip39::{Language, Mnemonic};
         use $crate::keystore::{DeviceKey, KeyStore, Password};
         use $crate::substrate_subxt::sp_core::sr25519;
         use $crate::substrate_subxt::{ClientBuilder, Signer};
-        use $crate::client;
         type Suri = client::Suri<sr25519::Pair>;
         type Client = client::Client<$runtime, sr25519::Pair, Store>;
 
