@@ -11,7 +11,7 @@ light = ["test-client/light"]
 async-std = { version = "=1.5.0", features = ["attributes"] }
 exitfailure = "0.5.1"
 clap = "3.0.0-beta.1"
-cli-identity = { path = "../../identity/cli" }
+identity-cli = { package = "sunshine-identity-cli", path = "../../identity/cli" }
 dirs2 = "3.0.1"
 env_logger = "0.7.1"
 ipfs-embed = "0.1.1"

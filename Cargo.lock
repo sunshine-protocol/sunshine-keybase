@@ -743,55 +743,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cli-identity"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "async-trait",
- "clap 3.0.0-beta.1",
- "client-identity",
- "keybase-keystore",
- "libipld",
- "parity-scale-codec",
- "qr2term",
- "rpassword",
- "substrate-subxt",
- "textwrap 0.12.0",
- "thiserror",
-]
-
-[[package]]
-name = "client-faucet"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "client-identity",
- "parity-scale-codec",
- "substrate-subxt",
- "test-client",
-]
-
-[[package]]
-name = "client-identity"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "async-trait",
- "frame-support",
- "ipld-block-builder",
- "keybase-keystore",
- "libipld",
- "log",
- "parity-scale-codec",
- "serde",
- "serde_json",
- "substrate-subxt",
- "test-client",
- "thiserror",
- "ureq",
-]
-
-[[package]]
 name = "cloudabi"
 version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1207,21 +1158,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0da54a593b34c71b889ee45f5b5bb900c74148c5f7f8c6a9479ee7899f69603c"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "ffi-identity"
-version = "0.1.0"
-dependencies = [
- "allo-isolate",
- "async-std",
- "client-identity",
- "ffi_helpers",
- "ipfs-embed",
- "keybase-keystore",
- "substrate-subxt",
- "test-client",
- "utils-identity",
 ]
 
 [[package]]
@@ -3518,19 +3454,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-faucet"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-balances",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
-]
-
-[[package]]
 name = "pallet-finality-tracker"
 version = "2.0.0-rc3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3566,19 +3489,6 @@ dependencies = [
  "sp-session",
  "sp-staking",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-identity"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "orml-utilities",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
@@ -6670,6 +6580,105 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 
 [[package]]
+name = "sunshine-faucet-client"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "parity-scale-codec",
+ "substrate-subxt",
+ "sunshine-identity-client",
+ "test-client",
+]
+
+[[package]]
+name = "sunshine-faucet-pallet"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
+name = "sunshine-identity-cli"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "clap 3.0.0-beta.1",
+ "keybase-keystore",
+ "libipld",
+ "parity-scale-codec",
+ "qr2term",
+ "rpassword",
+ "substrate-subxt",
+ "sunshine-identity-client",
+ "textwrap 0.12.0",
+ "thiserror",
+]
+
+[[package]]
+name = "sunshine-identity-client"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "frame-support",
+ "ipld-block-builder",
+ "keybase-keystore",
+ "libipld",
+ "log",
+ "parity-scale-codec",
+ "serde",
+ "serde_json",
+ "substrate-subxt",
+ "test-client",
+ "thiserror",
+ "ureq",
+]
+
+[[package]]
+name = "sunshine-identity-ffi"
+version = "0.1.0"
+dependencies = [
+ "allo-isolate",
+ "async-std",
+ "ffi_helpers",
+ "ipfs-embed",
+ "keybase-keystore",
+ "substrate-subxt",
+ "sunshine-identity-client",
+ "sunshine-identity-utils",
+ "test-client",
+]
+
+[[package]]
+name = "sunshine-identity-pallet"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-utilities",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
+name = "sunshine-identity-utils"
+version = "0.1.0"
+dependencies = [
+ "libipld",
+ "parity-scale-codec",
+ "serde",
+]
+
+[[package]]
 name = "syn"
 version = "0.11.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6793,7 +6802,6 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
- "cli-identity",
  "dirs2",
  "env_logger",
  "exitfailure",
@@ -6801,6 +6809,7 @@ dependencies = [
  "keybase-keystore",
  "sled",
  "substrate-subxt",
+ "sunshine-identity-cli",
  "test-client",
 ]
 
@@ -6808,8 +6817,6 @@ dependencies = [
 name = "test-client"
 version = "0.1.0"
 dependencies = [
- "client-faucet",
- "client-identity",
  "env_logger",
  "jsonrpsee",
  "sc-service",
@@ -6817,10 +6824,12 @@ dependencies = [
  "sp-database",
  "sp-keyring",
  "substrate-subxt",
+ "sunshine-faucet-client",
+ "sunshine-identity-client",
+ "sunshine-identity-utils",
  "tempdir",
  "test-node",
  "thiserror",
- "utils-identity",
 ]
 
 [[package]]
@@ -6861,9 +6870,7 @@ dependencies = [
  "frame-system",
  "pallet-aura",
  "pallet-balances",
- "pallet-faucet",
  "pallet-grandpa",
- "pallet-identity",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-timestamp",
@@ -6883,7 +6890,9 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder-runner",
- "utils-identity",
+ "sunshine-faucet-pallet",
+ "sunshine-identity-pallet",
+ "sunshine-identity-utils",
 ]
 
 [[package]]
@@ -7508,15 +7517,6 @@ dependencies = [
  "idna 0.2.0",
  "matches",
  "percent-encoding 2.1.0",
-]
-
-[[package]]
-name = "utils-identity"
-version = "0.1.0"
-dependencies = [
- "libipld",
- "parity-scale-codec",
- "serde",
 ]
 
 [[package]]

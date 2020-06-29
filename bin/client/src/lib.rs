@@ -1,13 +1,13 @@
-use client_faucet::Faucet;
-use client_identity::Identity;
+use faucet_client::Faucet;
+use identity_client::Identity;
+use identity_utils::cid::CidBytes;
 use substrate_subxt::balances::{AccountData, Balances};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{sp_core, sp_runtime};
-use utils_identity::cid::CidBytes;
 
-pub use client_faucet as faucet;
-pub use client_identity as identity;
+pub use faucet_client as faucet;
+pub use identity_client as identity;
 #[cfg(feature = "light")]
 pub mod light;
 

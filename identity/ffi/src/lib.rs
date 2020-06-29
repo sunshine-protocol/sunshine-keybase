@@ -9,7 +9,7 @@ mod macros;
 /// ### Example
 /// ```
 /// use test_client::Runtime;
-/// ffi_identity::impl_ffi!(runtime: Runtime);
+/// sunshine_identity_ffi::impl_ffi!(runtime: Runtime);
 /// ```
 #[macro_export]
 macro_rules! impl_ffi {

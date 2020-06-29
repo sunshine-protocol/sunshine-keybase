@@ -1,8 +1,8 @@
 use crate::command::*;
 use async_std::task;
 use clap::Clap;
-use cli_identity::{key::KeySetCommand, set_device_key, Command, Error};
 use exitfailure::ExitDisplay;
+use identity_cli::{key::KeySetCommand, set_device_key, Command, Error};
 use ipfs_embed::{Config, Store};
 use keybase_keystore::KeyStore;
 use std::time::Duration;
@@ -47,7 +47,7 @@ async fn run() -> Result<(), Error> {
     let store = Store::new(config).unwrap();
     let client = Client::new(keystore, subxt, store);
 
-    let mut password_changes = if client.has_device_key().await && client.signer().await.is_ok() {
+    let mut password_changes = if client.signer().await.is_ok() {
         let sub = client.subscribe_password_changes().await?;
         client.update_password().await?;
         Some(sub)

@@ -262,7 +262,7 @@ impl sudo::Trait for Runtime {
 /// Used for the identity module.
 impl identity::Trait for Runtime {
     type Uid = u32;
-    type Cid = utils_identity::cid::CidBytes;
+    type Cid = identity_utils::cid::CidBytes;
     type Mask = [u8; 32];
     type Gen = u16;
     type AccountData = balances::AccountData<Balance>;

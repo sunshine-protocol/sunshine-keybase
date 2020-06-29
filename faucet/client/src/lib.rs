@@ -1,5 +1,5 @@
-use client_identity::{Identity, IdentityEventsDecoder};
 use codec::{Decode, Encode};
+use identity_client::{Identity, IdentityEventsDecoder};
 use substrate_subxt::balances::{Balances, BalancesEventsDecoder};
 use substrate_subxt::system::{System, SystemEventsDecoder};
 use substrate_subxt::{module, Call, Error, Event, Runtime, SignedExtension, SignedExtra};

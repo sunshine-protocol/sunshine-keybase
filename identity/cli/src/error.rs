@@ -3,7 +3,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
-    Identity(#[from] client_identity::Error),
+    Identity(#[from] identity_client::Error),
     #[error(transparent)]
     Subxt(#[from] substrate_subxt::Error),
     #[error(transparent)]
@@ -16,11 +16,11 @@ pub enum Error {
     #[error("Failed to find config dir. Use `--path` to supply a suitable directory.")]
     ConfigDirNotFound,
     #[error(transparent)]
-    InvalidSuri(#[from] client_identity::InvalidSuri),
+    InvalidSuri(#[from] identity_client::InvalidSuri),
     #[error(transparent)]
-    InvalidSs58(#[from] client_identity::InvalidSs58),
+    InvalidSs58(#[from] identity_client::InvalidSs58),
     #[error(transparent)]
-    InvalidService(#[from] client_identity::ServiceParseError),
+    InvalidService(#[from] identity_client::ServiceParseError),
     #[error("Failed to decode transfer event.")]
     TransferEventDecode,
     #[error("Failed to find transfer event.")]

@@ -1,11 +1,12 @@
 [package]
-name = "pallet-identity"
+name = "sunshine-identity-pallet"
 version = "0.1.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
-
-[package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+description = "Identity runtime module."
+license = "ISC"
+documentation = "https://docs.rs/sunshine-identity-pallet"
+repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false, features = ["derive"] }

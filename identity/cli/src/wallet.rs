@@ -1,7 +1,7 @@
 use crate::{async_trait, AbstractClient, Command, Error, Identity, Pair, Result, Runtime};
 use clap::Clap;
-use client_identity::{resolve, Identifier};
 use core::fmt::{Debug, Display};
+use identity_client::{resolve, Identifier};
 use substrate_subxt::balances::{Balances, TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;

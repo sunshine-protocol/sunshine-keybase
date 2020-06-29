@@ -3,6 +3,10 @@ name = "keybase-keystore"
 version = "0.1.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
+description = "Keybase keystore implementation."
+license = "ISC"
+documentation = "https://docs.rs/keybase-keystore"
+repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 async-std = { version = "=1.5.0", features = ["unstable"] }

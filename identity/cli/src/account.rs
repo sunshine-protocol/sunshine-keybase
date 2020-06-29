@@ -2,7 +2,7 @@ use crate::{
     ask_for_new_password, async_trait, AbstractClient, Command, Identity, Pair, Result, Runtime,
 };
 use clap::Clap;
-use client_identity::Ss58;
+use identity_client::Ss58;
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
 

@@ -1,18 +1,22 @@
 [package]
-name = "ffi-identity"
+name = "sunshine-identity-ffi"
 version = "0.1.0"
 authors = ["Shady Khalifa <shekohex@gmail.com>"]
 edition = "2018"
+description = "FFI for the identity module."
+license = "ISC"
+documentation = "https://docs.rs/sunshine-identity-ffi"
+repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 allo-isolate = "0.1.2"
 async-std = { version = "=1.5.0", features = ["attributes"] }
-client = { path = "../client", package = "client-identity" }
+client = { version = "0.1.0", path = "../client", package = "sunshine-identity-client" }
 ffi_helpers = "0.2.0"
 ipfs-embed = "0.1.1"
-keystore = { path = "../../keystore", package = "keybase-keystore" }
+keystore = { version = "0.1.0", path = "../../keystore", package = "keybase-keystore" }
 substrate-subxt = "0.10.0"
-utils = { path = "../utils", package = "utils-identity" }
+utils = { version = "0.1.0", path = "../utils", package = "sunshine-identity-utils" }
 
 [dev-dependencies]
 test-client = { path = "../../bin/client" }

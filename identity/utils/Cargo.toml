@@ -1,8 +1,12 @@
 [package]
-name = "utils-identity"
+name = "sunshine-identity-utils"
 version = "0.1.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
+description = "Utils shared by the runtime and the client."
+license = "ISC"
+documentation = "https://docs.rs/sunshine-identity-utils"
+repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [features]
 default = ["std"]
