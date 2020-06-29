@@ -9,11 +9,21 @@ mod macros;
 /// ### Example
 /// ```
 /// use test_client::Runtime;
-/// sunshine_identity_ffi::impl_ffi!(runtime: Runtime);
+/// use sunshine_identity_ffi::impl_ffi;
+/// use sunshine_identity_ffi::client::Error;
+///
+/// async fn setup_client(root: &str) -> Result<Client, Error> {
+///     // Client Setup here..
+///     # Err(Error::RuntimeInvalid)
+/// }
+/// impl_ffi!(runtime: Runtime, client: setup_client);
 /// ```
 #[macro_export]
 macro_rules! impl_ffi {
-    (runtime: $runtime: ty) => {
+    (client: $client: expr, runtime: $runtime: ty) => {
+        impl_ffi!($runtime, $client);
+    };
+    (runtime: $runtime: ty, client: $client: expr) => {
         use ::std::{ffi::CStr, os::raw, path::PathBuf};
         use $crate::allo_isolate::Isolate;
         use $crate::async_std::task;
@@ -32,36 +42,19 @@ macro_rules! impl_ffi {
           CLIENT_UNKNOWN = -1,
           CLIENT_OK = 1,
           CLIENT_BAD_CSTR = 2,
-          CLIENT_SUBXT_CREATE_ERR = 3,
-          CLIENT_IPFS_CONFIG_ERR = 4,
-          CLIENT_KEYSTORE_OPEN_ERR = 5,
-          CLIENT_IPFS_STORE_ERR = 6,
-          CLIENT_UNINIT = 7,
-          CLIENT_ALREADY_INIT = 8,
-          CLIENT_HAS_DEVICE_KEY = 9,
-          CLIENT_PASSWORD_TOO_SHORT = 10,
-          CLIENT_BAD_SURI = 11,
-          CLIENT_BAD_MNEMONIC = 12,
-          CLIENT_BAD_UID = 13,
-          CLIENT_FAIL_TO_LOCK = 14,
-          CLIENT_LOCKED_OK = 15,
-          CLIENT_FAIL_TO_UNLOCK = 16,
-          CLIENT_UNLOCKED_OK = 17,
-          CLIENT_UNKNOWN_SERVICE = 18,
-        }
-
-        struct Paths {
-            keystore: PathBuf,
-            db: PathBuf,
-        }
-
-        impl Paths {
-            fn new(root: impl Into<PathBuf>) -> Self {
-                let root = root.into();
-                let keystore = root.join("keystore");
-                let db = root.join("db");
-                Paths { keystore, db }
-            }
+          CLIENT_CREATE_ERR = 3,
+          CLIENT_UNINIT = 4,
+          CLIENT_ALREADY_INIT = 5,
+          CLIENT_HAS_DEVICE_KEY = 6,
+          CLIENT_PASSWORD_TOO_SHORT = 7,
+          CLIENT_BAD_SURI = 8,
+          CLIENT_BAD_MNEMONIC = 9,
+          CLIENT_BAD_UID = 10,
+          CLIENT_FAIL_TO_LOCK = 11,
+          CLIENT_LOCKED_OK = 12,
+          CLIENT_FAIL_TO_UNLOCK = 13,
+          CLIENT_UNLOCKED_OK = 14,
+          CLIENT_UNKNOWN_SERVICE = 15,
         }
 
         #[no_mangle]
@@ -92,19 +85,9 @@ macro_rules! impl_ffi {
                 }
             }
             let root = $crate::__cstr!(path);
-            let paths = Paths::new(root);
             let isolate = Isolate::new(port);
             let t = isolate.task(async move {
-                let keystore = $crate::__result!(
-                    KeyStore::open(&paths.keystore).await,
-                    CLIENT_KEYSTORE_OPEN_ERR
-                );
-                let subxt =
-                    $crate::__result!(ClientBuilder::new().build().await, CLIENT_SUBXT_CREATE_ERR);
-                let config =
-                    $crate::__result!(Config::from_path(&paths.db), CLIENT_IPFS_CONFIG_ERR);
-                let store = $crate::__result!(Store::new(config), CLIENT_IPFS_STORE_ERR);
-                let client = Client::new(keystore, subxt, store);
+                let client: Client = $crate::__result!($client(root).await, CLIENT_CREATE_ERR);
                 // SAFETY:
                 // this safe since we checked that the client is already not created before.
                 unsafe {
