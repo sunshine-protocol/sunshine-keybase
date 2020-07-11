@@ -2,6 +2,9 @@ pub use {
     allo_isolate, async_std, client, ffi_helpers, ipfs_embed, keystore, log, substrate_subxt, utils,
 };
 
+#[cfg(feature = "faucet")]
+pub use faucet_client;
+
 mod macros;
 
 /// Generate the FFI for the provided runtime
@@ -28,6 +31,8 @@ macro_rules! impl_ffi {
         use $crate::allo_isolate::Isolate;
         use $crate::async_std::task;
         use $crate::client;
+        #[cfg(feature = "faucet")]
+        use $crate::faucet_client;
         use $crate::ipfs_embed::{Config, Store};
         use $crate::keystore::bip39::{Language, Mnemonic};
         use $crate::keystore::{DeviceKey, KeyStore, Password};
@@ -152,9 +157,29 @@ macro_rules! impl_ffi {
                 } else {
                     DeviceKey::generate().await
                 };
-                let account_id =
+                let device_id =
                     $crate::__result!(client.set_device_key(&dk, &password, false).await, None);
-                $crate::__result!(client.fetch_uid(&account_id).await, None)
+                Some(device_id.to_string())
+            });
+            task::spawn(t);
+            CLIENT_OK
+        }
+
+        #[cfg(feature = "faucet")]
+        #[allow(clippy::not_unsafe_ptr_arg_deref)]
+        #[no_mangle]
+        pub extern "C" fn client_faucet_mint(port: i64, identifier: *const raw::c_char) -> i32 {
+            let client = $crate::__client!();
+            let isolate = Isolate::new(port);
+            let identifier = $crate::__cstr!(identifier);
+            let t = isolate.task(async move {
+                let ss58 = $crate::__result!(identifier.parse::<client::Ss58::<$runtime>>(), 0);
+                let mint = $crate::__result!(faucet_client::mint(client.subxt(), &ss58.0).await, 0);
+                if let Some(minted) = mint {
+                    minted.amount
+                } else {
+                    0
+                }
             });
             task::spawn(t);
             CLIENT_OK
@@ -250,6 +275,7 @@ macro_rules! impl_ffi {
         }
 
         /// Add new paperkey from the current account
+        #[allow(clippy::not_unsafe_ptr_arg_deref)]
         #[no_mangle]
         pub extern "C" fn client_add_paperkey(port: i64) -> i32 {
             let client = $crate::__client!();
@@ -263,6 +289,7 @@ macro_rules! impl_ffi {
         }
 
         /// Get account id
+        #[allow(clippy::not_unsafe_ptr_arg_deref)]
         #[no_mangle]
         pub extern "C" fn client_current_device_id(port: i64) -> i32 {
             let client = $crate::__client!();
@@ -276,6 +303,7 @@ macro_rules! impl_ffi {
         }
 
         /// Get account balance
+        #[allow(clippy::not_unsafe_ptr_arg_deref)]
         #[no_mangle]
         pub extern "C" fn client_balance(port: i64, identifier: *const raw::c_char) -> i32 {
             let client = $crate::__client!();
@@ -291,6 +319,7 @@ macro_rules! impl_ffi {
         }
 
         /// transfer to another account
+        #[allow(clippy::not_unsafe_ptr_arg_deref)]
         #[no_mangle]
         pub extern "C" fn client_transfer(
             port: i64,
