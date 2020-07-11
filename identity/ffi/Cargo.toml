@@ -18,7 +18,7 @@ keystore = { version = "0.1.0", path = "../../keystore", package = "keybase-keys
 substrate-subxt = "0.10.0"
 utils = { version = "0.1.0", path = "../utils", package = "sunshine-identity-utils" }
 log = "^0.4"
-faucet-client = { path = "../../faucet/client", package = "sunshine-faucet-client", optional = true }
+faucet-client = { version = "0.1.0", path = "../../faucet/client", package = "sunshine-faucet-client", optional = true }
 
 [dev-dependencies]
 test-client = { path = "../../bin/client" }
