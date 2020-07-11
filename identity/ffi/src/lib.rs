@@ -1,5 +1,5 @@
 pub use {
-    allo_isolate, async_std, client, ffi_helpers, ipfs_embed, keystore, substrate_subxt, utils,
+    allo_isolate, async_std, client, ffi_helpers, ipfs_embed, keystore, log, substrate_subxt, utils,
 };
 
 mod macros;
@@ -31,8 +31,12 @@ macro_rules! impl_ffi {
         use $crate::ipfs_embed::{Config, Store};
         use $crate::keystore::bip39::{Language, Mnemonic};
         use $crate::keystore::{DeviceKey, KeyStore, Password};
+        use $crate::log::{error, info};
+        use $crate::substrate_subxt::balances::{Balances, TransferCallExt, TransferEventExt};
         use $crate::substrate_subxt::sp_core::sr25519;
         use $crate::substrate_subxt::{ClientBuilder, Signer};
+        use $crate::substrate_subxt::{SignedExtension, SignedExtra};
+
         type Suri = client::Suri<sr25519::Pair>;
         type Client = client::Client<$runtime, sr25519::Pair, Store>;
 
@@ -260,12 +264,59 @@ macro_rules! impl_ffi {
 
         /// Get account id
         #[no_mangle]
-        pub extern "C" fn client_signer_account_id(port: i64) -> i32 {
+        pub extern "C" fn client_current_device_id(port: i64) -> i32 {
             let client = $crate::__client!();
             let isolate = Isolate::new(port);
             let t = isolate.task(async move {
                 let signer = $crate::__result!(client.signer().await, None);
                 Some(signer.account_id().to_string())
+            });
+            task::spawn(t);
+            CLIENT_OK
+        }
+
+        /// Get account balance
+        #[no_mangle]
+        pub extern "C" fn client_balance(port: i64, identifier: *const raw::c_char) -> i32 {
+            let client = $crate::__client!();
+            let isolate = Isolate::new(port);
+            let identifier = $crate::__cstr!(identifier, allow_null).and_then(|v| v.parse().ok());
+            let t = isolate.task(async move {
+                let uid = $crate::__result!(client::resolve(client, identifier).await, None);
+                let account = $crate::__result!(client.fetch_account(uid).await, None);
+                Some(account.free.to_string())
+            });
+            task::spawn(t);
+            CLIENT_OK
+        }
+
+        /// transfer to another account
+        #[no_mangle]
+        pub extern "C" fn client_transfer(
+            port: i64,
+            identifier: *const raw::c_char,
+            amount: u128,
+        ) -> i32 {
+            let client = $crate::__client!();
+            let isolate = Isolate::new(port);
+            let identifier = $crate::__cstr!(identifier, allow_null).and_then(|v| v.parse().ok());
+            let t = isolate.task(async move {
+                let uid = $crate::__result!(client::resolve(client, identifier).await, None);
+                let signer = $crate::__result!(client.signer().await, None);
+                let keys = $crate::__result!(client.fetch_keys(uid, None).await, None);
+                let event = $crate::__result!(
+                    client
+                        .subxt()
+                        .transfer_and_watch(&signer, &keys[0].clone().into(), amount.into())
+                        .await,
+                    None
+                );
+                let event = $crate::__result!(event.transfer(), None);
+                if let Some(e) = event {
+                    Some(e.to.to_string())
+                } else {
+                    None
+                }
             });
             task::spawn(t);
             CLIENT_OK
