@@ -22,7 +22,8 @@ macro_rules! __result {
     ($result:expr, $error:expr) => {
         match $result {
             Ok(value) => value,
-            Err(_) => {
+            Err(e) => {
+                $crate::log::error!("{:?}", e);
                 return $error;
             }
         }

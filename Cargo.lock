@@ -6650,6 +6650,7 @@ dependencies = [
  "ffi_helpers",
  "ipfs-embed",
  "keybase-keystore",
+ "log",
  "substrate-subxt",
  "sunshine-identity-client",
  "sunshine-identity-utils",
