@@ -13,7 +13,7 @@ async-std = { version = "=1.5.0", features = ["unstable"] }
 bip39 = "0.6.0-beta.1"
 fail = "0.4.0"
 rand = "0.7.3"
-secrecy = "0.6.0"
+secrecy = "0.7.0"
 strobe-rs = "0.5.3"
 thiserror = "1.0.20"
 zeroize = "1.1.0"

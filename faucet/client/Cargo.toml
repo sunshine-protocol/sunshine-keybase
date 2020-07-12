@@ -10,7 +10,7 @@ repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 codec = { version = "1.3.0", package = "parity-scale-codec" }
-substrate-subxt = { version = "0.10.0" }
+substrate-subxt = "0.10.1"
 # until subxt supports better event decoding we need to include it as a dependency
 identity-client = { version = "0.1.0", package = "sunshine-identity-client", path = "../../identity/client" }
 

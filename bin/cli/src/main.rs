@@ -25,7 +25,7 @@ async fn run() -> Result<(), Error> {
     let root = if let Some(root) = opts.path {
         root
     } else {
-        dirs2::config_dir()
+        dirs::config_dir()
             .ok_or(Error::ConfigDirNotFound)?
             .join("sunshine-identity")
     };

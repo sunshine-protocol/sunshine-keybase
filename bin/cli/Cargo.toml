@@ -12,10 +12,10 @@ async-std = { version = "=1.5.0", features = ["attributes"] }
 exitfailure = "0.5.1"
 clap = "3.0.0-beta.1"
 identity-cli = { package = "sunshine-identity-cli", path = "../../identity/cli" }
-dirs2 = "3.0.1"
+dirs = "3.0.1"
 env_logger = "0.7.1"
 ipfs-embed = "0.1.1"
 keybase-keystore = { path = "../../keystore" }
-sled = "0.32.0"
-substrate-subxt = "0.10.0"
+sled = "0.32.1"
+substrate-subxt = "0.10.1"
 test-client = { path = "../client" }
