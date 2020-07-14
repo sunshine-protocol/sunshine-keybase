@@ -1,7 +1,7 @@
 use clap::Clap;
-use sunshine_identity_cli::{account, device, id, key, wallet};
-use sunshine_faucet_cli::MintCommand;
 use std::path::PathBuf;
+use sunshine_faucet_cli::MintCommand;
+use sunshine_identity_cli::{account, device, id, key, wallet};
 
 #[derive(Clone, Debug, Clap)]
 pub struct Opts {

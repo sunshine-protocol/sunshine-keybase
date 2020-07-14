@@ -2,12 +2,12 @@ use crate::command::*;
 use async_std::task;
 use clap::Clap;
 use exitfailure::ExitDisplay;
-use sunshine_identity_cli::{key::KeySetCommand, set_device_key, Command as _, Error};
-use sunshine_faucet_cli::{MintCommand, Command as _};
-use std::time::Duration;
 use std::path::Path;
-use test_client::{Client, Error as ClientError, identity::IdentityClient};
+use std::time::Duration;
 use sunshine_core::{ChainClient, Keystore};
+use sunshine_faucet_cli::{Command as _, MintCommand};
+use sunshine_identity_cli::{key::KeySetCommand, set_device_key, Command as _, Error};
+use test_client::{identity::IdentityClient, Client, Error as ClientError};
 
 mod command;
 
@@ -28,10 +28,15 @@ async fn run() -> Result<(), Error<ClientError>> {
     };
 
     let chain_spec = &Path::new(concat!(file!(), "../chain-spec.json"));
-    let mut client = Client::new(&root, Some(chain_spec)).await.map_err(Error::Client)?;
+    let mut client = Client::new(&root, Some(chain_spec))
+        .await
+        .map_err(Error::Client)?;
 
     let mut password_changes = if client.keystore().chain_signer().is_some() {
-        let sub = client.subscribe_password_changes().await.map_err(Error::Client)?;
+        let sub = client
+            .subscribe_password_changes()
+            .await
+            .map_err(Error::Client)?;
         client.update_password().await.map_err(Error::Client)?;
         Some(sub)
     } else {
@@ -45,10 +50,15 @@ async fn run() -> Result<(), Error<ClientError>> {
                 suri,
                 force,
             }) => {
-                let account_id = set_device_key(&mut client, paperkey, suri.as_deref(), force).await?;
+                let account_id =
+                    set_device_key(&mut client, paperkey, suri.as_deref(), force).await?;
                 println!("your device key is {}", account_id.to_string());
                 MintCommand.exec(&mut client).await.map_err(Error::Client)?;
-                let uid = client.fetch_uid(&account_id).await.map_err(Error::Client)?.unwrap();
+                let uid = client
+                    .fetch_uid(&account_id)
+                    .await
+                    .map_err(Error::Client)?
+                    .unwrap();
                 println!("your user id is {}", uid);
                 Ok(())
             }

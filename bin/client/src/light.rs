@@ -2,11 +2,11 @@ use crate::Runtime;
 use sled::transaction::TransactionError;
 use sled::Tree;
 use sp_database::{Change, Database, Transaction};
+use std::path::Path;
 use std::sync::Arc;
 use substrate_subxt::client::{DatabaseConfig, Role, SubxtClient, SubxtClientConfig};
 use substrate_subxt::{Client, ClientBuilder};
 use thiserror::Error;
-use std::path::Path;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -24,10 +24,7 @@ pub enum Error {
 #[error("Invalid chain spec: {0}")]
 pub struct ChainSpecError(String);
 
-pub async fn build_light_client(
-    tree: Tree,
-    chain_spec: &Path,
-) -> Result<Client<Runtime>, Error> {
+pub async fn build_light_client(tree: Tree, chain_spec: &Path) -> Result<Client<Runtime>, Error> {
     let bytes = async_std::fs::read(chain_spec).await?;
     let chain_spec =
         test_node::chain_spec::ChainSpec::from_json_bytes(bytes).map_err(ChainSpecError)?;

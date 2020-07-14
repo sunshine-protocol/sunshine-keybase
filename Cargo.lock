@@ -155,12 +155,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "allo-isolate"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f75caca5bd0e6176a1fdf24799ab19dc50af1fd067192807d9ebb3eaea12ca3f"
-
-[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6776,22 +6770,6 @@ dependencies = [
  "test-client",
  "thiserror",
  "ureq",
-]
-
-[[package]]
-name = "sunshine-identity-ffi"
-version = "0.1.4"
-dependencies = [
- "allo-isolate",
- "async-std",
- "ipfs-embed",
- "log",
- "substrate-subxt",
- "sunshine-faucet-client",
- "sunshine-identity-client",
- "sunshine-identity-utils",
- "test-client",
- "thiserror",
 ]
 
 [[package]]

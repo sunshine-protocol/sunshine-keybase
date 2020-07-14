@@ -12,7 +12,7 @@ members = [
     "identity/client",
     "identity/pallet",
     "identity/utils",
-    "identity/ffi",
+    #"identity/ffi",
     "keystore/keybase",
     "keystore/substrate",
 ]

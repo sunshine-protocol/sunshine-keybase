@@ -1,17 +1,17 @@
 use faucet_client::Faucet;
 use identity_client::{Claim, Identity};
 use identity_utils::cid::CidBytes;
+use ipfs_embed::{Config, Store as OffchainStore};
 use ipld_block_builder::{derive_cache, Codec, IpldCache};
 use libipld::store::Store;
-use ipfs_embed::{Config, Store as OffchainStore};
+use std::path::Path;
+use substrate_keybase_keystore::Keystore;
 use substrate_subxt::balances::{AccountData, Balances};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{sp_core, sp_runtime};
-use substrate_keybase_keystore::Keystore;
-use sunshine_core::{ChainClient, ChainSigner, OffchainSigner, Keystore as _};
+use sunshine_core::{ChainClient, ChainSigner, Keystore as _, OffchainSigner};
 use thiserror::Error;
-use std::path::Path;
 
 pub use faucet_client as faucet;
 pub use identity_client as identity;
@@ -54,13 +54,13 @@ impl substrate_subxt::Runtime for Runtime {
     type Extra = substrate_subxt::DefaultExtra<Self>;
 }
 
-pub struct Client {
+pub struct Client<S> {
     keystore: Keystore<Runtime, sp_core::sr25519::Pair>,
     chain: substrate_subxt::Client<Runtime>,
-    offchain: OffchainClient<OffchainStore>,
+    offchain: OffchainClient<S>,
 }
 
-impl Client {
+impl Client<OffchainStore> {
     pub async fn new(root: &Path, chain_spec: Option<&Path>) -> Result<Self, Error> {
         let keystore = Keystore::open(root.join("keystore")).await?;
         let db = sled::open(root.join("db"))?;
@@ -77,13 +77,54 @@ impl Client {
         let store = OffchainStore::new(config)?;
         let offchain = OffchainClient::new(store);
 
-        Ok(Self { keystore, chain, offchain })
+        Ok(Self {
+            keystore,
+            chain,
+            offchain,
+        })
     }
 }
 
-impl ChainClient<Runtime> for Client {
+#[cfg(feature = "mock")]
+impl Client<libipld::mem::MemStore> {
+    pub async fn mock(
+        test_node: &mock::TestNode,
+        account: sp_keyring::AccountKeyring,
+    ) -> (Self, tempdir::TempDir) {
+        use libipld::mem::MemStore;
+        use substrate_keybase_keystore::Key;
+        use substrate_subxt::ClientBuilder;
+        use sunshine_core::{Key as _, SecretString};
+        use tempdir::TempDir;
+
+        let tmp = TempDir::new("sunshine-identity-").expect("failed to create tempdir");
+        let chain = ClientBuilder::new()
+            .set_client(test_node.clone())
+            .build()
+            .await
+            .unwrap();
+        let offchain = OffchainClient::new(MemStore::default());
+        let mut keystore = Keystore::open(tmp.path().join("keystore")).await.unwrap();
+        let key = Key::from_suri(&account.to_seed()).unwrap();
+        let password = SecretString::new("password".to_string());
+        keystore
+            .set_device_key(&key, &password, false)
+            .await
+            .unwrap();
+        (
+            Self {
+                keystore,
+                chain,
+                offchain,
+            },
+            tmp,
+        )
+    }
+}
+
+impl<S: Store + Send + Sync> ChainClient<Runtime> for Client<S> {
     type Keystore = Keystore<Runtime, sp_core::sr25519::Pair>;
-    type OffchainClient = OffchainClient<OffchainStore>;
+    type OffchainClient = OffchainClient<S>;
     type Error = Error;
 
     fn keystore(&self) -> &Self::Keystore {
@@ -99,7 +140,9 @@ impl ChainClient<Runtime> for Client {
     }
 
     fn chain_signer(&self) -> Result<&(dyn ChainSigner<Runtime> + Send + Sync), Self::Error> {
-        self.keystore.chain_signer().ok_or(Error::Keystore(substrate_keybase_keystore::Error::Locked))
+        self.keystore
+            .chain_signer()
+            .ok_or(Error::Keystore(substrate_keybase_keystore::Error::Locked))
     }
 
     fn offchain_client(&self) -> &Self::OffchainClient {
@@ -107,7 +150,9 @@ impl ChainClient<Runtime> for Client {
     }
 
     fn offchain_signer(&self) -> Result<&dyn OffchainSigner<Runtime>, Self::Error> {
-        self.keystore.offchain_signer().ok_or(Error::Keystore(substrate_keybase_keystore::Error::Locked))
+        self.keystore
+            .offchain_signer()
+            .ok_or(Error::Keystore(substrate_keybase_keystore::Error::Locked))
     }
 }
 

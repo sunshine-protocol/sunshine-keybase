@@ -434,44 +434,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libipld::mem::MemStore;
-    use sp_core::sr25519::Pair;
-    use sp_core::Pair as _;
-    use substrate_subxt::{sp_core, ClientBuilder};
-    use test_client::identity::{Client, Service};
-    use test_client::mock::{test_node, AccountKeyring, TempDir, TestNode};
-    use test_client::Runtime;
-
-    async fn build_client(node: TestNode) -> (Client<Runtime, Pair, MemStore>, TempDir) {
-        let tmp = TempDir::new("sunshine-identity-").expect("failed to create tempdir");
-        let subxt = ClientBuilder::new().set_client(node).build().await.unwrap();
-        let store = MemStore::default();
-        let keystore = KeyStore::open(tmp.path()).await.unwrap();
-        let client = Client::new(keystore, subxt, store);
-        (client, tmp)
-    }
-
-    async fn test_client() -> (Client<Runtime, Pair, MemStore>, TestNode, TempDir, TempDir) {
-        let (node, tmp1) = test_node();
-        let (client, tmp2) = build_client(node.clone()).await;
-        let seed = Pair::from_string_with_seed("//Alice", None)
-            .unwrap()
-            .1
-            .unwrap();
-        client
-            .set_device_key(
-                &DeviceKey::from_seed(seed),
-                &Password::from("password".to_string()),
-                true,
-            )
-            .await
-            .unwrap();
-        (client, node, tmp1, tmp2)
-    }
+    use test_client::identity::{IdentityClient, Service};
+    use test_client::mock::{test_node, AccountKeyring};
+    use test_client::Client;
 
     #[async_std::test]
     async fn prove_identity() {
-        let (client, _, _tmp1, _tmp2) = test_client().await;
+        let (node, _node_tmp) = test_node();
+        let (client, _client_tmp) = Client::mock(&node, AccountKeyring::Alice).await;
         let account_id = AccountKeyring::Alice.to_account_id();
         let uid = client.fetch_uid(&account_id).await.unwrap().unwrap();
         assert_eq!(client.identity(uid).await.unwrap().len(), 0);
@@ -484,28 +454,21 @@ mod tests {
 
     #[async_std::test]
     async fn change_password() {
-        let (client1, subxt, _tmp1, _tmp2) = test_client().await;
-        let (client2, _tmp3) = build_client(subxt).await;
-        client2
-            .set_device_key(
-                &DeviceKey::generate().await,
-                &Password::from("password".to_string()),
-                true,
-            )
-            .await
-            .unwrap();
-        let signer2 = client2.signer().await.unwrap();
+        let (node, _node_tmp) = test_node();
+        let (mut client1, _client1_tmp) = Client::mock(&node, AccountKeyring::Alice).await;
+        let (client2, _client2_tmp) = Client::mock(&node, AccountKeyring::Eve).await;
+
+        let signer2 = client2.chain_signer().unwrap();
         client1.add_key(signer2.account_id()).await.unwrap();
         let mut sub = client1.subscribe_password_changes().await.unwrap();
 
-        let password = Password::from("password2".to_string());
+        let password = SecretString::new("password2".to_string());
         client2.change_password(&password).await.unwrap();
 
         let event = sub.next().await;
         assert!(event.is_some());
         client1.update_password().await.unwrap();
-        client1.lock().await.unwrap();
-        client1.unlock(&password).await.unwrap();
-        client1.signer().await.unwrap();
+        client1.keystore_mut().lock().await.unwrap();
+        client1.keystore_mut().unlock(&password).await.unwrap();
     }
 }

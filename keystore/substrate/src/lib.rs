@@ -4,11 +4,11 @@ use keybase_keystore::{bip39::Mnemonic, DeviceKey};
 use sp_core::Pair;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::marker::PhantomData;
+use std::path::PathBuf;
 use substrate_subxt::{
     sp_core, sp_runtime, system::System, PairSigner, Runtime, SignedExtension, SignedExtra,
 };
 use sunshine_core::{ChainSigner, InvalidSuri, OffchainSigner, SecretString};
-use std::path::PathBuf;
 
 pub struct Keystore<T: Runtime, P: Pair<Seed = [u8; 32]>> {
     keystore: keybase_keystore::KeyStore,

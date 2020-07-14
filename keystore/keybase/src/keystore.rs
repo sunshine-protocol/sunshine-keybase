@@ -148,12 +148,12 @@ mod tests {
         fail::cfg("edk-write-fail", "off").unwrap();
         fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = KeyStore::open(tmp.path()).await.unwrap();
 
         // generate
         let key = DeviceKey::generate().await;
         let p1 = Password::from("password".to_string());
-        store.initialize(&key, &p1).await.unwrap();
+        store.initialize(&key, &p1, false).await.unwrap();
 
         // check reading the device key.
         let key2 = store.device_key().await.unwrap();
@@ -172,7 +172,10 @@ mod tests {
         // change password
         let p2 = Password::from("other password".to_string());
         let mask = store.change_password_mask(&p2).await.unwrap();
-        store.apply_mask(&mask, store.gen() + 1).await.unwrap();
+        store
+            .apply_mask(&mask, store.gen().await + 1)
+            .await
+            .unwrap();
 
         // make sure key is the same after lock/unlock
         store.lock().await.unwrap();
@@ -207,17 +210,17 @@ mod tests {
         fail::cfg("edk-write-fail", "off").unwrap();
         fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = KeyStore::open(tmp.path()).await.unwrap();
         let key = DeviceKey::generate().await;
         let pass = Password::generate().await;
-        store.initialize(&key, &pass).await.unwrap();
+        store.initialize(&key, &pass, false).await.unwrap();
 
         let scenario = FailScenario::setup();
 
         fail::cfg("edk-write-fail", "return(())").unwrap();
         let npass = Password::generate().await;
         let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen() + 1).await.ok();
+        store.apply_mask(&mask, store.gen().await + 1).await.ok();
         store.lock().await.unwrap();
         store.unlock(&pass).await.unwrap();
 
@@ -230,17 +233,17 @@ mod tests {
         fail::cfg("edk-write-fail", "off").unwrap();
         fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = KeyStore::open(tmp.path()).await.unwrap();
         let key = DeviceKey::generate().await;
         let pass = Password::generate().await;
-        store.initialize(&key, &pass).await.unwrap();
+        store.initialize(&key, &pass, false).await.unwrap();
 
         let scenario = FailScenario::setup();
 
         fail::cfg("edk-write-fail", "return(())").unwrap();
         let npass = Password::generate().await;
         let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen() + 1).await.ok();
+        store.apply_mask(&mask, store.gen().await + 1).await.ok();
 
         let key2 = store.device_key().await.unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());
@@ -258,17 +261,17 @@ mod tests {
         fail::cfg("edk-write-fail", "off").unwrap();
         fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = KeyStore::open(tmp.path()).await.unwrap();
         let key = DeviceKey::generate().await;
         let pass = Password::generate().await;
-        store.initialize(&key, &pass).await.unwrap();
+        store.initialize(&key, &pass, false).await.unwrap();
 
         let scenario = FailScenario::setup();
 
         fail::cfg("gen-rm-fail", "return(())").unwrap();
         let npass = Password::generate().await;
         let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen() + 1).await.ok();
+        store.apply_mask(&mask, store.gen().await + 1).await.ok();
 
         let key2 = store.device_key().await.unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());

@@ -51,22 +51,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use sp_core::sr25519::Pair;
-    use sp_core::Pair as _;
-    use substrate_subxt::{sp_core, ClientBuilder, PairSigner, Signer};
-    use test_client::faucet;
-    use test_client::mock::test_node;
-    use test_client::Runtime;
+    use test_client::faucet::FaucetClient;
+    use test_client::mock::{test_node, AccountKeyring};
+    use test_client::Client;
 
     #[async_std::test]
     async fn test_mint() {
-        let (node, _) = test_node();
-        let client = ClientBuilder::<Runtime>::new()
-            .set_client(node)
-            .build()
-            .await
-            .unwrap();
-        let hans = PairSigner::<Runtime, _>::new(Pair::generate().0);
-        faucet::mint(&client, hans.account_id()).await.unwrap();
+        let (node, _node_tmp) = test_node();
+        let (client, _client_tmp) = Client::mock(&node, AccountKeyring::Eve).await;
+        client.mint().await.unwrap();
     }
 }
