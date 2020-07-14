@@ -1,0 +1,11 @@
+[package]
+name = "sunshine-faucet-cli"
+version = "0.1.0"
+authors = ["David Craven <david@craven.ch>"]
+edition = "2018"
+
+[dependencies]
+async-trait = "0.1.36"
+clap = "3.0.0-beta.1"
+substrate-subxt = "0.10.1"
+sunshine-faucet-client = { path = "../client" }

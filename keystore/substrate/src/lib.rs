@@ -8,6 +8,7 @@ use substrate_subxt::{
     sp_core, sp_runtime, system::System, PairSigner, Runtime, SignedExtension, SignedExtra,
 };
 use sunshine_core::{ChainSigner, InvalidSuri, OffchainSigner, SecretString};
+use std::path::PathBuf;
 
 pub struct Keystore<T: Runtime, P: Pair<Seed = [u8; 32]>> {
     keystore: keybase_keystore::KeyStore,
@@ -21,7 +22,8 @@ where
     T::Signature: From<P::Signature>,
     <T::Signature as Verify>::Signer: From<P::Public> + IdentifyAccount<AccountId = T::AccountId>,
 {
-    pub async fn new(keystore: keybase_keystore::KeyStore) -> Result<Self, Error> {
+    pub async fn open(path: PathBuf) -> Result<Self, Error> {
+        let keystore = keybase_keystore::KeyStore::open(path).await?;
         let signer = if keystore.is_initialized().await {
             let key = Key::from_seed(keystore.device_key().await?);
             Some(key.to_signer())

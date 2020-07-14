@@ -1,5 +1,6 @@
 use clap::Clap;
-use identity_cli::{account, device, id, key, wallet};
+use sunshine_identity_cli::{account, device, id, key, wallet};
+use sunshine_faucet_cli::MintCommand;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Clap)]
@@ -43,6 +44,7 @@ pub struct AccountCommand {
 pub enum AccountSubCommand {
     Create(account::AccountCreateCommand),
     Password(account::AccountPasswordCommand),
+    Mint(MintCommand),
 }
 
 #[derive(Clone, Debug, Clap)]

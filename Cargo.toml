@@ -1,10 +1,11 @@
 [workspace]
 members = [
-    #"bin/cli",
+    "bin/cli",
     "bin/client",
     "bin/node",
     "bin/runtime",
     "core",
+    "faucet/cli",
     "faucet/client",
     "faucet/pallet",
     "identity/cli",

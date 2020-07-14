@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use identity_client::{Identity, IdentityEventsDecoder};
 use substrate_subxt::balances::{Balances, BalancesEventsDecoder};
 use substrate_subxt::system::{System, SystemEventsDecoder};
-use substrate_subxt::{module, Call, Error, Event, Runtime, SignedExtension, SignedExtra};
+use substrate_subxt::{module, Call, Event, Runtime, SignedExtension, SignedExtra};
 use sunshine_core::ChainClient;
 
 #[module]
@@ -22,10 +22,7 @@ pub struct MintedEvent<T: Faucet> {
 
 #[async_trait]
 pub trait FaucetClient<T: Runtime + Faucet>: ChainClient<T> {
-    async fn mint(
-        &self,
-        account: &<T as System>::AccountId,
-    ) -> Result<Option<MintedEvent<T>>, Error>;
+    async fn mint(&self) -> Result<Option<MintedEvent<T>>, Self::Error>;
 }
 
 #[async_trait]
@@ -35,10 +32,8 @@ where
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: ChainClient<T>,
 {
-    async fn mint(
-        &self,
-        account: &<T as System>::AccountId,
-    ) -> Result<Option<MintedEvent<T>>, Error> {
+    async fn mint(&self) -> Result<Option<MintedEvent<T>>, C::Error> {
+        let account = self.chain_signer()?.account_id();
         let call = MintCall { account };
         let unsigned = self
             .chain_client()

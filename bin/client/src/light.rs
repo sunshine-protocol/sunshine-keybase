@@ -6,6 +6,7 @@ use std::sync::Arc;
 use substrate_subxt::client::{DatabaseConfig, Role, SubxtClient, SubxtClientConfig};
 use substrate_subxt::{Client, ClientBuilder};
 use thiserror::Error;
+use std::path::Path;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -15,6 +16,8 @@ pub enum Error {
     ScService(#[from] sc_service::Error),
     #[error("Invalid chain spec: {0}")]
     ChainSpec(#[from] ChainSpecError),
+    #[error("Failed to read chainspec: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 #[derive(Debug, Error)]
@@ -23,10 +26,11 @@ pub struct ChainSpecError(String);
 
 pub async fn build_light_client(
     tree: Tree,
-    chain_spec: &'static [u8],
+    chain_spec: &Path,
 ) -> Result<Client<Runtime>, Error> {
+    let bytes = async_std::fs::read(chain_spec).await?;
     let chain_spec =
-        test_node::chain_spec::ChainSpec::from_json_bytes(chain_spec).map_err(ChainSpecError)?;
+        test_node::chain_spec::ChainSpec::from_json_bytes(bytes).map_err(ChainSpecError)?;
     let config = SubxtClientConfig {
         impl_name: test_node::IMPL_NAME,
         impl_version: test_node::IMPL_VERSION,
