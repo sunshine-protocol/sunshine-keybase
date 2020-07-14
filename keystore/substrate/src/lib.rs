@@ -43,15 +43,15 @@ where
     type Key = Key<T, P>;
     type Error = Error;
 
-    fn chain_signer(&self) -> Result<&(dyn ChainSigner<T> + Send + Sync), Self::Error> {
-        self.signer.as_ref().map(|s| s as _).ok_or(Error::Locked)
+    fn chain_signer(&self) -> Option<&(dyn ChainSigner<T> + Send + Sync)> {
+        self.signer.as_ref().map(|s| s as _)
     }
 
-    fn offchain_signer(&self) -> Result<&dyn OffchainSigner<T>, Self::Error> {
-        self.signer.as_ref().map(|s| s as _).ok_or(Error::Locked)
+    fn offchain_signer(&self) -> Option<&dyn OffchainSigner<T>> {
+        self.signer.as_ref().map(|s| s as _)
     }
 
-    async fn set_key(
+    async fn set_device_key(
         &mut self,
         device_key: &Self::Key,
         password: &SecretString,

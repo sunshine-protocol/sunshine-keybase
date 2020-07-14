@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use keybase_keystore::{bip39::Mnemonic, NotEnoughEntropyError};
-pub use secrecy::SecretString;
+pub use keybase_keystore::{bip39, NotEnoughEntropyError};
+pub use secrecy::{ExposeSecret, SecretString};
 use sp_core::crypto::{Pair, PublicError, SecretStringError, Ss58Codec};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::str::FromStr;
@@ -15,23 +15,22 @@ pub trait ChainClient<T: Runtime>: Send + Sync {
     type Keystore: Keystore<T>;
     type OffchainClient: Send + Sync;
     type Error: std::error::Error
+        + std::fmt::Debug
         + Send
+        + 'static
         + From<<Self::Keystore as Keystore<T>>::Error>
         + From<substrate_subxt::Error>
         + From<codec::Error>
         + From<libipld::error::Error>;
 
     fn keystore(&self) -> &Self::Keystore;
+    fn keystore_mut(&mut self) -> &mut Self::Keystore;
 
     fn chain_client(&self) -> &substrate_subxt::Client<T>;
-    fn chain_signer(&self) -> Result<&(dyn ChainSigner<T> + Send + Sync), Self::Error> {
-        Ok(self.keystore().chain_signer()?)
-    }
+    fn chain_signer(&self) -> Result<&(dyn ChainSigner<T> + Send + Sync), Self::Error>;
 
     fn offchain_client(&self) -> &Self::OffchainClient;
-    fn offchain_signer(&self) -> Result<&dyn OffchainSigner<T>, Self::Error> {
-        Ok(self.keystore().offchain_signer()?)
-    }
+    fn offchain_signer(&self) -> Result<&dyn OffchainSigner<T>, Self::Error>;
 }
 
 #[async_trait]
@@ -39,10 +38,10 @@ pub trait Keystore<T: Runtime>: Send + Sync {
     type Key: Key<T>;
     type Error: std::error::Error;
 
-    fn chain_signer(&self) -> Result<&(dyn ChainSigner<T> + Send + Sync), Self::Error>;
-    fn offchain_signer(&self) -> Result<&dyn OffchainSigner<T>, Self::Error>;
+    fn chain_signer(&self) -> Option<&(dyn ChainSigner<T> + Send + Sync)>;
+    fn offchain_signer(&self) -> Option<&dyn OffchainSigner<T>>;
 
-    async fn set_key(
+    async fn set_device_key(
         &mut self,
         key: &Self::Key,
         password: &SecretString,
@@ -59,7 +58,7 @@ pub trait Keystore<T: Runtime>: Send + Sync {
 #[async_trait]
 pub trait Key<T: Runtime>: Sized + Send + Sync {
     async fn generate() -> Self;
-    fn from_mnemonic(mnemonic: &Mnemonic) -> Result<Self, NotEnoughEntropyError>;
+    fn from_mnemonic(mnemonic: &bip39::Mnemonic) -> Result<Self, NotEnoughEntropyError>;
     fn from_suri(suri: &str) -> Result<Self, InvalidSuri>;
     fn to_account_id(&self) -> <T as System>::AccountId;
 }

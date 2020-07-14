@@ -6621,6 +6621,7 @@ dependencies = [
  "rpassword",
  "substrate-keybase-keystore",
  "substrate-subxt",
+ "sunshine-core",
  "sunshine-identity-client",
  "textwrap 0.12.1",
  "thiserror",

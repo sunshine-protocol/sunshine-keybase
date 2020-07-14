@@ -6,12 +6,20 @@ use std::str::FromStr;
 use substrate_subxt::{sp_core, system::System, Runtime};
 use sunshine_core::{ChainClient, Ss58};
 
-pub async fn resolve<T, C>(client: &C, identifier: Identifier<T>) -> Result<T::Uid, C::Error>
+pub async fn resolve<T, C>(
+    client: &C,
+    identifier: Option<Identifier<T>>,
+) -> Result<T::Uid, C::Error>
 where
-    T: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
+    T: Runtime + Identity,
     C: IdentityClient<T>,
     <C as ChainClient<T>>::Error: From<Error>,
 {
+    let identifier = if let Some(identifier) = identifier {
+        identifier
+    } else {
+        Identifier::Account(client.chain_signer()?.account_id().clone())
+    };
     let uid = match identifier {
         Identifier::Uid(uid) => uid,
         Identifier::Account(account_id) => client
