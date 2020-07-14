@@ -1,3 +1,4 @@
+#![recursion_limit = "65536"]
 use client::Error;
 use sunshine_identity_ffi::impl_ffi;
 use test_client::Runtime;
