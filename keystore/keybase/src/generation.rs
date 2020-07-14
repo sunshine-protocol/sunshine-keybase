@@ -40,7 +40,16 @@ impl Generation {
     }
 
     /// Initializes the keystore.
-    pub async fn initialize(&self, dk: &DeviceKey, pass: &Password) -> Result<(), Error> {
+    pub async fn initialize(
+        &self,
+        dk: &DeviceKey,
+        pass: &Password,
+        force: bool,
+    ) -> Result<(), Error> {
+        if !force && self.is_initialized().await {
+            return Err(Error::Initialized);
+        }
+
         let path = self.edk.parent().expect("joined a file name on init; qed");
         async_std::fs::create_dir_all(path).await?;
 

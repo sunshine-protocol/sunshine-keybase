@@ -18,11 +18,7 @@ pub enum Error {
     Subxt(#[from] substrate_subxt::Error),
     #[error(transparent)]
     Cid(#[from] libipld::cid::Error),
-    #[error(transparent)]
-    Keystore(#[from] keystore::Error),
 
-    #[error("keystore already initialized")]
-    KeystoreInitialized,
     #[error("account not found")]
     NoAccount,
     #[error("invalid claim {0}")]

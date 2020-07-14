@@ -1,0 +1,11 @@
+[package]
+name = "substrate-keybase-keystore"
+version = "0.1.0"
+authors = ["David Craven <david@craven.ch>"]
+edition = "2018"
+
+[dependencies]
+async-trait = "0.1.36"
+keybase-keystore = { path = "../keybase" }
+substrate-subxt = "0.10.1"
+sunshine-core = { path = "../../core" }

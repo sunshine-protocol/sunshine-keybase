@@ -11,6 +11,8 @@ pub enum Error {
     Locked,
     #[error("gen missmatch")]
     GenMissmatch,
+    #[error("keystore is initialized")]
+    Initialized,
 }
 
 impl From<AuthError> for Error {

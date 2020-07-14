@@ -1,8 +1,10 @@
+use async_trait::async_trait;
 use codec::{Decode, Encode};
 use identity_client::{Identity, IdentityEventsDecoder};
 use substrate_subxt::balances::{Balances, BalancesEventsDecoder};
 use substrate_subxt::system::{System, SystemEventsDecoder};
 use substrate_subxt::{module, Call, Error, Event, Runtime, SignedExtension, SignedExtra};
+use sunshine_core::ChainClient;
 
 #[module]
 pub trait Faucet: Identity + Balances + System {}
@@ -18,21 +20,38 @@ pub struct MintedEvent<T: Faucet> {
     pub amount: <T as Balances>::Balance,
 }
 
-pub async fn mint<T: Runtime + Faucet>(
-    client: &substrate_subxt::Client<T>,
-    account: &<T as System>::AccountId,
-) -> Result<Option<MintedEvent<T>>, Error>
+#[async_trait]
+pub trait FaucetClient<T: Runtime + Faucet>: ChainClient<T> {
+    async fn mint(
+        &self,
+        account: &<T as System>::AccountId,
+    ) -> Result<Option<MintedEvent<T>>, Error>;
+}
+
+#[async_trait]
+impl<T, C> FaucetClient<T> for C
 where
+    T: Runtime + Faucet,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: ChainClient<T>,
 {
-    let call = MintCall { account };
-    let unsigned = client.create_unsigned(call, account, None).await?;
-    let decoder = client.events_decoder::<MintCall<T>>();
-    let event = client
-        .submit_and_watch_extrinsic(unsigned, decoder)
-        .await?
-        .minted()?;
-    Ok(event)
+    async fn mint(
+        &self,
+        account: &<T as System>::AccountId,
+    ) -> Result<Option<MintedEvent<T>>, Error> {
+        let call = MintCall { account };
+        let unsigned = self
+            .chain_client()
+            .create_unsigned(call, account, None)
+            .await?;
+        let decoder = self.chain_client().events_decoder::<MintCall<T>>();
+        let event = self
+            .chain_client()
+            .submit_and_watch_extrinsic(unsigned, decoder)
+            .await?
+            .minted()?;
+        Ok(event)
+    }
 }
 
 #[cfg(test)]

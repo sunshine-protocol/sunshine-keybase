@@ -1,12 +1,13 @@
 use crate::error::Error;
 use crate::generation::Generation;
-use crate::types::Mask;
+use crate::types::*;
 use async_std::path::{Path, PathBuf};
 use async_std::prelude::*;
+use async_std::sync::RwLock;
 
 pub struct KeyStore {
     path: PathBuf,
-    gen: Generation,
+    gen: RwLock<Generation>,
 }
 
 impl KeyStore {
@@ -58,29 +59,80 @@ impl KeyStore {
                 }
             }
         };
-        Ok(Self { path, gen })
+        Ok(Self {
+            path,
+            gen: RwLock::new(gen),
+        })
     }
 
     /// Creates a new generation from a password mask.
-    pub async fn apply_mask(&mut self, mask: &Mask, gen: u16) -> Result<(), Error> {
-        if self.gen() + 1 != gen {
+    pub async fn apply_mask(&self, mask: &Mask, next_gen: u16) -> Result<(), Error> {
+        let mut gen = self.gen.write().await;
+        if gen.gen() + 1 != next_gen {
             return Err(Error::GenMissmatch);
         }
-        let dk = self.device_key().await?;
-        let pass = self.password().await?.apply_mask(mask);
-        let gen = Generation::new(&self.path, gen);
-        gen.initialize(&dk, &pass).await?;
-        let gen = std::mem::replace(&mut self.gen, gen);
-        gen.remove().await?;
+        let dk = gen.device_key().await?;
+        let pass = gen.password().await?.apply_mask(mask);
+        let next_gen = Generation::new(&self.path, next_gen);
+        next_gen.initialize(&dk, &pass, true).await?;
+        let old_gen = std::mem::replace(&mut *gen, next_gen);
+        old_gen.remove().await?;
         Ok(())
     }
-}
 
-impl core::ops::Deref for KeyStore {
-    type Target = Generation;
+    /// Returns the generation number.
+    pub async fn gen(&self) -> u16 {
+        self.gen.read().await.gen()
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.gen
+    /// Checks if the keystore is initialized.
+    pub async fn is_initialized(&self) -> bool {
+        self.gen.read().await.is_initialized().await
+    }
+
+    /// Initializes the keystore.
+    pub async fn initialize(
+        &self,
+        dk: &DeviceKey,
+        pass: &Password,
+        force: bool,
+    ) -> Result<(), Error> {
+        self.gen.write().await.initialize(dk, pass, force).await
+    }
+
+    /// Unlocking the keystore makes the random key decryptable.
+    pub async fn unlock(&self, pass: &Password) -> Result<DeviceKey, Error> {
+        self.gen.write().await.unlock(pass).await
+    }
+
+    /// Locks the keystore by zeroizing the noise file. This makes the encrypted
+    /// random key undecryptable without a password.
+    pub async fn lock(&self) -> Result<(), Error> {
+        self.gen.write().await.lock().await
+    }
+
+    /// The random key is used to decrypt the device key.
+    ///
+    /// NOTE: Only works if the keystore was unlocked.
+    pub async fn device_key(&self) -> Result<DeviceKey, Error> {
+        self.gen.read().await.device_key().await
+    }
+
+    /// The random key is used to recover the password.
+    ///
+    /// NOTE: Only works if the keystore was unlocked.
+    pub async fn password(&self) -> Result<Password, Error> {
+        self.gen.read().await.password().await
+    }
+
+    /// Returns the public device key.
+    pub async fn public(&self) -> Result<PublicDeviceKey, Error> {
+        self.gen.read().await.public().await
+    }
+
+    /// Change password.
+    pub async fn change_password_mask(&self, password: &Password) -> Result<Mask, Error> {
+        self.gen.read().await.change_password_mask(password).await
     }
 }
 

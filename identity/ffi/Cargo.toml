@@ -14,7 +14,7 @@ async-std = { version = "=1.5.0", features = ["attributes"] }
 client = { version = "0.1.0", path = "../client", package = "sunshine-identity-client" }
 ffi_helpers = "0.2.0"
 ipfs-embed = "0.1.1"
-keystore = { version = "0.1.0", path = "../../keystore", package = "keybase-keystore" }
+#keystore = { version = "0.1.0", path = "../../keystore", package = "keybase-keystore" }
 substrate-subxt = "0.10.1"
 utils = { version = "0.1.0", path = "../utils", package = "sunshine-identity-utils" }
 log = "0.4.8"
