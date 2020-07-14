@@ -46,9 +46,12 @@ macro_rules! impl_ffi {
         #[allow(unused)]
         use $crate::*;
 
+        /// cbindgen:ignore
         type Suri = client::Suri<sr25519::Pair>;
+        /// cbindgen:ignore
         type Client = client::Client<$runtime, sr25519::Pair, Store>;
 
+        /// cbindgen:ignore
         static mut CLIENT: Option<Client> = None;
 
         enum_result! {
@@ -150,7 +153,7 @@ macro_rules! impl_ffi {
             /// returns current account balance after the transaction.
             Wallet::transfer => fn client_wallet_transfer(
                 identifier: *const raw::c_char = cstr!(identifier),
-                amount: u128 = amount
+                amount: u64 = amount
             ) -> String;
 
             /// Try to mint the account, this only enabled in testnet and behind a feature flag
