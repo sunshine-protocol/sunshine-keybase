@@ -12,10 +12,7 @@ members = [
     "identity/client",
     "identity/pallet",
     "identity/utils",
-    #"identity/ffi",
+    "identity/ffi",
     "keystore/keybase",
     "keystore/substrate",
 ]
-
-[patch.crates-io]
-ipld-block-builder = { path = "../../ipld/ipld-block-builder" }
