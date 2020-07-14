@@ -133,7 +133,7 @@ where
 
     fn from_suri(suri: &str) -> Result<Self, InvalidSuri> {
         let (_, seed) = P::from_string_with_seed(suri, None).map_err(InvalidSuri)?;
-        Ok(Self::from_seed(DeviceKey::from_seed(seed.unwrap().into())))
+        Ok(Self::from_seed(DeviceKey::from_seed(seed.unwrap())))
     }
 
     fn to_account_id(&self) -> <T as System>::AccountId {

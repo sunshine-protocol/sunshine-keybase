@@ -223,7 +223,7 @@ where
     let uid = fetch_uid(client, client.chain_signer()?.account_id())
         .await?
         .ok_or(Error::NoAccount)?;
-    let pgen = client.chain_client().password_gen(uid, None).await?.into();
+    let pgen = client.chain_client().password_gen(uid, None).await?;
     let gen = client.keystore().gen().await;
     for g in gen..pgen {
         log::info!("Password change detected: reencrypting keystore");

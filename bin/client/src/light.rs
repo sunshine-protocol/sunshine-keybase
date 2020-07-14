@@ -74,7 +74,7 @@ where
         let changes = &transaction.0;
         self.0
             .transaction::<_, _, TransactionError>(|tree| {
-                for change in changes.into_iter() {
+                for change in changes.iter() {
                     match change {
                         Change::Set(col, key, value) => {
                             tree.insert(Key::key(*col, key), value.as_slice())?;
