@@ -3,10 +3,14 @@ name = "sunshine-core"
 version = "0.1.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
+description = "Core abstractions for building sunshine clients."
+license = "ISC"
+documentation = "https://docs.rs/sunshine-core"
+repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 async-trait = "0.1.36"
-keybase-keystore = { path = "../keystore/keybase" }
+keybase-keystore = { version = "0.1.0", path = "../keystore/keybase" }
 codec = { version = "1.3.1", package = "parity-scale-codec", default-features = false }
 libipld = { version = "0.3.0", default-features = false }
 secrecy = "0.7.0"

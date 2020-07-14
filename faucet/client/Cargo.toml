@@ -5,14 +5,14 @@ authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 description = "Client for the faucet module."
 license = "ISC"
-documentation = "https://docs.rs/sunshine-faucet-cli"
+documentation = "https://docs.rs/sunshine-faucet-client"
 repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 async-trait = "0.1.36"
 codec = { version = "1.3.0", package = "parity-scale-codec" }
 substrate-subxt = "0.10.1"
-sunshine-core = { path = "../../core" }
+sunshine-core = { version = "0.1.0", path = "../../core" }
 # until subxt supports better event decoding we need to include it as a dependency
 identity-client = { version = "0.1.0", package = "sunshine-identity-client", path = "../../identity/client" }
 

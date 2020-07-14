@@ -3,9 +3,13 @@ name = "substrate-keybase-keystore"
 version = "0.1.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
+description = "Substrate integration for the keybase keystore."
+license = "ISC"
+documentation = "https://docs.rs/substrate-keybase-keystore"
+repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 async-trait = "0.1.36"
-keybase-keystore = { path = "../keybase" }
+keybase-keystore = { version = "0.1.0", path = "../keybase" }
 substrate-subxt = "0.10.1"
-sunshine-core = { path = "../../core" }
+sunshine-core = { version = "0.1.0", path = "../../core" }
