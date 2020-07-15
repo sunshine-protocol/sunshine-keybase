@@ -10,9 +10,9 @@ members = [
     "faucet/pallet",
     "identity/cli",
     "identity/client",
+    "identity/ffi",
     "identity/pallet",
     "identity/utils",
-    #"identity/ffi",
     "keystore/keybase",
     "keystore/substrate",
 ]

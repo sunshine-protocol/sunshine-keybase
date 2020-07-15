@@ -54,7 +54,7 @@ impl substrate_subxt::Runtime for Runtime {
     type Extra = substrate_subxt::DefaultExtra<Self>;
 }
 
-pub struct Client<S> {
+pub struct Client<S = OffchainStore> {
     keystore: Keystore<Runtime, sp_core::sr25519::Pair>,
     chain: substrate_subxt::Client<Runtime>,
     offchain: OffchainClient<S>,

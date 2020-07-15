@@ -1,43 +1,37 @@
 use crate::error::{Error, Result};
-use client::AbstractClient;
-use client::{Identifier, Identity, Service, Ss58, Suri};
-use keystore::{
-    bip39::{Language, Mnemonic},
-    DeviceKey, Password,
-};
+use async_std::sync::{Arc, RwLock};
+use client::{Identifier, Identity, IdentityClient, Service};
+use keystore::bip39::{Language, Mnemonic};
 use std::marker::PhantomData;
 use substrate_subxt::{
     balances::{AccountData, Balances, TransferCallExt, TransferEventExt},
-    sp_core::{crypto::Ss58Codec, Pair},
+    sp_core::crypto::Ss58Codec,
     system::System,
     Runtime, SignedExtension, SignedExtra,
 };
+use sunshine_core::{ExposeSecret, Keystore, SecretString, Ss58};
 
 macro_rules! make {
     ($name: ident) => {
-        #[derive(Copy, Clone, Debug)]
-        pub struct $name<'a, C, R, P>
+        #[derive(Clone, Debug)]
+        pub struct $name<C, R>
         where
-            C: AbstractClient<R, P> + Send + Sync,
+            C: IdentityClient<R> + Send + Sync,
             R: Runtime + Identity,
-            P: Pair,
         {
-            client: &'a C,
+            client: Arc<RwLock<C>>,
             _runtime: PhantomData<R>,
-            _pair: PhantomData<P>,
         }
 
-        impl<'a, C, R, P> $name<'a, C, R, P>
+        impl<C, R> $name<C, R>
         where
-            C: AbstractClient<R, P> + Send + Sync,
+            C: IdentityClient<R> + Send + Sync,
             R: Runtime + Identity,
-            P: Pair,
         {
-            pub fn new(client: &'a C) -> Self {
+            pub fn new(client: C) -> Self {
                 Self {
-                    client,
+                    client: Arc::new(RwLock::new(client)),
                     _runtime: PhantomData,
-                    _pair: PhantomData,
                 }
             }
         }
@@ -51,179 +45,243 @@ macro_rules! make {
 
 make!(Key, Account, Device, ID, Wallet);
 
-impl<'a, C, R, P> Key<'a, C, R, P>
+impl<C, R> Key<C, R>
 where
-    C: AbstractClient<R, P> + Send + Sync,
+    C: IdentityClient<R> + Send + Sync,
+    C::Error: From<client::Error>,
     R: Runtime + Identity,
-    P: Pair,
-    P::Seed: Into<[u8; 32]>,
 {
     pub async fn set(
         &self,
         password: impl Into<&str>,
         suri: Option<impl Into<&str>>,
         paperkey: Option<impl Into<&str>>,
-    ) -> Result<String> {
-        let suri = suri.and_then(|v| v.into().parse::<Suri<P>>().ok());
-        let paperkey =
-            paperkey.and_then(|p| Mnemonic::from_phrase(p.into(), Language::English).ok());
-        let dk = if let Some(mnemonic) = paperkey {
-            Some(DeviceKey::from_mnemonic(&mnemonic).map_err(|_| Error::InvalidMnemonic)?)
-        } else if let Some(seed) = suri {
-            Some(DeviceKey::from_seed(seed.0.into()))
-        } else {
-            None
-        };
-        let password = Password::from(password.into().to_owned());
+    ) -> Result<String, C::Error> {
+        use sunshine_core::Key;
+
+        let password = SecretString::new(password.into().to_string());
         if password.expose_secret().len() < 8 {
             return Err(Error::PasswordTooShort);
         }
-        let dk = if let Some(dk) = dk {
-            dk
+        let dk = if let Some(paperkey) = paperkey {
+            let mnemonic = Mnemonic::from_phrase(paperkey.into(), Language::English)
+                .map_err(|_| Error::InvalidMnemonic)?;
+            <C::Keystore as Keystore<R>>::Key::from_mnemonic(&mnemonic)
+                .map_err(|_| Error::InvalidMnemonic)?
+        } else if let Some(suri) = suri {
+            <C::Keystore as Keystore<R>>::Key::from_suri(suri.into())?
         } else {
-            DeviceKey::generate().await
+            <C::Keystore as Keystore<R>>::Key::generate().await
         };
-        let device_id = self.client.set_device_key(&dk, &password, false).await?;
-        Ok(device_id.to_string())
+
+        self.client
+            .write()
+            .await
+            .keystore_mut()
+            .set_device_key(&dk, &password, false)
+            .await
+            .map_err(|e| Error::Client(e.into()))?;
+        Ok(dk.to_account_id().to_string())
     }
 
-    pub async fn lock(&self) -> Result<bool> {
-        self.client.lock().await?;
+    pub async fn lock(&self) -> Result<bool, C::Error> {
+        self.client
+            .write()
+            .await
+            .keystore_mut()
+            .lock()
+            .await
+            .map_err(|e| Error::Client(e.into()))?;
         Ok(true)
     }
 
-    pub async fn unlock(&self, password: impl Into<&str>) -> Result<bool> {
-        let password = Password::from(password.into().to_owned());
-        self.client.unlock(&password).await?;
+    pub async fn unlock(&self, password: impl Into<&str>) -> Result<bool, C::Error> {
+        let password = SecretString::new(password.into().to_string());
+        self.client
+            .write()
+            .await
+            .keystore_mut()
+            .unlock(&password)
+            .await
+            .map_err(|e| Error::Client(e.into()))?;
         Ok(true)
     }
 }
 
-impl<'a, C, R, P> Account<'a, C, R, P>
+impl<C, R> Account<C, R>
 where
-    C: AbstractClient<R, P> + Send + Sync,
+    C: IdentityClient<R> + Send + Sync,
+    C::Error: From<client::Error>,
     R: Runtime + Identity,
-    P: Pair,
     <R as System>::AccountId: Ss58Codec,
 {
-    pub async fn create(&self, device: impl Into<&str>) -> Result<bool> {
+    pub async fn create(&self, device: impl Into<&str>) -> Result<bool, C::Error> {
         let device: Ss58<R> = device.into().parse()?;
-        self.client.create_account_for(&device.0).await?;
+        self.client
+            .read()
+            .await
+            .create_account_for(&device.0)
+            .await
+            .map_err(Error::Client)?;
         Ok(true)
     }
 
-    pub async fn change_password(&self, password: impl Into<&str>) -> Result<bool> {
-        let password = Password::from(password.into().to_owned());
+    pub async fn change_password(&self, password: impl Into<&str>) -> Result<bool, C::Error> {
+        let password = SecretString::new(password.into().to_string());
         if password.expose_secret().len() < 8 {
             return Err(Error::PasswordTooShort);
         }
-        self.client.change_password(&password).await?;
+        self.client
+            .read()
+            .await
+            .change_password(&password)
+            .await
+            .map_err(Error::Client)?;
         Ok(true)
     }
 }
 
-impl<'a, C, R, P> Device<'a, C, R, P>
+impl<C, R> Device<C, R>
 where
-    C: AbstractClient<R, P> + Send + Sync,
+    C: IdentityClient<R> + Send + Sync,
+    C::Error: From<client::Error>,
     R: Runtime + Identity,
-    P: Pair,
     <R as System>::AccountId: Ss58Codec,
 {
-    pub async fn current(&self) -> Result<String> {
-        let signer = self.client.signer().await?;
+    pub async fn current(&self) -> Result<String, C::Error> {
+        let client = self.client.read().await;
+        let signer = client.chain_signer().map_err(Error::Client)?;
         Ok(signer.account_id().to_string())
     }
 
-    pub async fn has_device_key(&self) -> Result<bool> {
-        let v = self.client.has_device_key().await;
-        Ok(v)
+    pub async fn has_device_key(&self) -> Result<bool, C::Error> {
+        Ok(self.client.read().await.keystore().chain_signer().is_some())
     }
 
-    pub async fn add(&self, device: impl Into<&str>) -> Result<bool> {
+    pub async fn add(&self, device: impl Into<&str>) -> Result<bool, C::Error> {
         let device: Ss58<R> = device.into().parse()?;
-        self.client.add_key(&device.0).await?;
+        self.client
+            .read()
+            .await
+            .add_key(&device.0)
+            .await
+            .map_err(Error::Client)?;
         Ok(true)
     }
 
-    pub async fn remove(&self, device: impl Into<&str>) -> Result<bool> {
+    pub async fn remove(&self, device: impl Into<&str>) -> Result<bool, C::Error> {
         let device: Ss58<R> = device.into().parse()?;
-        self.client.remove_key(&device.0).await?;
+        self.client
+            .read()
+            .await
+            .remove_key(&device.0)
+            .await
+            .map_err(Error::Client)?;
         Ok(true)
     }
 
-    pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>> {
+    pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>, C::Error> {
+        let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = client::resolve(self.client, Some(identifier)).await?;
-        let list = self
-            .client
+        let uid = client::resolve(&*client, Some(identifier))
+            .await
+            .map_err(Error::Client)?;
+        let list = client
             .fetch_keys(uid, None)
-            .await?
+            .await
+            .map_err(Error::Client)?
             .into_iter()
             .map(|key| key.to_ss58check())
             .collect();
         Ok(list)
     }
 
-    pub async fn paperkey(&self) -> Result<String> {
-        let mnemonic = self.client.add_paperkey().await?;
+    pub async fn paperkey(&self) -> Result<String, C::Error> {
+        let mnemonic = self
+            .client
+            .read()
+            .await
+            .add_paperkey()
+            .await
+            .map_err(Error::Client)?;
         Ok(mnemonic.into_phrase())
     }
 }
 
-impl<'a, C, R, P> ID<'a, C, R, P>
+impl<C, R> ID<C, R>
 where
-    C: AbstractClient<R, P> + Send + Sync,
+    C: IdentityClient<R> + Send + Sync,
+    C::Error: From<client::Error>,
     R: Runtime + Identity,
-    P: Pair,
     <R as System>::AccountId: Ss58Codec,
 {
-    pub async fn resolve(&self, identifier: impl Into<&str>) -> Result<String> {
+    pub async fn resolve(&self, identifier: impl Into<&str>) -> Result<String, C::Error> {
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = client::resolve(self.client, Some(identifier)).await?;
+        let client = self.client.read().await;
+        let uid = client::resolve(&*client, Some(identifier))
+            .await
+            .map_err(Error::Client)?;
         Ok(uid.to_string())
     }
 
-    pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>> {
+    pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>, C::Error> {
+        let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = client::resolve(self.client, Some(identifier)).await?;
-        let list = self
-            .client
+        let uid = client::resolve(&*client, Some(identifier))
+            .await
+            .map_err(Error::Client)?;
+        let list = client
             .identity(uid)
-            .await?
+            .await
+            .map_err(Error::Client)?
             .into_iter()
             .map(|id| id.to_string())
             .collect();
         Ok(list)
     }
 
-    pub async fn prove(&self, service: impl Into<&str>) -> Result<Vec<String>> {
+    pub async fn prove(&self, service: impl Into<&str>) -> Result<Vec<String>, C::Error> {
         let service: Service = service.into().parse()?;
         let instructions = service.cli_instructions();
-        let proof = self.client.prove_identity(service).await?;
+        let proof = self
+            .client
+            .read()
+            .await
+            .prove_identity(service)
+            .await
+            .map_err(Error::Client)?;
         Ok(vec![instructions, proof])
     }
 
-    pub async fn revoke(&self, service: impl Into<&str>) -> Result<bool> {
+    pub async fn revoke(&self, service: impl Into<&str>) -> Result<bool, C::Error> {
         let service: Service = service.into().parse()?;
-        self.client.revoke_identity(service).await?;
+        self.client
+            .read()
+            .await
+            .revoke_identity(service)
+            .await
+            .map_err(Error::Client)?;
         Ok(true)
     }
 }
 
-impl<'a, C, R, P> Wallet<'a, C, R, P>
+impl<C, R> Wallet<C, R>
 where
-    C: AbstractClient<R, P> + Send + Sync,
+    C: IdentityClient<R> + Send + Sync,
+    C::Error: From<client::Error>,
     R: Runtime + Balances,
     R: Identity<IdAccountData = AccountData<<R as Balances>::Balance>>,
-    P: Pair,
     <R as System>::AccountId: Ss58Codec + Into<<R as System>::Address>,
     <<<R as Runtime>::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned:
         Send + Sync,
 {
-    pub async fn balance(&self, identifier: impl Into<&str>) -> Result<R::Balance> {
+    pub async fn balance(&self, identifier: impl Into<&str>) -> Result<R::Balance, C::Error> {
+        let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = client::resolve(self.client, Some(identifier)).await?;
-        let account = self.client.fetch_account(uid).await?;
+        let uid = client::resolve(&*client, Some(identifier))
+            .await
+            .map_err(Error::Client)?;
+        let account = client.fetch_account(uid).await.map_err(Error::Client)?;
         Ok(account.free)
     }
 
@@ -231,15 +289,19 @@ where
         &self,
         identifier: impl Into<&str>,
         amount: impl Into<R::Balance>,
-    ) -> Result<R::Balance> {
+    ) -> Result<R::Balance, C::Error> {
+        let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let signer = self.client.signer().await?;
-        let uid = client::resolve(self.client, Some(identifier)).await?;
-        let keys = self.client.fetch_keys(uid, None).await?;
-        self.client
-            .subxt()
+        let signer = client.chain_signer().map_err(Error::Client)?;
+        let uid = client::resolve(&*client, Some(identifier))
+            .await
+            .map_err(Error::Client)?;
+        let keys = client.fetch_keys(uid, None).await.map_err(Error::Client)?;
+        client
+            .chain_client()
             .transfer_and_watch(&*signer, &keys[0].clone().into(), amount.into())
-            .await?
+            .await
+            .map_err(|e| Error::Client(e.into()))?
             .transfer()
             .map_err(|_| Error::TransferEventDecode)?
             .ok_or(Error::TransferEventFind)?;
@@ -252,19 +314,17 @@ where
 make!(Faucet);
 
 #[cfg(feature = "faucet")]
-impl<'a, C, R, P> Faucet<'a, C, R, P>
+impl<C, R> Faucet<C, R>
 where
-    C: AbstractClient<R, P> + Send + Sync,
-    R: Runtime + Balances + Identity + faucet_client::Faucet,
-    P: Pair,
+    C: IdentityClient<R> + FaucetClient<R> + Send + Sync,
+    C::Error: From<client::Error>,
+    R: Runtime + Balances + Identity + Faucet,
     <R as System>::AccountId: Ss58Codec + Into<<R as System>::Address>,
     <<<R as Runtime>::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned:
         Send + Sync,
 {
-    pub async fn mint(&self, identifier: impl Into<&str>) -> Result<R::Balance> {
-        let identifier: Ss58<R> = identifier.into().parse()?;
-        let mint = faucet_client::mint(self.client.subxt(), &identifier.0).await?;
-        if let Some(minted) = mint {
+    pub async fn mint(&self) -> Result<R::Balance, C::Error> {
+        if let Some(minted) = self.client.read().await.chain_client().mint().await? {
             Ok(minted.amount)
         } else {
             Err(Error::FailedToMint)
