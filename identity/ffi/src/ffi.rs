@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use async_std::sync::{Arc, RwLock};
+use async_std::sync::RwLock;
 use client::{Identifier, Identity, IdentityClient, Service};
 use keystore::bip39::{Language, Mnemonic};
 use std::marker::PhantomData;
@@ -14,23 +14,23 @@ use sunshine_core::{ExposeSecret, Keystore, SecretString, Ss58};
 macro_rules! make {
     ($name: ident) => {
         #[derive(Clone, Debug)]
-        pub struct $name<C, R>
+        pub struct $name<'a, C, R>
         where
             C: IdentityClient<R> + Send + Sync,
             R: Runtime + Identity,
         {
-            client: Arc<RwLock<C>>,
+            client: &'a RwLock<C>,
             _runtime: PhantomData<R>,
         }
 
-        impl<C, R> $name<C, R>
+        impl<'a, C, R> $name<'a, C, R>
         where
             C: IdentityClient<R> + Send + Sync,
             R: Runtime + Identity,
         {
-            pub fn new(client: C) -> Self {
+            pub fn new(client: &'a RwLock<C>) -> Self {
                 Self {
-                    client: Arc::new(RwLock::new(client)),
+                    client,
                     _runtime: PhantomData,
                 }
             }
@@ -45,7 +45,7 @@ macro_rules! make {
 
 make!(Key, Account, Device, ID, Wallet);
 
-impl<C, R> Key<C, R>
+impl<'a, C, R> Key<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
     C::Error: From<client::Error>,
@@ -108,7 +108,7 @@ where
     }
 }
 
-impl<C, R> Account<C, R>
+impl<'a, C, R> Account<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
     C::Error: From<client::Error>,
@@ -141,7 +141,7 @@ where
     }
 }
 
-impl<C, R> Device<C, R>
+impl<'a, C, R> Device<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
     C::Error: From<client::Error>,
@@ -208,7 +208,7 @@ where
     }
 }
 
-impl<C, R> ID<C, R>
+impl<'a, C, R> ID<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
     C::Error: From<client::Error>,
@@ -265,7 +265,7 @@ where
     }
 }
 
-impl<C, R> Wallet<C, R>
+impl<'a, C, R> Wallet<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
     C::Error: From<client::Error>,
@@ -314,7 +314,7 @@ where
 make!(Faucet);
 
 #[cfg(feature = "faucet")]
-impl<C, R> Faucet<C, R>
+impl<'a, C, R> Faucet<'a, C, R>
 where
     C: IdentityClient<R> + FaucetClient<R> + Send + Sync,
     C::Error: From<client::Error>,

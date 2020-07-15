@@ -13,25 +13,17 @@ mod macros;
 ///
 /// ### Example
 /// ```
-/// use test_client::Runtime;
+/// use test_client::Client;
 /// use sunshine_identity_ffi::impl_ffi;
-/// use sunshine_identity_ffi::client::Error;
 ///
-/// async fn setup_client(root: &str) -> Result<Client, Error> {
-///     // Client Setup here..
-///     # Err(Error::RuntimeInvalid)
-/// }
-/// impl_ffi!(runtime: Runtime, client: setup_client);
+/// impl_ffi!(client: Client);
 /// ```
 #[macro_export]
 macro_rules! impl_ffi {
-    (client: $client: ty, runtime: $runtime: ty) => {
-        impl_ffi!($runtime, $client);
-    };
-    (runtime: $runtime: ty, client: $client: ty) => {
+    (client: $client: ty) => {
         use ::std::{ffi::CStr, os::raw, path::PathBuf};
         use allo_isolate::Isolate;
-        use async_std::task;
+        use async_std::{sync::RwLock, task};
         use client;
         #[cfg(feature = "faucet")]
         use faucet_client;
@@ -45,7 +37,7 @@ macro_rules! impl_ffi {
         use $crate::*;
 
         /// cbindgen:ignore
-        static mut CLIENT: Option<$client> = None;
+        static mut CLIENT: Option<RwLock<$client>> = None;
 
         enum_result! {
           CLIENT_UNKNOWN = -1,
@@ -60,6 +52,7 @@ macro_rules! impl_ffi {
         ///
         /// ### Safety
         /// This assumes that the path is non-null c string.
+        /// Calling this function more than once can result in a data race.
         #[allow(clippy::not_unsafe_ptr_arg_deref)]
         #[no_mangle]
         pub extern "C" fn client_init(port: i64, path: *const raw::c_char, chain_spec: *const raw::c_char) -> i32 {
@@ -72,15 +65,17 @@ macro_rules! impl_ffi {
                     return CLIENT_ALREADY_INIT;
                 }
             }
-            let root = cstr!(path);
-            let chain_spec = cstr!(chain_spec);
+            let root = PathBuf::from(cstr!(path));
+            let chain_spec = PathBuf::from(cstr!(chain_spec));
             let isolate = Isolate::new(port);
             let t = isolate.task(async move {
-                let client: Client = result!($client::new(root, Some(chain_spec)).await, CLIENT_CREATE_ERR);
+                let client = <$client>::new(&root, Some(&chain_spec)).await;
+                let client = result!(client, CLIENT_CREATE_ERR);
+
                 // SAFETY:
                 // this safe since we checked that the client is already not created before.
                 unsafe {
-                    CLIENT.replace(client);
+                    CLIENT.replace(RwLock::new(client));
                 }
                 CLIENT_OK
             });
