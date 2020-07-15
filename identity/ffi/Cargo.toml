@@ -14,7 +14,7 @@ async-std = { version = "=1.5.0", features = ["attributes"] }
 log = "0.4.8"
 substrate-subxt = "0.10.1"
 sunshine-core = { version = "^0.2.0", path = "../../core" }
-sunshine-faucet-client = { version = "0.1.0", path = "../../faucet/client", optional = true }
+sunshine-faucet-client = { version = "^0.2.0", path = "../../faucet/client", optional = true }
 sunshine-identity-client = { version = "^0.2.0", path = "../client" }
 thiserror = "^1.0"
 
