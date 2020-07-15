@@ -52,8 +52,6 @@ pub struct KeyLockCommand;
 
 impl KeyLockCommand {
     pub async fn exec<R: Runtime, C: ChainClient<R>>(&self, client: &mut C) -> Result<(), C::Error>
-    where
-        <C as ChainClient<R>>::Error: From<IdentityError>,
     {
         client
             .keystore_mut()
@@ -69,8 +67,6 @@ pub struct KeyUnlockCommand;
 
 impl KeyUnlockCommand {
     pub async fn exec<R: Runtime, C: ChainClient<R>>(&self, client: &mut C) -> Result<(), C::Error>
-    where
-        <C as ChainClient<R>>::Error: From<IdentityError>,
     {
         let password = ask_for_password("Please enter your password (8+ characters):\n", 8)?;
         client

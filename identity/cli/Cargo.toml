@@ -1,6 +1,6 @@
 [package]
 name = "sunshine-identity-cli"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 description = "Cli interface for the identity module."
