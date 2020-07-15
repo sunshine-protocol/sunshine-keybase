@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use codec::{Decode, Encode};
-use identity_client::{Identity, IdentityEventsDecoder};
 use substrate_subxt::balances::{Balances, BalancesEventsDecoder};
 use substrate_subxt::system::{System, SystemEventsDecoder};
 use substrate_subxt::{module, Call, Event, Runtime, SignedExtension, SignedExtra};
 use sunshine_core::ChainClient;
+use sunshine_identity_client::{Identity, IdentityEventsDecoder};
 
 #[module]
 pub trait Faucet: Identity + Balances + System {}
