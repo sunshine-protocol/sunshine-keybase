@@ -1,14 +1,9 @@
 [package]
 name = "test-runtime"
 version = "0.1.0"
-authors = ["Anonymous"]
+authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
-license = "Unlicense"
-homepage = "https://substrate.dev"
-repository = "https://github.com/paritytech/substrate/"
-
-[package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+publish = false
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false, features = ["derive"] }

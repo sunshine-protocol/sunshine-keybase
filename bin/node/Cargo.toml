@@ -1,13 +1,9 @@
 [package]
 name = "test-node"
 version = "0.1.0"
-authors = ["Anonymous"]
-description = "Substrate Node template"
+authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
-license = "Unlicense"
-build = "build.rs"
-homepage = "https://substrate.dev"
-repository = "https://github.com/paritytech/substrate/"
+publish = false
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
