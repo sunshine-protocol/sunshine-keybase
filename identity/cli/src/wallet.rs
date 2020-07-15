@@ -1,11 +1,11 @@
 use crate::{async_trait, ChainClient, Command, Error, Identity, IdentityClient, Result, Runtime};
 use clap::Clap;
 use core::fmt::{Debug, Display};
-use identity_client::{resolve, Identifier};
 use substrate_subxt::balances::{AccountData, Balances, TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
 use substrate_subxt::{SignedExtension, SignedExtra};
+use sunshine_identity_client::{resolve, Error as IdentityError, Identifier};
 
 #[derive(Clone, Debug, Clap)]
 pub struct WalletBalanceCommand {
@@ -17,7 +17,7 @@ impl<T: Runtime + Balances, C: IdentityClient<T>> Command<T, C> for WalletBalanc
 where
     <T as System>::AccountId: Ss58Codec,
     T: Identity<IdAccountData = AccountData<<T as Balances>::Balance>>,
-    <C as ChainClient<T>>::Error: From<identity_client::Error>,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
     async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let identifier: Option<Identifier<T>> = if let Some(identifier) = &self.identifier {
@@ -45,7 +45,7 @@ where
     <<<T as Runtime>::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
         Send + Sync,
     <T as Balances>::Balance: From<u128> + Display,
-    <C as ChainClient<T>>::Error: From<identity_client::Error>,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
     async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let identifier: Identifier<T> = self.identifier.parse()?;

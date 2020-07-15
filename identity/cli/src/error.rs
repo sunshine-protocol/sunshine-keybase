@@ -19,7 +19,7 @@ pub enum Error<E: std::fmt::Debug + std::error::Error + 'static> {
     #[error(transparent)]
     InvalidSs58(#[from] sunshine_core::InvalidSs58),
     #[error(transparent)]
-    InvalidService(#[from] identity_client::ServiceParseError),
+    InvalidService(#[from] sunshine_identity_client::ServiceParseError),
     #[error(transparent)]
     NotEnoughEntropy(#[from] sunshine_core::NotEnoughEntropyError),
 

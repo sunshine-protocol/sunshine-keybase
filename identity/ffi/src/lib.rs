@@ -1,8 +1,8 @@
-pub use {allo_isolate, async_std, client, ipfs_embed, keystore, log, substrate_subxt, utils};
+pub use {allo_isolate, async_std, log, substrate_subxt, sunshine_core, sunshine_identity_client};
 
 #[cfg(feature = "faucet")]
 #[doc(hidden)]
-pub use faucet_client;
+pub use sunshine_faucet_client;
 #[doc(hidden)]
 pub mod error;
 #[doc(hidden)]
@@ -24,10 +24,10 @@ macro_rules! impl_ffi {
         use ::std::{ffi::CStr, os::raw, path::PathBuf};
         use allo_isolate::Isolate;
         use async_std::{sync::RwLock, task};
-        use client;
+        use sunshine_identity_client as client;
         #[cfg(feature = "faucet")]
-        use faucet_client;
-        use keystore::bip39::{Language, Mnemonic};
+        use sunshine_faucet_client as faucet_client;
+        use sunshine_core::bip39::{Language, Mnemonic};
         use log::{error, info};
         use substrate_subxt::balances::{Balances, TransferCallExt, TransferEventExt};
         use substrate_subxt::sp_core::sr25519;

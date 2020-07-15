@@ -4,6 +4,7 @@ use crate::{
 };
 use clap::Clap;
 use sunshine_core::Keystore;
+use sunshine_identity_client::Error as IdentityError;
 use textwrap::Wrapper;
 
 #[derive(Clone, Debug, Clap)]
@@ -24,7 +25,7 @@ pub struct KeySetCommand {
 #[async_trait]
 impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for KeySetCommand
 where
-    <C as ChainClient<T>>::Error: From<identity_client::Error>,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
     async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let account_id =
@@ -52,7 +53,7 @@ pub struct KeyLockCommand;
 #[async_trait]
 impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for KeyLockCommand
 where
-    <C as ChainClient<T>>::Error: From<identity_client::Error>,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
     async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         client
@@ -70,7 +71,7 @@ pub struct KeyUnlockCommand;
 #[async_trait]
 impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for KeyUnlockCommand
 where
-    <C as ChainClient<T>>::Error: From<identity_client::Error>,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
     async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let password = ask_for_password("Please enter your password (8+ characters):\n", 8)?;

@@ -7,14 +7,14 @@ pub mod wallet;
 
 pub use crate::error::{Error, Result};
 
-use keystore::bip39::{Language, Mnemonic};
 use substrate_subxt::system::System;
+use sunshine_core::bip39::{Language, Mnemonic};
 use sunshine_core::{ExposeSecret, Key, Keystore, SecretString};
 
 pub(crate) use async_trait::async_trait;
-pub(crate) use identity_client::{Identity, IdentityClient};
 pub(crate) use substrate_subxt::Runtime;
 pub(crate) use sunshine_core::ChainClient;
+pub(crate) use sunshine_identity_client::{Identity, IdentityClient};
 
 #[async_trait]
 pub trait Command<T: Runtime + Identity, C: IdentityClient<T>>: Send + Sync {

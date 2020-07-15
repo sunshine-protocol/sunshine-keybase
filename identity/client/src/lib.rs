@@ -15,13 +15,12 @@ pub use utils::{resolve, Identifier};
 use async_trait::async_trait;
 use codec::Decode;
 use ipld_block_builder::{Cache, Codec};
-use keystore::bip39::Mnemonic;
 use sp_core::crypto::Ss58Codec;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use substrate_subxt::{
     sp_core, sp_runtime, system::System, EventSubscription, Runtime, SignedExtension, SignedExtra,
 };
-use sunshine_core::{ChainClient, SecretString};
+use sunshine_core::{bip39::Mnemonic, ChainClient, SecretString};
 
 #[async_trait]
 pub trait IdentityClient<T: Runtime + Identity>: ChainClient<T> {

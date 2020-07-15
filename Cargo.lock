@@ -6586,7 +6586,7 @@ dependencies = [
 
 [[package]]
 name = "substrate-keybase-keystore"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "keybase-keystore",
@@ -6749,7 +6749,6 @@ dependencies = [
  "parity-scale-codec",
  "qr2term",
  "rpassword",
- "substrate-keybase-keystore",
  "substrate-subxt",
  "sunshine-core",
  "sunshine-identity-client",
@@ -6770,7 +6769,6 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "serde_json",
- "substrate-keybase-keystore",
  "substrate-subxt",
  "sunshine-core",
  "test-client",
@@ -6784,14 +6782,11 @@ version = "0.1.4"
 dependencies = [
  "allo-isolate",
  "async-std",
- "ipfs-embed",
  "log",
- "substrate-keybase-keystore",
  "substrate-subxt",
  "sunshine-core",
  "sunshine-faucet-client",
  "sunshine-identity-client",
- "sunshine-identity-utils",
  "test-client",
  "thiserror",
 ]
@@ -6811,7 +6806,7 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-utils"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libipld",
  "parity-scale-codec",

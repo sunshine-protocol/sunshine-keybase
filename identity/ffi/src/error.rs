@@ -13,7 +13,7 @@ pub enum Error<E: std::error::Error + std::fmt::Debug + 'static> {
     #[error(transparent)]
     InvalidSs58(#[from] sunshine_core::InvalidSs58),
     #[error(transparent)]
-    InvalidService(#[from] client::ServiceParseError),
+    InvalidService(#[from] sunshine_identity_client::ServiceParseError),
     #[error("Failed to decode transfer event.")]
     TransferEventDecode,
     #[error("Failed to find transfer event.")]

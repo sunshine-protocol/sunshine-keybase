@@ -5,7 +5,6 @@ use crate::subxt::*;
 use codec::{Decode, Encode};
 use core::convert::TryInto;
 use ipld_block_builder::{Cache, Codec, ReadonlyCache};
-use keystore::bip39::{Language, Mnemonic, MnemonicType};
 use libipld::cid::Cid;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -14,6 +13,7 @@ use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{EventSubscription, EventsDecoder, Runtime, SignedExtra};
+use sunshine_core::bip39::{Language, Mnemonic, MnemonicType};
 use sunshine_core::{ChainClient, Key, Keystore, SecretString};
 
 async fn set_identity<T, C>(client: &C, claim: Claim) -> Result<(), C::Error>

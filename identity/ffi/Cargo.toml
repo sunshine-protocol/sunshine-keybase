@@ -11,19 +11,16 @@ repository = "https://github.com/sunshine-protocol/sunshine-identity"
 [dependencies]
 allo-isolate = "^0.1"
 async-std = { version = "=1.5.0", features = ["attributes"] }
-client = { version = "0.1.0", path = "../client", package = "sunshine-identity-client" }
-faucet-client = { version = "0.1.0", path = "../../faucet/client", package = "sunshine-faucet-client", optional = true }
-ipfs-embed = "0.1.1"
-keystore = { version = "0.1.0", path = "../../keystore/substrate", package = "substrate-keybase-keystore" }
 log = "0.4.8"
 substrate-subxt = "0.10.1"
 sunshine-core = { version = "^0.2.0", path = "../../core" }
+sunshine-faucet-client = { version = "0.1.0", path = "../../faucet/client", optional = true }
+sunshine-identity-client = { version = "0.1.0", path = "../client" }
 thiserror = "^1.0"
-utils = { version = "0.1.0", path = "../utils", package = "sunshine-identity-utils" }
 
 [dev-dependencies]
 test-client = { path = "../../bin/client" }
 
 [features]
 default = []
-faucet = ["faucet-client"]
+faucet = ["sunshine-faucet-client"]

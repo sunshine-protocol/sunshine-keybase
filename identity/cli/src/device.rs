@@ -1,9 +1,9 @@
 use crate::{async_trait, ChainClient, Command, Error, Identity, IdentityClient, Result, Runtime};
 use clap::Clap;
-use identity_client::{resolve, Identifier};
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
 use sunshine_core::Ss58;
+use sunshine_identity_client::{resolve, Error as IdentityError, Identifier};
 
 #[derive(Clone, Debug, Clap)]
 pub struct DeviceAddCommand {
@@ -31,7 +31,7 @@ pub struct DeviceRemoveCommand {
 impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for DeviceRemoveCommand
 where
     <T as System>::AccountId: Ss58Codec,
-    <C as ChainClient<T>>::Error: From<identity_client::Error>,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
     async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let device: Ss58<T> = self.device.parse()?;
@@ -49,7 +49,7 @@ pub struct DeviceListCommand {
 impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for DeviceListCommand
 where
     <T as System>::AccountId: Ss58Codec,
-    <C as ChainClient<T>>::Error: From<identity_client::Error>,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
     async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let identifier: Option<Identifier<T>> = if let Some(identifier) = &self.identifier {
@@ -71,7 +71,7 @@ pub struct DevicePaperkeyCommand;
 #[async_trait]
 impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for DevicePaperkeyCommand
 where
-    <C as ChainClient<T>>::Error: From<identity_client::Error>,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
     async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         println!("Generating a new paper key.");

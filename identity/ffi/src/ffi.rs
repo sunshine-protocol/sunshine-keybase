@@ -1,7 +1,5 @@
 use crate::error::{Error, Result};
 use async_std::sync::RwLock;
-use client::{Identifier, Identity, IdentityClient, Service};
-use keystore::bip39::{Language, Mnemonic};
 use std::marker::PhantomData;
 use substrate_subxt::{
     balances::{AccountData, Balances, TransferCallExt, TransferEventExt},
@@ -9,7 +7,11 @@ use substrate_subxt::{
     system::System,
     Runtime, SignedExtension, SignedExtra,
 };
+use sunshine_core::bip39::{Language, Mnemonic};
 use sunshine_core::{ExposeSecret, Keystore, SecretString, Ss58};
+use sunshine_identity_client::{
+    resolve, Error as IdentityError, Identifier, Identity, IdentityClient, Service,
+};
 
 macro_rules! make {
     ($name: ident) => {
@@ -48,7 +50,7 @@ make!(Key, Account, Device, ID, Wallet);
 impl<'a, C, R> Key<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
-    C::Error: From<client::Error>,
+    C::Error: From<IdentityError>,
     R: Runtime + Identity,
 {
     pub async fn set(
@@ -111,7 +113,7 @@ where
 impl<'a, C, R> Account<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
-    C::Error: From<client::Error>,
+    C::Error: From<IdentityError>,
     R: Runtime + Identity,
     <R as System>::AccountId: Ss58Codec,
 {
@@ -144,7 +146,7 @@ where
 impl<'a, C, R> Device<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
-    C::Error: From<client::Error>,
+    C::Error: From<IdentityError>,
     R: Runtime + Identity,
     <R as System>::AccountId: Ss58Codec,
 {
@@ -183,7 +185,7 @@ where
     pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>, C::Error> {
         let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = client::resolve(&*client, Some(identifier))
+        let uid = resolve(&*client, Some(identifier))
             .await
             .map_err(Error::Client)?;
         let list = client
@@ -211,14 +213,14 @@ where
 impl<'a, C, R> ID<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
-    C::Error: From<client::Error>,
+    C::Error: From<IdentityError>,
     R: Runtime + Identity,
     <R as System>::AccountId: Ss58Codec,
 {
     pub async fn resolve(&self, identifier: impl Into<&str>) -> Result<String, C::Error> {
         let identifier: Identifier<R> = identifier.into().parse()?;
         let client = self.client.read().await;
-        let uid = client::resolve(&*client, Some(identifier))
+        let uid = resolve(&*client, Some(identifier))
             .await
             .map_err(Error::Client)?;
         Ok(uid.to_string())
@@ -227,7 +229,7 @@ where
     pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>, C::Error> {
         let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = client::resolve(&*client, Some(identifier))
+        let uid = resolve(&*client, Some(identifier))
             .await
             .map_err(Error::Client)?;
         let list = client
@@ -268,7 +270,7 @@ where
 impl<'a, C, R> Wallet<'a, C, R>
 where
     C: IdentityClient<R> + Send + Sync,
-    C::Error: From<client::Error>,
+    C::Error: From<IdentityError>,
     R: Runtime + Balances,
     R: Identity<IdAccountData = AccountData<<R as Balances>::Balance>>,
     <R as System>::AccountId: Ss58Codec + Into<<R as System>::Address>,
@@ -278,7 +280,7 @@ where
     pub async fn balance(&self, identifier: impl Into<&str>) -> Result<R::Balance, C::Error> {
         let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = client::resolve(&*client, Some(identifier))
+        let uid = resolve(&*client, Some(identifier))
             .await
             .map_err(Error::Client)?;
         let account = client.fetch_account(uid).await.map_err(Error::Client)?;
@@ -293,7 +295,7 @@ where
         let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
         let signer = client.chain_signer().map_err(Error::Client)?;
-        let uid = client::resolve(&*client, Some(identifier))
+        let uid = resolve(&*client, Some(identifier))
             .await
             .map_err(Error::Client)?;
         let keys = client.fetch_keys(uid, None).await.map_err(Error::Client)?;
@@ -317,7 +319,6 @@ make!(Faucet);
 impl<'a, C, R> Faucet<'a, C, R>
 where
     C: IdentityClient<R> + FaucetClient<R> + Send + Sync,
-    C::Error: From<client::Error>,
     R: Runtime + Balances + Identity + Faucet,
     <R as System>::AccountId: Ss58Codec + Into<<R as System>::Address>,
     <<<R as Runtime>::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned:
