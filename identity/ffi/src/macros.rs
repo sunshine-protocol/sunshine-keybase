@@ -16,6 +16,25 @@ macro_rules! error {
 
 #[doc(hidden)]
 #[macro_export]
+macro_rules! last_error {
+    () => {
+        $crate::last_error!(err = CLIENT_UNINIT);
+    };
+    (err = $err:expr) => {
+        // this safe since we get a immutable ref for the client
+        unsafe {
+            match LAST_ERROR {
+                Some(ref last_err) => last_err,
+                None => {
+                    return $err;
+                }
+            }
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
 macro_rules! result {
     ($result:expr) => {
         $crate::result!($result, CLIENT_UNKNOWN);
@@ -108,6 +127,10 @@ macro_rules! gen_ffi {
                     Ok(v) => Some(v),
                     Err(e) => {
                         $crate::log::error!("{:?}: {:?}", stringify!($struct::$method), e);
+                        let last_err = $crate::last_error!(err = None);
+                        if let Ok(mut v) = last_err.write() {
+                            v.write(e.to_string());
+                        }
                         None
                     }
                 }

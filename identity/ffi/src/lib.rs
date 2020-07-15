@@ -21,7 +21,13 @@ mod macros;
 #[macro_export]
 macro_rules! impl_ffi {
     (client: $client: ty) => {
-        use ::std::{ffi::CStr, os::raw, path::PathBuf};
+        use ::std::{
+            ffi::CStr,
+            os::raw,
+            ptr,
+            path::PathBuf,
+            sync::RwLock as StdRwLock
+        };
         use allo_isolate::Isolate;
         use async_std::{sync::RwLock, task};
         use sunshine_identity_client as client;
@@ -33,11 +39,14 @@ macro_rules! impl_ffi {
         use substrate_subxt::sp_core::sr25519;
         use substrate_subxt::{ClientBuilder, Signer};
         use substrate_subxt::{SignedExtension, SignedExtra};
+        use error::LastError;
         #[allow(unused)]
         use $crate::*;
 
         /// cbindgen:ignore
         static mut CLIENT: Option<RwLock<$client>> = None;
+        /// cbindgen:ignore
+        static mut LAST_ERROR: Option<StdRwLock<LastError>> = None;
 
         enum_result! {
           CLIENT_UNKNOWN = -1,
@@ -76,11 +85,31 @@ macro_rules! impl_ffi {
                 // this safe since we checked that the client is already not created before.
                 unsafe {
                     CLIENT.replace(RwLock::new(client));
+                    LAST_ERROR.replace(StdRwLock::new(LastError::new()));
                 }
                 CLIENT_OK
             });
             task::spawn(t);
             CLIENT_OK
+        }
+        /// Get last error that happened when you expected a value but got a null instead
+        /// this will return an immutable pointer to the underlaying error buffer, you are not allowed to modify/free
+        /// this pointer, otherwise there is an UB may occur.
+        /// in most cases you should read this pointer as UTF-8 string and make a copy of it in your side.
+        #[no_mangle]
+        pub extern "C" fn client_last_error() -> *const raw::c_char {
+            let last_err = last_error!(err = ptr::null());
+            if let Ok(e) = last_err.read() {
+                if let Some(e) = e.read() {
+                    e.as_ptr()
+                } else {
+                    log::warn!("there is no last error to read");
+                    ptr::null()
+                }
+            } else {
+                log::error!("Failed to read last error");
+                ptr::null()
+            }
         }
 
         gen_ffi! {

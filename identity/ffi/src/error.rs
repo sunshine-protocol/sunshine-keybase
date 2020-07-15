@@ -1,3 +1,4 @@
+use std::ffi::CString;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -31,3 +32,22 @@ pub enum Error<E: std::error::Error + std::fmt::Debug + 'static> {
 }
 
 pub type Result<T, E> = core::result::Result<T, Error<E>>;
+
+pub struct LastError {
+    e: Option<String>,
+}
+
+impl LastError {
+    pub const fn new() -> Self {
+        Self { e: None }
+    }
+
+    pub fn write(&mut self, e: String) {
+        let _ = self.e.take();
+        self.e.replace(e);
+    }
+
+    pub fn read(&self) -> Option<CString> {
+        self.e.clone().and_then(|v| CString::new(v).ok())
+    }
+}
