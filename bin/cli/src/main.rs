@@ -5,8 +5,8 @@ use exitfailure::ExitDisplay;
 use std::path::Path;
 use std::time::Duration;
 use sunshine_core::{ChainClient, Keystore};
-use sunshine_faucet_cli::{Command as _, MintCommand};
-use sunshine_identity_cli::{key::KeySetCommand, set_device_key, Command as _, Error};
+use sunshine_faucet_cli::MintCommand;
+use sunshine_identity_cli::{key::KeySetCommand, set_device_key, Error};
 use test_client::{identity::IdentityClient, Client, Error as ClientError};
 
 mod command;
@@ -66,24 +66,24 @@ async fn run() -> Result<(), Error<ClientError>> {
             KeySubCommand::Lock(cmd) => cmd.exec(&mut client).await,
         },
         SubCommand::Account(AccountCommand { cmd }) => match cmd {
-            AccountSubCommand::Create(cmd) => cmd.exec(&mut client).await,
-            AccountSubCommand::Password(cmd) => cmd.exec(&mut client).await,
-            AccountSubCommand::Mint(cmd) => cmd.exec(&mut client).await.map_err(Error::Client),
+            AccountSubCommand::Create(cmd) => cmd.exec(&client).await,
+            AccountSubCommand::Password(cmd) => cmd.exec(&client).await,
+            AccountSubCommand::Mint(cmd) => cmd.exec(&client).await.map_err(Error::Client),
         },
         SubCommand::Device(DeviceCommand { cmd }) => match cmd {
-            DeviceSubCommand::Add(cmd) => cmd.exec(&mut client).await,
-            DeviceSubCommand::Remove(cmd) => cmd.exec(&mut client).await,
-            DeviceSubCommand::List(cmd) => cmd.exec(&mut client).await,
-            DeviceSubCommand::Paperkey(cmd) => cmd.exec(&mut client).await,
+            DeviceSubCommand::Add(cmd) => cmd.exec(&client).await,
+            DeviceSubCommand::Remove(cmd) => cmd.exec(&client).await,
+            DeviceSubCommand::List(cmd) => cmd.exec(&client).await,
+            DeviceSubCommand::Paperkey(cmd) => cmd.exec(&client).await,
         },
         SubCommand::Id(IdCommand { cmd }) => match cmd {
-            IdSubCommand::List(cmd) => cmd.exec(&mut client).await,
-            IdSubCommand::Prove(cmd) => cmd.exec(&mut client).await,
-            IdSubCommand::Revoke(cmd) => cmd.exec(&mut client).await,
+            IdSubCommand::List(cmd) => cmd.exec(&client).await,
+            IdSubCommand::Prove(cmd) => cmd.exec(&client).await,
+            IdSubCommand::Revoke(cmd) => cmd.exec(&client).await,
         },
         SubCommand::Wallet(WalletCommand { cmd }) => match cmd {
-            WalletSubCommand::Balance(cmd) => cmd.exec(&mut client).await,
-            WalletSubCommand::Transfer(cmd) => cmd.exec(&mut client).await,
+            WalletSubCommand::Balance(cmd) => cmd.exec(&client).await,
+            WalletSubCommand::Transfer(cmd) => cmd.exec(&client).await,
         },
         SubCommand::Run => loop {
             if let Some(sub) = password_changes.as_mut() {

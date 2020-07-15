@@ -8,18 +8,9 @@ pub mod wallet;
 pub use crate::error::{Error, Result};
 
 use substrate_subxt::system::System;
+use substrate_subxt::Runtime;
 use sunshine_core::bip39::{Language, Mnemonic};
-use sunshine_core::{ExposeSecret, Key, Keystore, SecretString};
-
-pub(crate) use async_trait::async_trait;
-pub(crate) use substrate_subxt::Runtime;
-pub(crate) use sunshine_core::ChainClient;
-pub(crate) use sunshine_identity_client::{Identity, IdentityClient};
-
-#[async_trait]
-pub trait Command<T: Runtime + Identity, C: IdentityClient<T>>: Send + Sync {
-    async fn exec(&self, client: &mut C) -> Result<(), C::Error>;
-}
+use sunshine_core::{ChainClient, ExposeSecret, Key, Keystore, SecretString};
 
 pub fn ask_for_new_password(length: u8) -> std::result::Result<SecretString, std::io::Error> {
     loop {
@@ -74,8 +65,8 @@ pub async fn set_device_key<T, C>(
     force: bool,
 ) -> Result<<T as System>::AccountId, C::Error>
 where
-    T: Runtime + Identity,
-    C: IdentityClient<T>,
+    T: Runtime,
+    C: ChainClient<T>,
 {
     if client.keystore().chain_signer().is_some() && !force {
         return Err(Error::HasDeviceKey);

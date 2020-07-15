@@ -1,26 +1,31 @@
-use crate::{async_trait, ChainClient, Command, Error, Identity, IdentityClient, Result, Runtime};
+use crate::error::{Error, Result};
 use clap::Clap;
 use core::fmt::{Debug, Display};
 use substrate_subxt::balances::{AccountData, Balances, TransferCallExt, TransferEventExt};
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
-use substrate_subxt::{SignedExtension, SignedExtra};
-use sunshine_identity_client::{resolve, Error as IdentityError, Identifier};
+use substrate_subxt::{Runtime, SignedExtension, SignedExtra};
+use sunshine_core::ChainClient;
+use sunshine_identity_client::{
+    resolve, Error as IdentityError, Identifier, Identity, IdentityClient,
+};
 
 #[derive(Clone, Debug, Clap)]
 pub struct WalletBalanceCommand {
     pub identifier: Option<String>,
 }
 
-#[async_trait]
-impl<T: Runtime + Balances, C: IdentityClient<T>> Command<T, C> for WalletBalanceCommand
-where
-    <T as System>::AccountId: Ss58Codec,
-    T: Identity<IdAccountData = AccountData<<T as Balances>::Balance>>,
-    <C as ChainClient<T>>::Error: From<IdentityError>,
-{
-    async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
-        let identifier: Option<Identifier<T>> = if let Some(identifier) = &self.identifier {
+impl WalletBalanceCommand {
+    pub async fn exec<R: Runtime + Identity + Balances, C: IdentityClient<R>>(
+        &self,
+        client: &C,
+    ) -> Result<(), C::Error>
+    where
+        <R as System>::AccountId: Ss58Codec,
+        R: Identity<IdAccountData = AccountData<<R as Balances>::Balance>>,
+        <C as ChainClient<R>>::Error: From<IdentityError>,
+    {
+        let identifier: Option<Identifier<R>> = if let Some(identifier) = &self.identifier {
             Some(identifier.parse()?)
         } else {
             None
@@ -38,17 +43,19 @@ pub struct WalletTransferCommand {
     pub amount: u128,
 }
 
-#[async_trait]
-impl<T: Runtime + Identity + Balances, C: IdentityClient<T>> Command<T, C> for WalletTransferCommand
-where
-    <T as System>::AccountId: Ss58Codec + Into<<T as System>::Address>,
-    <<<T as Runtime>::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned:
-        Send + Sync,
-    <T as Balances>::Balance: From<u128> + Display,
-    <C as ChainClient<T>>::Error: From<IdentityError>,
-{
-    async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
-        let identifier: Identifier<T> = self.identifier.parse()?;
+impl WalletTransferCommand {
+    pub async fn exec<R: Runtime + Identity + Balances, C: IdentityClient<R>>(
+        &self,
+        client: &C,
+    ) -> Result<(), C::Error>
+    where
+        <R as System>::AccountId: Ss58Codec + Into<<R as System>::Address>,
+        <<<R as Runtime>::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned:
+            Send + Sync,
+        <R as Balances>::Balance: From<u128> + Display,
+        <C as ChainClient<R>>::Error: From<IdentityError>,
+    {
+        let identifier: Identifier<R> = self.identifier.parse()?;
         let uid = resolve(client, Some(identifier))
             .await
             .map_err(Error::Client)?;

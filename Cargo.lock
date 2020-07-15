@@ -6704,9 +6704,8 @@ dependencies = [
 
 [[package]]
 name = "sunshine-faucet-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "async-trait",
  "clap 3.0.0-beta.1",
  "substrate-subxt",
  "sunshine-faucet-client",
@@ -6740,10 +6739,9 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-std",
- "async-trait",
  "clap 3.0.0-beta.1",
  "libipld",
  "parity-scale-codec",

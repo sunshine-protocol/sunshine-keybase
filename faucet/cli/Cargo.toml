@@ -1,6 +1,6 @@
 [package]
 name = "sunshine-faucet-cli"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 description = "Cli for the faucet module."
@@ -9,7 +9,6 @@ documentation = "https://docs.rs/sunshine-faucet-cli"
 repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
-async-trait = "0.1.36"
 clap = "3.0.0-beta.1"
 substrate-subxt = "0.10.1"
 sunshine-faucet-client = { version = "^0.2.0", path = "../client" }
