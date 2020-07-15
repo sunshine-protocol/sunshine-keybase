@@ -9,6 +9,8 @@ use substrate_subxt::{
 };
 use sunshine_core::bip39::{Language, Mnemonic};
 use sunshine_core::{ExposeSecret, Keystore, SecretString, Ss58};
+#[cfg(feature = "faucet")]
+use sunshine_faucet_client::{Faucet as SunshineFaucet, FaucetClient};
 use sunshine_identity_client::{
     resolve, Error as IdentityError, Identifier, Identity, IdentityClient, Service,
 };
@@ -319,13 +321,17 @@ make!(Faucet);
 impl<'a, C, R> Faucet<'a, C, R>
 where
     C: IdentityClient<R> + FaucetClient<R> + Send + Sync,
-    R: Runtime + Balances + Identity + Faucet,
-    <R as System>::AccountId: Ss58Codec + Into<<R as System>::Address>,
-    <<<R as Runtime>::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned:
-        Send + Sync,
+    R: Runtime + Identity + SunshineFaucet,
 {
     pub async fn mint(&self) -> Result<R::Balance, C::Error> {
-        if let Some(minted) = self.client.read().await.chain_client().mint().await? {
+        let event = self
+            .client
+            .read()
+            .await
+            .mint()
+            .await
+            .map_err(Error::Client)?;
+        if let Some(minted) = event {
             Ok(minted.amount)
         } else {
             Err(Error::FailedToMint)

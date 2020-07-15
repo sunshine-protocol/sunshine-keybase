@@ -1,6 +1,6 @@
 [package]
 name = "sunshine-identity-ffi"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Shady Khalifa <shekohex@gmail.com>"]
 edition = "2018"
 description = "FFI for the identity module."

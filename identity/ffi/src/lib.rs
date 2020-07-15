@@ -145,10 +145,10 @@ macro_rules! impl_ffi {
                 amount: u64 = amount
             ) -> String;
 
-            /// Try to mint the account, this only enabled in testnet and behind a feature flag
+            /// Try to mint the current account, this only enabled in testnet and behind a feature flag
             /// returned the minted amount or null if there is any errors
             #[cfg(feature = "faucet")]
-            Faucet::mint => fn client_faucet_mint(identifier: *const raw::c_char = cstr!(identifier)) -> String;
+            Faucet::mint => fn client_faucet_mint() -> String;
 
         }
     };
