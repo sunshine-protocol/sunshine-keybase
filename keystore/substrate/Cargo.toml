@@ -12,4 +12,4 @@ repository = "https://github.com/sunshine-protocol/sunshine-identity"
 async-trait = "0.1.36"
 keybase-keystore = { version = "^0.2.0", path = "../keybase" }
 substrate-subxt = "0.10.1"
-sunshine-core = { version = "0.1.0", path = "../../core" }
+sunshine-core = { version = "^0.2.0", path = "../../core" }

@@ -17,7 +17,7 @@ ipfs-embed = "0.1.1"
 keystore = { version = "0.1.0", path = "../../keystore/substrate", package = "substrate-keybase-keystore" }
 log = "0.4.8"
 substrate-subxt = "0.10.1"
-sunshine-core = { version = "0.1.0", path = "../../core" }
+sunshine-core = { version = "^0.2.0", path = "../../core" }
 thiserror = "^1.0"
 utils = { version = "0.1.0", path = "../utils", package = "sunshine-identity-utils" }
 
