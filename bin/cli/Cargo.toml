@@ -1,21 +1,21 @@
 [package]
 name = "test-cli"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
-
-[features]
-light = ["test-client/light"]
+publish = false
 
 [dependencies]
 async-std = { version = "=1.5.0", features = ["attributes"] }
 exitfailure = "0.5.1"
 clap = "3.0.0-beta.1"
-identity-cli = { package = "sunshine-identity-cli", path = "../../identity/cli" }
 dirs = "3.0.1"
 env_logger = "0.7.1"
 ipfs-embed = "0.1.1"
-keybase-keystore = { path = "../../keystore" }
+keystore = { path = "../../keystore/substrate", package = "substrate-keybase-keystore" }
 sled = "0.32.1"
 substrate-subxt = "0.10.1"
+sunshine-core = { path = "../../core" }
+sunshine-faucet-cli = { path = "../../faucet/cli" }
+sunshine-identity-cli = { path = "../../identity/cli" }
 test-client = { path = "../client" }

@@ -5,75 +5,95 @@ pub mod id;
 pub mod key;
 pub mod wallet;
 
-pub use crate::error::*;
+pub use crate::error::{Error, Result};
 
-use identity_client::Suri;
-use keystore::bip39::{Language, Mnemonic};
-use keystore::{DeviceKey, Password};
 use substrate_subxt::system::System;
+use sunshine_core::bip39::{Language, Mnemonic};
+use sunshine_core::{ExposeSecret, Key, Keystore, SecretString};
 
 pub(crate) use async_trait::async_trait;
-pub(crate) use identity_client::{AbstractClient, Identity};
-pub(crate) use substrate_subxt::sp_core::Pair;
 pub(crate) use substrate_subxt::Runtime;
+pub(crate) use sunshine_core::ChainClient;
+pub(crate) use sunshine_identity_client::{Identity, IdentityClient};
 
 #[async_trait]
-pub trait Command<T: Runtime + Identity, P: Pair>: Send + Sync {
-    async fn exec(&self, client: &dyn AbstractClient<T, P>) -> Result<()>;
+pub trait Command<T: Runtime + Identity, C: IdentityClient<T>>: Send + Sync {
+    async fn exec(&self, client: &mut C) -> Result<(), C::Error>;
 }
 
-pub fn ask_for_new_password() -> Result<Password> {
-    let password = ask_for_password("Please enter a new password (8+ characters):\n")?;
-    let password2 = ask_for_password("Please confirm your new password:\n")?;
-    if password != password2 {
-        return Err(Error::PasswordMissmatch);
-    }
-    Ok(password)
-}
-
-pub fn ask_for_password(prompt: &str) -> Result<Password> {
-    Ok(Password::from(rpassword::prompt_password_stdout(prompt)?))
-}
-
-pub async fn ask_for_phrase(prompt: &str) -> Result<Mnemonic> {
-    println!("{}", prompt);
-    let mut words = Vec::with_capacity(24);
-    while words.len() < 24 {
-        let mut line = String::new();
-        async_std::io::stdin().read_line(&mut line).await?;
-        for word in line.split(' ') {
-            words.push(word.trim().to_string());
+pub fn ask_for_new_password(length: u8) -> std::result::Result<SecretString, std::io::Error> {
+    loop {
+        let password = ask_for_password("Please enter a new password (8+ characters):\n", length)?;
+        let password2 = ask_for_password("Please confirm your new password:\n", length)?;
+        if password.expose_secret() == password2.expose_secret() {
+            return Ok(password);
         }
+        println!("Passwords don't match.");
     }
-    println!();
-    Ok(Mnemonic::from_phrase(&words.join(" "), Language::English)
-        .map_err(|_| Error::InvalidMnemonic)?)
 }
 
-pub async fn set_device_key<T: Runtime + Identity, P: Pair>(
-    client: &dyn AbstractClient<T, P>,
+pub fn ask_for_password(
+    prompt: &str,
+    length: u8,
+) -> std::result::Result<SecretString, std::io::Error> {
+    loop {
+        let password = SecretString::new(rpassword::prompt_password_stdout(prompt)?);
+        if password.expose_secret().len() >= length as usize {
+            return Ok(password);
+        }
+        println!(
+            "Password too short, needs to be at least {} characters.",
+            length
+        );
+    }
+}
+
+pub async fn ask_for_phrase(prompt: &str) -> std::result::Result<Mnemonic, std::io::Error> {
+    loop {
+        println!("{}", prompt);
+        let mut words = Vec::with_capacity(24);
+        while words.len() < 24 {
+            let mut line = String::new();
+            async_std::io::stdin().read_line(&mut line).await?;
+            for word in line.split(' ') {
+                words.push(word.trim().to_string());
+            }
+        }
+        println!();
+        if let Ok(mnemonic) = Mnemonic::from_phrase(&words.join(" "), Language::English) {
+            return Ok(mnemonic);
+        }
+        println!("Invalid mnemonic");
+    }
+}
+
+pub async fn set_device_key<T, C>(
+    client: &mut C,
     paperkey: bool,
     suri: Option<&str>,
     force: bool,
-) -> Result<<T as System>::AccountId>
+) -> Result<<T as System>::AccountId, C::Error>
 where
-    P::Seed: Into<[u8; 32]> + Copy + Send + Sync,
+    T: Runtime + Identity,
+    C: IdentityClient<T>,
 {
-    if client.has_device_key().await && !force {
+    if client.keystore().chain_signer().is_some() && !force {
         return Err(Error::HasDeviceKey);
     }
-    let password = ask_for_new_password()?;
-    if password.expose_secret().len() < 8 {
-        return Err(Error::PasswordTooShort);
-    }
+    let password = ask_for_new_password(8)?;
+
     let dk = if paperkey {
         let mnemonic = ask_for_phrase("Please enter your backup phrase:").await?;
-        DeviceKey::from_mnemonic(&mnemonic).map_err(|_| Error::InvalidMnemonic)?
+        <C::Keystore as Keystore<T>>::Key::from_mnemonic(&mnemonic)?
     } else if let Some(suri) = &suri {
-        let suri: Suri<P> = suri.parse()?;
-        DeviceKey::from_seed(suri.0.into())
+        <C::Keystore as Keystore<T>>::Key::from_suri(&suri)?
     } else {
-        DeviceKey::generate().await
+        <C::Keystore as Keystore<T>>::Key::generate().await
     };
-    Ok(client.set_device_key(&dk, &password, force).await?)
+    client
+        .keystore_mut()
+        .set_device_key(&dk, &password, force)
+        .await
+        .map_err(|e| Error::Client(e.into()))?;
+    Ok(dk.to_account_id())
 }

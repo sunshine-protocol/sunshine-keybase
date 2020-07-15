@@ -1,12 +1,13 @@
 use crate::error::Error;
 use crate::generation::Generation;
-use crate::types::Mask;
+use crate::types::*;
 use async_std::path::{Path, PathBuf};
 use async_std::prelude::*;
+use async_std::sync::RwLock;
 
 pub struct KeyStore {
     path: PathBuf,
-    gen: Generation,
+    gen: RwLock<Generation>,
 }
 
 impl KeyStore {
@@ -58,29 +59,80 @@ impl KeyStore {
                 }
             }
         };
-        Ok(Self { path, gen })
+        Ok(Self {
+            path,
+            gen: RwLock::new(gen),
+        })
     }
 
     /// Creates a new generation from a password mask.
-    pub async fn apply_mask(&mut self, mask: &Mask, gen: u16) -> Result<(), Error> {
-        if self.gen() + 1 != gen {
+    pub async fn apply_mask(&self, mask: &Mask, next_gen: u16) -> Result<(), Error> {
+        let mut gen = self.gen.write().await;
+        if gen.gen() + 1 != next_gen {
             return Err(Error::GenMissmatch);
         }
-        let dk = self.device_key().await?;
-        let pass = self.password().await?.apply_mask(mask);
-        let gen = Generation::new(&self.path, gen);
-        gen.initialize(&dk, &pass).await?;
-        let gen = std::mem::replace(&mut self.gen, gen);
-        gen.remove().await?;
+        let dk = gen.device_key().await?;
+        let pass = gen.password().await?.apply_mask(mask);
+        let next_gen = Generation::new(&self.path, next_gen);
+        next_gen.initialize(&dk, &pass, true).await?;
+        let old_gen = std::mem::replace(&mut *gen, next_gen);
+        old_gen.remove().await?;
         Ok(())
     }
-}
 
-impl core::ops::Deref for KeyStore {
-    type Target = Generation;
+    /// Returns the generation number.
+    pub async fn gen(&self) -> u16 {
+        self.gen.read().await.gen()
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.gen
+    /// Checks if the keystore is initialized.
+    pub async fn is_initialized(&self) -> bool {
+        self.gen.read().await.is_initialized().await
+    }
+
+    /// Initializes the keystore.
+    pub async fn initialize(
+        &self,
+        dk: &DeviceKey,
+        pass: &Password,
+        force: bool,
+    ) -> Result<(), Error> {
+        self.gen.write().await.initialize(dk, pass, force).await
+    }
+
+    /// Unlocking the keystore makes the random key decryptable.
+    pub async fn unlock(&self, pass: &Password) -> Result<DeviceKey, Error> {
+        self.gen.write().await.unlock(pass).await
+    }
+
+    /// Locks the keystore by zeroizing the noise file. This makes the encrypted
+    /// random key undecryptable without a password.
+    pub async fn lock(&self) -> Result<(), Error> {
+        self.gen.write().await.lock().await
+    }
+
+    /// The random key is used to decrypt the device key.
+    ///
+    /// NOTE: Only works if the keystore was unlocked.
+    pub async fn device_key(&self) -> Result<DeviceKey, Error> {
+        self.gen.read().await.device_key().await
+    }
+
+    /// The random key is used to recover the password.
+    ///
+    /// NOTE: Only works if the keystore was unlocked.
+    pub async fn password(&self) -> Result<Password, Error> {
+        self.gen.read().await.password().await
+    }
+
+    /// Returns the public device key.
+    pub async fn public(&self) -> Result<PublicDeviceKey, Error> {
+        self.gen.read().await.public().await
+    }
+
+    /// Change password.
+    pub async fn change_password_mask(&self, password: &Password) -> Result<Mask, Error> {
+        self.gen.read().await.change_password_mask(password).await
     }
 }
 
@@ -96,12 +148,12 @@ mod tests {
         fail::cfg("edk-write-fail", "off").unwrap();
         fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = KeyStore::open(tmp.path()).await.unwrap();
 
         // generate
         let key = DeviceKey::generate().await;
         let p1 = Password::from("password".to_string());
-        store.initialize(&key, &p1).await.unwrap();
+        store.initialize(&key, &p1, false).await.unwrap();
 
         // check reading the device key.
         let key2 = store.device_key().await.unwrap();
@@ -120,7 +172,10 @@ mod tests {
         // change password
         let p2 = Password::from("other password".to_string());
         let mask = store.change_password_mask(&p2).await.unwrap();
-        store.apply_mask(&mask, store.gen() + 1).await.unwrap();
+        store
+            .apply_mask(&mask, store.gen().await + 1)
+            .await
+            .unwrap();
 
         // make sure key is the same after lock/unlock
         store.lock().await.unwrap();
@@ -155,17 +210,17 @@ mod tests {
         fail::cfg("edk-write-fail", "off").unwrap();
         fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = KeyStore::open(tmp.path()).await.unwrap();
         let key = DeviceKey::generate().await;
         let pass = Password::generate().await;
-        store.initialize(&key, &pass).await.unwrap();
+        store.initialize(&key, &pass, false).await.unwrap();
 
         let scenario = FailScenario::setup();
 
         fail::cfg("edk-write-fail", "return(())").unwrap();
         let npass = Password::generate().await;
         let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen() + 1).await.ok();
+        store.apply_mask(&mask, store.gen().await + 1).await.ok();
         store.lock().await.unwrap();
         store.unlock(&pass).await.unwrap();
 
@@ -178,17 +233,17 @@ mod tests {
         fail::cfg("edk-write-fail", "off").unwrap();
         fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = KeyStore::open(tmp.path()).await.unwrap();
         let key = DeviceKey::generate().await;
         let pass = Password::generate().await;
-        store.initialize(&key, &pass).await.unwrap();
+        store.initialize(&key, &pass, false).await.unwrap();
 
         let scenario = FailScenario::setup();
 
         fail::cfg("edk-write-fail", "return(())").unwrap();
         let npass = Password::generate().await;
         let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen() + 1).await.ok();
+        store.apply_mask(&mask, store.gen().await + 1).await.ok();
 
         let key2 = store.device_key().await.unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());
@@ -206,17 +261,17 @@ mod tests {
         fail::cfg("edk-write-fail", "off").unwrap();
         fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let mut store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = KeyStore::open(tmp.path()).await.unwrap();
         let key = DeviceKey::generate().await;
         let pass = Password::generate().await;
-        store.initialize(&key, &pass).await.unwrap();
+        store.initialize(&key, &pass, false).await.unwrap();
 
         let scenario = FailScenario::setup();
 
         fail::cfg("gen-rm-fail", "return(())").unwrap();
         let npass = Password::generate().await;
         let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen() + 1).await.ok();
+        store.apply_mask(&mask, store.gen().await + 1).await.ok();
 
         let key2 = store.device_key().await.unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());

@@ -1,29 +1,23 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum Error {
+pub enum Error<E: std::error::Error + std::fmt::Debug + 'static> {
     #[error(transparent)]
-    Identity(#[from] client::Error),
-    #[error(transparent)]
-    Subxt(#[from] substrate_subxt::Error),
+    Client(E),
     #[error(transparent)]
     Io(#[from] async_std::io::Error),
-    #[error(transparent)]
-    Keystore(#[from] keystore::Error),
     #[error("Failed to find config dir. Use `--path` to supply a suitable directory.")]
     ConfigDirNotFound,
     #[error(transparent)]
-    InvalidSuri(#[from] client::InvalidSuri),
+    InvalidSuri(#[from] sunshine_core::InvalidSuri),
     #[error(transparent)]
-    InvalidSs58(#[from] client::InvalidSs58),
+    InvalidSs58(#[from] sunshine_core::InvalidSs58),
     #[error(transparent)]
-    InvalidService(#[from] client::ServiceParseError),
+    InvalidService(#[from] sunshine_identity_client::ServiceParseError),
     #[error("Failed to decode transfer event.")]
     TransferEventDecode,
     #[error("Failed to find transfer event.")]
     TransferEventFind,
-    #[error("Failed to find an account associated with key.")]
-    NoAccount,
     #[error("Device key is already configured. Use `--force` if you want to overwrite it.")]
     HasDeviceKey,
     #[error("Password too short.")]
@@ -36,4 +30,4 @@ pub enum Error {
     FailedToMint,
 }
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T, E> = core::result::Result<T, Error<E>>;

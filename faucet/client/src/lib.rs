@@ -1,8 +1,10 @@
+use async_trait::async_trait;
 use codec::{Decode, Encode};
-use identity_client::{Identity, IdentityEventsDecoder};
 use substrate_subxt::balances::{Balances, BalancesEventsDecoder};
 use substrate_subxt::system::{System, SystemEventsDecoder};
-use substrate_subxt::{module, Call, Error, Event, Runtime, SignedExtension, SignedExtra};
+use substrate_subxt::{module, Call, Event, Runtime, SignedExtension, SignedExtra};
+use sunshine_core::ChainClient;
+use sunshine_identity_client::{Identity, IdentityEventsDecoder};
 
 #[module]
 pub trait Faucet: Identity + Balances + System {}
@@ -18,41 +20,45 @@ pub struct MintedEvent<T: Faucet> {
     pub amount: <T as Balances>::Balance,
 }
 
-pub async fn mint<T: Runtime + Faucet>(
-    client: &substrate_subxt::Client<T>,
-    account: &<T as System>::AccountId,
-) -> Result<Option<MintedEvent<T>>, Error>
+#[async_trait]
+pub trait FaucetClient<T: Runtime + Faucet>: ChainClient<T> {
+    async fn mint(&self) -> Result<Option<MintedEvent<T>>, Self::Error>;
+}
+
+#[async_trait]
+impl<T, C> FaucetClient<T> for C
 where
+    T: Runtime + Faucet,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: ChainClient<T>,
 {
-    let call = MintCall { account };
-    let unsigned = client.create_unsigned(call, account, None).await?;
-    let decoder = client.events_decoder::<MintCall<T>>();
-    let event = client
-        .submit_and_watch_extrinsic(unsigned, decoder)
-        .await?
-        .minted()?;
-    Ok(event)
+    async fn mint(&self) -> Result<Option<MintedEvent<T>>, C::Error> {
+        let account = self.chain_signer()?.account_id();
+        let call = MintCall { account };
+        let unsigned = self
+            .chain_client()
+            .create_unsigned(call, account, None)
+            .await?;
+        let decoder = self.chain_client().events_decoder::<MintCall<T>>();
+        let event = self
+            .chain_client()
+            .submit_and_watch_extrinsic(unsigned, decoder)
+            .await?
+            .minted()?;
+        Ok(event)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use sp_core::sr25519::Pair;
-    use sp_core::Pair as _;
-    use substrate_subxt::{sp_core, ClientBuilder, PairSigner, Signer};
-    use test_client::faucet;
-    use test_client::mock::test_node;
-    use test_client::Runtime;
+    use test_client::faucet::FaucetClient;
+    use test_client::mock::{test_node, AccountKeyring};
+    use test_client::Client;
 
     #[async_std::test]
     async fn test_mint() {
-        let (node, _) = test_node();
-        let client = ClientBuilder::<Runtime>::new()
-            .set_client(node)
-            .build()
-            .await
-            .unwrap();
-        let hans = PairSigner::<Runtime, _>::new(Pair::generate().0);
-        faucet::mint(&client, hans.account_id()).await.unwrap();
+        let (node, _node_tmp) = test_node();
+        let (client, _client_tmp) = Client::mock(&node, AccountKeyring::Eve).await;
+        client.mint().await.unwrap();
     }
 }

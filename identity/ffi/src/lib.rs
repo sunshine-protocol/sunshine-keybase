@@ -1,8 +1,8 @@
-pub use {allo_isolate, async_std, client, ipfs_embed, keystore, log, substrate_subxt, utils};
+pub use {allo_isolate, async_std, log, substrate_subxt, sunshine_core, sunshine_identity_client};
 
 #[cfg(feature = "faucet")]
 #[doc(hidden)]
-pub use faucet_client;
+pub use sunshine_faucet_client;
 #[doc(hidden)]
 pub mod error;
 #[doc(hidden)]
@@ -13,31 +13,21 @@ mod macros;
 ///
 /// ### Example
 /// ```
-/// use test_client::Runtime;
+/// use test_client::Client;
 /// use sunshine_identity_ffi::impl_ffi;
-/// use sunshine_identity_ffi::client::Error;
 ///
-/// async fn setup_client(root: &str) -> Result<Client, Error> {
-///     // Client Setup here..
-///     # Err(Error::RuntimeInvalid)
-/// }
-/// impl_ffi!(runtime: Runtime, client: setup_client);
+/// impl_ffi!(client: Client);
 /// ```
 #[macro_export]
 macro_rules! impl_ffi {
-    (client: $client: expr, runtime: $runtime: ty) => {
-        impl_ffi!($runtime, $client);
-    };
-    (runtime: $runtime: ty, client: $client: expr) => {
+    (client: $client: ty) => {
         use ::std::{ffi::CStr, os::raw, path::PathBuf};
         use allo_isolate::Isolate;
-        use async_std::task;
-        use client;
+        use async_std::{sync::RwLock, task};
+        use sunshine_identity_client as client;
         #[cfg(feature = "faucet")]
-        use faucet_client;
-        use ipfs_embed::{Config, Store};
-        use keystore::bip39::{Language, Mnemonic};
-        use keystore::{DeviceKey, KeyStore, Password};
+        use sunshine_faucet_client as faucet_client;
+        use sunshine_core::bip39::{Language, Mnemonic};
         use log::{error, info};
         use substrate_subxt::balances::{Balances, TransferCallExt, TransferEventExt};
         use substrate_subxt::sp_core::sr25519;
@@ -47,12 +37,7 @@ macro_rules! impl_ffi {
         use $crate::*;
 
         /// cbindgen:ignore
-        type Suri = client::Suri<sr25519::Pair>;
-        /// cbindgen:ignore
-        type Client = client::Client<$runtime, sr25519::Pair, Store>;
-
-        /// cbindgen:ignore
-        static mut CLIENT: Option<Client> = None;
+        static mut CLIENT: Option<RwLock<$client>> = None;
 
         enum_result! {
           CLIENT_UNKNOWN = -1,
@@ -67,9 +52,10 @@ macro_rules! impl_ffi {
         ///
         /// ### Safety
         /// This assumes that the path is non-null c string.
+        /// Calling this function more than once can result in a data race.
         #[allow(clippy::not_unsafe_ptr_arg_deref)]
         #[no_mangle]
-        pub extern "C" fn client_init(port: i64, path: *const raw::c_char) -> i32 {
+        pub extern "C" fn client_init(port: i64, path: *const raw::c_char, chain_spec: *const raw::c_char) -> i32 {
             // check if we already created the client, and return `CLIENT_ALREADY_INIT`
             // if it is already created to avoid any unwanted work
             // SAFETY:
@@ -79,14 +65,17 @@ macro_rules! impl_ffi {
                     return CLIENT_ALREADY_INIT;
                 }
             }
-            let root = cstr!(path);
+            let root = PathBuf::from(cstr!(path));
+            let chain_spec = PathBuf::from(cstr!(chain_spec));
             let isolate = Isolate::new(port);
             let t = isolate.task(async move {
-                let client: Client = result!($client(root).await, CLIENT_CREATE_ERR);
+                let client = <$client>::new(&root, Some(&chain_spec)).await;
+                let client = result!(client, CLIENT_CREATE_ERR);
+
                 // SAFETY:
                 // this safe since we checked that the client is already not created before.
                 unsafe {
-                    CLIENT.replace(client);
+                    CLIENT.replace(RwLock::new(client));
                 }
                 CLIENT_OK
             });

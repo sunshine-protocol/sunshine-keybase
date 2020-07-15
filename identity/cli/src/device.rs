@@ -1,8 +1,9 @@
-use crate::{async_trait, AbstractClient, Command, Identity, Pair, Result, Runtime};
+use crate::{async_trait, ChainClient, Command, Error, Identity, IdentityClient, Result, Runtime};
 use clap::Clap;
-use identity_client::{resolve, Identifier, Ss58};
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
+use sunshine_core::Ss58;
+use sunshine_identity_client::{resolve, Error as IdentityError, Identifier};
 
 #[derive(Clone, Debug, Clap)]
 pub struct DeviceAddCommand {
@@ -10,13 +11,13 @@ pub struct DeviceAddCommand {
 }
 
 #[async_trait]
-impl<T: Runtime + Identity, P: Pair> Command<T, P> for DeviceAddCommand
+impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for DeviceAddCommand
 where
     <T as System>::AccountId: Ss58Codec,
 {
-    async fn exec(&self, client: &dyn AbstractClient<T, P>) -> Result<()> {
+    async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let device: Ss58<T> = self.device.parse()?;
-        client.add_key(&device.0).await?;
+        client.add_key(&device.0).await.map_err(Error::Client)?;
         Ok(())
     }
 }
@@ -27,13 +28,14 @@ pub struct DeviceRemoveCommand {
 }
 
 #[async_trait]
-impl<T: Runtime + Identity, P: Pair> Command<T, P> for DeviceRemoveCommand
+impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for DeviceRemoveCommand
 where
     <T as System>::AccountId: Ss58Codec,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
-    async fn exec(&self, client: &dyn AbstractClient<T, P>) -> Result<()> {
+    async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let device: Ss58<T> = self.device.parse()?;
-        client.remove_key(&device.0).await?;
+        client.remove_key(&device.0).await.map_err(Error::Client)?;
         Ok(())
     }
 }
@@ -44,18 +46,19 @@ pub struct DeviceListCommand {
 }
 
 #[async_trait]
-impl<T: Runtime + Identity, P: Pair> Command<T, P> for DeviceListCommand
+impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for DeviceListCommand
 where
     <T as System>::AccountId: Ss58Codec,
+    <C as ChainClient<T>>::Error: From<IdentityError>,
 {
-    async fn exec(&self, client: &dyn AbstractClient<T, P>) -> Result<()> {
+    async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         let identifier: Option<Identifier<T>> = if let Some(identifier) = &self.identifier {
             Some(identifier.parse()?)
         } else {
             None
         };
-        let uid = resolve(client, identifier).await?;
-        for key in client.fetch_keys(uid, None).await? {
+        let uid = resolve(client, identifier).await.map_err(Error::Client)?;
+        for key in client.fetch_keys(uid, None).await.map_err(Error::Client)? {
             println!("{}", key.to_ss58check());
         }
         Ok(())
@@ -66,10 +69,13 @@ where
 pub struct DevicePaperkeyCommand;
 
 #[async_trait]
-impl<T: Runtime + Identity, P: Pair> Command<T, P> for DevicePaperkeyCommand {
-    async fn exec(&self, client: &dyn AbstractClient<T, P>) -> Result<()> {
+impl<T: Runtime + Identity, C: IdentityClient<T>> Command<T, C> for DevicePaperkeyCommand
+where
+    <C as ChainClient<T>>::Error: From<IdentityError>,
+{
+    async fn exec(&self, client: &mut C) -> Result<(), C::Error> {
         println!("Generating a new paper key.");
-        let mnemonic = client.add_paperkey().await?;
+        let mnemonic = client.add_paperkey().await.map_err(Error::Client)?;
         println!("Here is your secret paper key phrase:");
         let words: Vec<_> = mnemonic.phrase().split(' ').collect();
         println!();

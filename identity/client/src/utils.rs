@@ -1,62 +1,24 @@
 use crate::error::Error;
 use crate::service::{Service, ServiceParseError};
-use crate::{AbstractClient, Identity};
-use core::fmt::{self, Debug};
-use sp_core::crypto::{Pair, PublicError, SecretStringError, Ss58Codec};
+use crate::{Identity, IdentityClient};
+use sp_core::crypto::Ss58Codec;
 use std::str::FromStr;
 use substrate_subxt::{sp_core, system::System, Runtime};
-use thiserror::Error;
+use sunshine_core::{ChainClient, Ss58};
 
-#[derive(Clone)]
-pub struct Suri<P: Pair>(pub P::Seed);
-
-impl<P: Pair> Debug for Suri<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "*****")
-    }
-}
-
-#[derive(Debug, Error)]
-#[error("Invalid suri encoded key pair: {0:?}")]
-pub struct InvalidSuri(SecretStringError);
-
-impl<P: Pair> FromStr for Suri<P> {
-    type Err = InvalidSuri;
-
-    fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let (_, seed) = P::from_string_with_seed(string, None).map_err(InvalidSuri)?;
-        Ok(Self(seed.unwrap()))
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Ss58<T: System>(pub T::AccountId);
-
-#[derive(Debug, Error)]
-#[error("Invalid ss58 encoded public key: {0:?}")]
-pub struct InvalidSs58(PublicError);
-
-impl<T: System> FromStr for Ss58<T>
-where
-    T::AccountId: Ss58Codec,
-{
-    type Err = InvalidSs58;
-
-    fn from_str(string: &str) -> Result<Self, Self::Err> {
-        Ok(Self(
-            <T::AccountId as Ss58Codec>::from_string(string).map_err(InvalidSs58)?,
-        ))
-    }
-}
-
-pub async fn resolve<T: Runtime + Identity, P: Pair>(
-    client: &dyn AbstractClient<T, P>,
+pub async fn resolve<T, C>(
+    client: &C,
     identifier: Option<Identifier<T>>,
-) -> Result<T::Uid, Error> {
+) -> Result<T::Uid, C::Error>
+where
+    T: Runtime + Identity,
+    C: IdentityClient<T>,
+    <C as ChainClient<T>>::Error: From<Error>,
+{
     let identifier = if let Some(identifier) = identifier {
         identifier
     } else {
-        Identifier::Account(client.signer().await?.account_id().clone())
+        Identifier::Account(client.chain_signer()?.account_id().clone())
     };
     let uid = match identifier {
         Identifier::Uid(uid) => uid,

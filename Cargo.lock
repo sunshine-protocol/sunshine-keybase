@@ -737,18 +737,9 @@ dependencies = [
 
 [[package]]
 name = "clang-sys"
-version = "0.29.4"
+version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b14a9b9fadc5fabb63ceb60e8c2d833bcc97d19d8eb1e229f452d07fe2001e0"
-dependencies = [
- "clang-sys-linkage",
-]
-
-[[package]]
-name = "clang-sys-linkage"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "720a18d5e5b09e70856c278d2fcf64917db370987beb78bf569fde9adba4ea63"
+checksum = "fe6837df1d5cba2397b835c8530f51723267e16abbf83892e9e5af4f0e5dd10a"
 dependencies = [
  "glob",
  "libc",
@@ -873,9 +864,9 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 
 [[package]]
 name = "cpuid-bool"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d375c433320f6c5057ae04a04376eef4d04ce2801448cf8863a78da99107be4"
+checksum = "ec6763c20301ab0dc67051d1b6f4cc9132ad9e6eddcb1f10c6c53ea6d6ae2183"
 
 [[package]]
 name = "crc32fast"
@@ -2176,11 +2167,12 @@ dependencies = [
 
 [[package]]
 name = "ipld-block-builder"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7bcc5d297e6bad03888889aab3661cb9860a5203a0d7303a0bf13e81a135d00"
+checksum = "669637b2da39e8d04bfaf0aafcb7dd1eab8a33e7fd8770b62fe9a255e551bae6"
 dependencies = [
  "async-std",
+ "async-trait",
  "cached",
  "libipld",
 ]
@@ -2418,7 +2410,7 @@ dependencies = [
 
 [[package]]
 name = "keybase-keystore"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-std",
  "bip39",
@@ -6593,6 +6585,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-keybase-keystore"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "keybase-keystore",
+ "substrate-subxt",
+ "sunshine-core",
+]
+
+[[package]]
 name = "substrate-prometheus-endpoint"
 version = "0.8.0-rc4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6688,19 +6690,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 
 [[package]]
+name = "sunshine-core"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "keybase-keystore",
+ "libipld",
+ "parity-scale-codec",
+ "secrecy",
+ "substrate-subxt",
+ "thiserror",
+]
+
+[[package]]
+name = "sunshine-faucet-cli"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "clap 3.0.0-beta.1",
+ "substrate-subxt",
+ "sunshine-faucet-client",
+]
+
+[[package]]
 name = "sunshine-faucet-client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-std",
+ "async-trait",
  "parity-scale-codec",
  "substrate-subxt",
+ "sunshine-core",
  "sunshine-identity-client",
  "test-client",
 ]
 
 [[package]]
 name = "sunshine-faucet-pallet"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6713,17 +6740,17 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-std",
  "async-trait",
  "clap 3.0.0-beta.1",
- "keybase-keystore",
  "libipld",
  "parity-scale-codec",
  "qr2term",
  "rpassword",
  "substrate-subxt",
+ "sunshine-core",
  "sunshine-identity-client",
  "textwrap 0.12.1",
  "thiserror",
@@ -6731,19 +6758,19 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-std",
  "async-trait",
  "frame-support",
  "ipld-block-builder",
- "keybase-keystore",
  "libipld",
  "log",
  "parity-scale-codec",
  "serde",
  "serde_json",
  "substrate-subxt",
+ "sunshine-core",
  "test-client",
  "thiserror",
  "ureq",
@@ -6751,24 +6778,22 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-ffi"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "allo-isolate",
  "async-std",
- "ipfs-embed",
- "keybase-keystore",
  "log",
  "substrate-subxt",
+ "sunshine-core",
  "sunshine-faucet-client",
  "sunshine-identity-client",
- "sunshine-identity-utils",
  "test-client",
  "thiserror",
 ]
 
 [[package]]
 name = "sunshine-identity-pallet"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6781,7 +6806,7 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-utils"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libipld",
  "parity-scale-codec",
@@ -6908,7 +6933,7 @@ dependencies = [
 
 [[package]]
 name = "test-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
@@ -6916,24 +6941,34 @@ dependencies = [
  "env_logger",
  "exitfailure",
  "ipfs-embed",
- "keybase-keystore",
  "sled",
+ "substrate-keybase-keystore",
  "substrate-subxt",
+ "sunshine-core",
+ "sunshine-faucet-cli",
  "sunshine-identity-cli",
  "test-client",
 ]
 
 [[package]]
 name = "test-client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
+ "async-std",
+ "async-trait",
  "env_logger",
+ "ipfs-embed",
+ "ipld-block-builder",
  "jsonrpsee",
+ "libipld",
+ "parity-scale-codec",
  "sc-service",
  "sled",
  "sp-database",
  "sp-keyring",
+ "substrate-keybase-keystore",
  "substrate-subxt",
+ "sunshine-core",
  "sunshine-faucet-client",
  "sunshine-identity-client",
  "sunshine-identity-utils",
@@ -6944,7 +6979,7 @@ dependencies = [
 
 [[package]]
 name = "test-node"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "futures 0.3.5",
  "log",
@@ -6973,7 +7008,7 @@ dependencies = [
 
 [[package]]
 name = "test-runtime"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "frame-executive",
  "frame-support",

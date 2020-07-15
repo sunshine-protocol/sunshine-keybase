@@ -2,24 +2,21 @@ use crate::command::*;
 use async_std::task;
 use clap::Clap;
 use exitfailure::ExitDisplay;
-use identity_cli::{key::KeySetCommand, set_device_key, Command, Error};
-use ipfs_embed::{Config, Store};
-use keybase_keystore::KeyStore;
+use std::path::Path;
 use std::time::Duration;
-use substrate_subxt::sp_core::sr25519;
-use test_client::faucet;
-use test_client::Runtime;
+use sunshine_core::{ChainClient, Keystore};
+use sunshine_faucet_cli::{Command as _, MintCommand};
+use sunshine_identity_cli::{key::KeySetCommand, set_device_key, Command as _, Error};
+use test_client::{identity::IdentityClient, Client, Error as ClientError};
 
 mod command;
 
 #[async_std::main]
-async fn main() -> Result<(), ExitDisplay<Error>> {
+async fn main() -> Result<(), ExitDisplay<Error<ClientError>>> {
     Ok(run().await?)
 }
 
-type Client = test_client::identity::Client<Runtime, sr25519::Pair, Store>;
-
-async fn run() -> Result<(), Error> {
+async fn run() -> Result<(), Error<ClientError>> {
     env_logger::init();
     let opts: Opts = Opts::parse();
     let root = if let Some(root) = opts.path {
@@ -29,27 +26,18 @@ async fn run() -> Result<(), Error> {
             .ok_or(Error::ConfigDirNotFound)?
             .join("sunshine-identity")
     };
-    let keystore = KeyStore::open(root.join("keystore")).await?;
-    let db = sled::open(root.join("db")).unwrap();
-    let db_ipfs = db.open_tree("ipfs").unwrap();
 
-    #[cfg(not(feature = "light"))]
-    let subxt = substrate_subxt::ClientBuilder::new().build().await?;
-    #[cfg(feature = "light")]
-    let subxt = {
-        let db_light = db.open_tree("substrate").unwrap();
-        test_client::light::build_light_client(db_light, include_bytes!("../chain-spec.json"))
+    let chain_spec = &Path::new(concat!(file!(), "../chain-spec.json"));
+    let mut client = Client::new(&root, Some(chain_spec))
+        .await
+        .map_err(Error::Client)?;
+
+    let mut password_changes = if client.keystore().chain_signer().is_some() {
+        let sub = client
+            .subscribe_password_changes()
             .await
-            .unwrap()
-    };
-
-    let config = Config::from_tree(db_ipfs);
-    let store = Store::new(config).unwrap();
-    let client = Client::new(keystore, subxt, store);
-
-    let mut password_changes = if client.signer().await.is_ok() {
-        let sub = client.subscribe_password_changes().await?;
-        client.update_password().await?;
+            .map_err(Error::Client)?;
+        client.update_password().await.map_err(Error::Client)?;
         Some(sub)
     } else {
         None
@@ -62,43 +50,45 @@ async fn run() -> Result<(), Error> {
                 suri,
                 force,
             }) => {
-                let account_id = set_device_key(&client, paperkey, suri.as_deref(), force).await?;
+                let account_id =
+                    set_device_key(&mut client, paperkey, suri.as_deref(), force).await?;
                 println!("your device key is {}", account_id.to_string());
-                let amount = faucet::mint(client.subxt(), &account_id)
-                    .await?
-                    .unwrap()
-                    .amount;
-                println!("minted {} tokens into your account", amount);
-                let uid = client.fetch_uid(&account_id).await?.unwrap();
+                MintCommand.exec(&mut client).await.map_err(Error::Client)?;
+                let uid = client
+                    .fetch_uid(&account_id)
+                    .await
+                    .map_err(Error::Client)?
+                    .unwrap();
                 println!("your user id is {}", uid);
                 Ok(())
             }
-            KeySubCommand::Unlock(cmd) => cmd.exec(&client).await,
-            KeySubCommand::Lock(cmd) => cmd.exec(&client).await,
+            KeySubCommand::Unlock(cmd) => cmd.exec(&mut client).await,
+            KeySubCommand::Lock(cmd) => cmd.exec(&mut client).await,
         },
         SubCommand::Account(AccountCommand { cmd }) => match cmd {
-            AccountSubCommand::Create(cmd) => cmd.exec(&client).await,
-            AccountSubCommand::Password(cmd) => cmd.exec(&client).await,
+            AccountSubCommand::Create(cmd) => cmd.exec(&mut client).await,
+            AccountSubCommand::Password(cmd) => cmd.exec(&mut client).await,
+            AccountSubCommand::Mint(cmd) => cmd.exec(&mut client).await.map_err(Error::Client),
         },
         SubCommand::Device(DeviceCommand { cmd }) => match cmd {
-            DeviceSubCommand::Add(cmd) => cmd.exec(&client).await,
-            DeviceSubCommand::Remove(cmd) => cmd.exec(&client).await,
-            DeviceSubCommand::List(cmd) => cmd.exec(&client).await,
-            DeviceSubCommand::Paperkey(cmd) => cmd.exec(&client).await,
+            DeviceSubCommand::Add(cmd) => cmd.exec(&mut client).await,
+            DeviceSubCommand::Remove(cmd) => cmd.exec(&mut client).await,
+            DeviceSubCommand::List(cmd) => cmd.exec(&mut client).await,
+            DeviceSubCommand::Paperkey(cmd) => cmd.exec(&mut client).await,
         },
         SubCommand::Id(IdCommand { cmd }) => match cmd {
-            IdSubCommand::List(cmd) => cmd.exec(&client).await,
-            IdSubCommand::Prove(cmd) => cmd.exec(&client).await,
-            IdSubCommand::Revoke(cmd) => cmd.exec(&client).await,
+            IdSubCommand::List(cmd) => cmd.exec(&mut client).await,
+            IdSubCommand::Prove(cmd) => cmd.exec(&mut client).await,
+            IdSubCommand::Revoke(cmd) => cmd.exec(&mut client).await,
         },
         SubCommand::Wallet(WalletCommand { cmd }) => match cmd {
-            WalletSubCommand::Balance(cmd) => cmd.exec(&client).await,
-            WalletSubCommand::Transfer(cmd) => cmd.exec(&client).await,
+            WalletSubCommand::Balance(cmd) => cmd.exec(&mut client).await,
+            WalletSubCommand::Transfer(cmd) => cmd.exec(&mut client).await,
         },
         SubCommand::Run => loop {
             if let Some(sub) = password_changes.as_mut() {
                 if sub.next().await.is_some() {
-                    client.update_password().await?;
+                    client.update_password().await.map_err(Error::Client)?;
                 }
             } else {
                 task::sleep(Duration::from_millis(100)).await
