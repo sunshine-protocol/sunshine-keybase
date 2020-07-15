@@ -1,6 +1,6 @@
 [package]
 name = "test-cli"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 publish = false
