@@ -6778,7 +6778,7 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-ffi"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "allo-isolate",
  "async-std",
