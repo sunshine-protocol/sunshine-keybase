@@ -2,7 +2,6 @@ use crate::command::*;
 use async_std::task;
 use clap::Clap;
 use exitfailure::ExitDisplay;
-use std::path::Path;
 use std::time::Duration;
 use sunshine_core::{ChainClient, Keystore};
 use sunshine_faucet_cli::MintCommand;
@@ -27,8 +26,7 @@ async fn run() -> Result<(), Error<ClientError>> {
             .join("sunshine-identity")
     };
 
-    let chain_spec = &Path::new(concat!(file!(), "../chain-spec.json"));
-    let mut client = Client::new(&root, Some(chain_spec))
+    let mut client = Client::new(&root, None)
         .await
         .map_err(Error::Client)?;
 
