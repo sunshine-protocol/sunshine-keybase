@@ -361,7 +361,9 @@ where
                     if let ClaimBody::Ownership(service) = &claim2.claim().body {
                         ids.entry(service.clone()).or_default().push(claim.clone());
                     } else {
-                        return Err(Error::InvalidClaim("cannot revoke: claim is not revokable").into());
+                        return Err(
+                            Error::InvalidClaim("cannot revoke: claim is not revokable").into()
+                        );
                     }
                 } else {
                     return Err(Error::InvalidClaim("cannot revoke: claim not found").into());

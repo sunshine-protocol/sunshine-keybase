@@ -6739,7 +6739,7 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-cli"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
@@ -6756,7 +6756,7 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-client"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-std",
  "async-trait",

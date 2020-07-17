@@ -51,8 +51,10 @@ impl KeySetCommand {
 pub struct KeyLockCommand;
 
 impl KeyLockCommand {
-    pub async fn exec<R: Runtime, C: ChainClient<R>>(&self, client: &mut C) -> Result<(), C::Error>
-    {
+    pub async fn exec<R: Runtime, C: ChainClient<R>>(
+        &self,
+        client: &mut C,
+    ) -> Result<(), C::Error> {
         client
             .keystore_mut()
             .lock()
@@ -66,8 +68,10 @@ impl KeyLockCommand {
 pub struct KeyUnlockCommand;
 
 impl KeyUnlockCommand {
-    pub async fn exec<R: Runtime, C: ChainClient<R>>(&self, client: &mut C) -> Result<(), C::Error>
-    {
+    pub async fn exec<R: Runtime, C: ChainClient<R>>(
+        &self,
+        client: &mut C,
+    ) -> Result<(), C::Error> {
         let password = ask_for_password("Please enter your password (8+ characters):\n", 8)?;
         client
             .keystore_mut()

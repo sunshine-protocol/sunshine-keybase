@@ -26,9 +26,7 @@ async fn run() -> Result<(), Error<ClientError>> {
             .join("sunshine-identity")
     };
 
-    let mut client = Client::new(&root, None)
-        .await
-        .map_err(Error::Client)?;
+    let mut client = Client::new(&root, None).await.map_err(Error::Client)?;
 
     let mut password_changes = if client.keystore().chain_signer().is_some() {
         let sub = client
@@ -51,7 +49,7 @@ async fn run() -> Result<(), Error<ClientError>> {
                 let account_id =
                     set_device_key(&mut client, paperkey, suri.as_deref(), force).await?;
                 println!("your device key is {}", account_id.to_string());
-                MintCommand.exec(&mut client).await.map_err(Error::Client)?;
+                MintCommand.exec(&client).await.map_err(Error::Client)?;
                 let uid = client
                     .fetch_uid(&account_id)
                     .await
