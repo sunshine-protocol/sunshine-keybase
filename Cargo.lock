@@ -2167,9 +2167,9 @@ dependencies = [
 
 [[package]]
 name = "ipld-block-builder"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "669637b2da39e8d04bfaf0aafcb7dd1eab8a33e7fd8770b62fe9a255e551bae6"
+checksum = "e50bfca47d8dc7564000b7b0ba9c78e4c5f9dfa2d2cd6c97bf4ff3695e98139f"
 dependencies = [
  "async-std",
  "async-trait",

@@ -26,6 +26,7 @@ where
 {
     let prev = claim.claim().prev.clone();
     let root = client.offchain_client().insert(claim).await?;
+    client.offchain_client().flush().await?;
     let prev_cid = prev.clone().map(T::Cid::from);
     let root_cid = T::Cid::from(root);
     client
@@ -355,14 +356,20 @@ where
                 ids.entry(service.clone()).or_default().push(claim.clone());
             }
             ClaimBody::Revoke(seqno) => {
-                if let Some(claim2) = claims.get(seqno as usize - 1) {
+                let index = claims.len() - seqno as usize;
+                if let Some(claim2) = claims.get(index) {
                     if let ClaimBody::Ownership(service) = &claim2.claim().body {
                         ids.entry(service.clone()).or_default().push(claim.clone());
+                    } else {
+                        return Err(Error::InvalidClaim("cannot revoke: claim is not revokable").into());
                     }
+                } else {
+                    return Err(Error::InvalidClaim("cannot revoke: claim not found").into());
                 }
             }
         }
     }
+
     let mut info = vec![];
     for (service, claims) in ids.into_iter() {
         let mut status = IdentityStatus::ProofNotFound;
@@ -434,7 +441,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_client::identity::{IdentityClient, Service};
+    use test_client::identity::{IdentityClient, IdentityStatus, Service};
     use test_client::mock::{test_node, AccountKeyring};
     use test_client::Client;
 
@@ -444,12 +451,22 @@ mod tests {
         let (client, _client_tmp) = Client::mock(&node, AccountKeyring::Alice).await;
         let account_id = AccountKeyring::Alice.to_account_id();
         let uid = client.fetch_uid(&account_id).await.unwrap().unwrap();
-        assert_eq!(client.identity(uid).await.unwrap().len(), 0);
-        client
-            .prove_identity(Service::Github("dvc94ch".into()))
-            .await
-            .unwrap();
-        assert_eq!(client.identity(uid).await.unwrap().len(), 1);
+        let service = Service::Github("dvc94ch".into());
+
+        let ids = client.identity(uid).await.unwrap();
+        assert_eq!(ids.len(), 0);
+
+        client.prove_identity(service.clone()).await.unwrap();
+        let ids = client.identity(uid).await.unwrap();
+        assert_eq!(ids.len(), 1);
+        assert_eq!(&ids[0].service, &service);
+        assert_eq!(ids[0].status, IdentityStatus::ProofNotFound);
+
+        client.revoke_identity(service.clone()).await.unwrap();
+        let ids = client.identity(uid).await.unwrap();
+        assert_eq!(ids.len(), 1);
+        assert_eq!(&ids[0].service, &service);
+        assert_eq!(ids[0].status, IdentityStatus::Revoked);
     }
 
     #[async_std::test]
