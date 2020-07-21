@@ -273,8 +273,13 @@ where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: ChainClient<T>,
+    C::Error: From<Error>,
 {
-    Ok(client.chain_client().keys(uid, hash).await?)
+    let keys = client.chain_client().keys(uid, hash).await?;
+    if keys.is_empty() {
+        return Err(Error::ResolveFailure.into());
+    }
+    Ok(keys)
 }
 
 pub async fn fetch_account<T, C>(client: &C, uid: T::Uid) -> Result<T::IdAccountData, C::Error>
