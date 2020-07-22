@@ -12,6 +12,8 @@ repository = "https://github.com/sunshine-protocol/sunshine-identity"
 async-std = { version = "=1.5.0", features = ["unstable"] }
 async-trait = "0.1.36"
 codec = { version = "1.3.0", package = "parity-scale-codec" }
+# remove once substrate rc5 is out.
+ed25519-dalek = "=1.0.0-pre.3"
 frame-support = "2.0.0-rc4"
 ipld-block-builder = "0.4.1"
 libipld = { version = "0.3.0", features = ["dag-json"] }

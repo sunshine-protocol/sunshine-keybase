@@ -6760,6 +6760,7 @@ version = "0.2.2"
 dependencies = [
  "async-std",
  "async-trait",
+ "ed25519-dalek",
  "frame-support",
  "ipld-block-builder",
  "libipld",
