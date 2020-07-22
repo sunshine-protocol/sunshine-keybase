@@ -1,4 +1,4 @@
-### substrate identity proof
+### sunshine identity proof
 
 I hereby claim:
 
