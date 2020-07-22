@@ -6756,7 +6756,7 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-client"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "async-std",
  "async-trait",
@@ -6776,7 +6776,7 @@ dependencies = [
 
 [[package]]
 name = "sunshine-identity-ffi"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "allo-isolate",
  "async-std",
