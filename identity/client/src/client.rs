@@ -387,6 +387,7 @@ where
                     if claim.claim().expired() {
                         status = IdentityStatus::Expired;
                     } else {
+                        status = IdentityStatus::ProofNotFound;
                         proof = Some(claim);
                     }
                 }
@@ -474,6 +475,12 @@ mod tests {
         assert_eq!(ids.len(), 1);
         assert_eq!(&ids[0].service, &service);
         assert_eq!(ids[0].status, IdentityStatus::Revoked);
+
+        client.prove_identity(service.clone()).await.unwrap();
+        let ids = client.identity(uid).await.unwrap();
+        assert_eq!(ids.len(), 1);
+        assert_eq!(&ids[0].service, &service);
+        assert_eq!(ids[0].status, IdentityStatus::ProofNotFound);
     }
 
     #[async_std::test]
