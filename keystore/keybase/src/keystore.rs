@@ -1,138 +1,147 @@
 use crate::error::Error;
 use crate::generation::Generation;
 use crate::types::*;
+use async_std::os::unix::fs::symlink;
 use async_std::path::{Path, PathBuf};
 use async_std::prelude::*;
-use async_std::sync::RwLock;
+use std::ffi::OsString;
 
-pub struct KeyStore {
+pub struct Keystore {
     path: PathBuf,
-    gen: RwLock<Generation>,
 }
 
-impl KeyStore {
-    /// Opens a keystore.
-    pub async fn open<T: AsRef<Path>>(path: T) -> Result<Self, Error> {
-        let path = path.as_ref().to_path_buf();
-        async_std::fs::create_dir_all(&path).await?;
-        let mut gens = vec![];
-        let mut dir = async_std::fs::read_dir(&path).await?;
-        while let Some(entry) = dir.next().await {
-            let gen = entry?
+impl Keystore {
+    /// Creates a keystore.
+    pub fn new<T: AsRef<Path>>(path: T) -> Self {
+        Self {
+            path: path.as_ref().to_path_buf(),
+        }
+    }
+
+    /// Creates a new generation and atomically changes the symlink.
+    async fn create_gen(&self, dk: &DeviceKey, pass: &Password, gen: u16) -> Result<(), Error> {
+        async_std::fs::create_dir_all(&self.path).await?;
+        let gen = Generation::new(&self.path, gen);
+        gen.initialize(dk, pass).await?;
+        let gen_new_link = self.path.join("gen_new");
+        symlink(gen.path(), &gen_new_link).await?;
+        async_std::fs::rename(&gen_new_link, self.path.join("gen")).await?;
+        self.garbage_collect_gens().await.ok();
+        Ok(())
+    }
+
+    /// Returns the generation.
+    async fn read_gen(&self) -> Result<Generation, Error> {
+        let gen_link = self.path.join("gen");
+        if gen_link.exists().await {
+            let gen_dir = async_std::fs::read_link(gen_link).await?;
+            let gen: u16 = gen_dir
                 .file_name()
+                .ok_or(Error::Corrupted)?
                 .to_str()
                 .ok_or(Error::Corrupted)?
                 .parse()
                 .map_err(|_| Error::Corrupted)?;
-            gens.push(Generation::new(&path, gen));
-        }
-        let gen = match gens.len() {
-            0 => Generation::new(&path, 0),
-            1 => gens.pop().unwrap(),
-            _ => {
-                let mut ugen: Option<Generation> = None;
-                let mut rgens = vec![];
-                for gen in gens {
-                    if gen.device_key().await.is_ok() {
-                        if let Some(ugen2) = ugen {
-                            if ugen2.gen() < gen.gen() {
-                                rgens.push(ugen2);
-                                ugen = Some(gen);
-                            } else {
-                                rgens.push(gen);
-                                ugen = Some(ugen2);
-                            }
-                        } else {
-                            ugen = Some(gen);
-                        }
-                    } else {
-                        rgens.push(gen);
-                    }
-                }
-                if let Some(ugen) = ugen {
-                    for rgen in rgens {
-                        rgen.remove().await?;
-                    }
-                    ugen
-                } else {
-                    return Err(Error::Corrupted);
-                }
+            let gen_path = gen_dir.parent().ok_or(Error::Corrupted)?;
+            if gen_path != self.path {
+                return Err(Error::Corrupted);
             }
-        };
-        Ok(Self {
-            path,
-            gen: RwLock::new(gen),
-        })
+            Ok(Generation::new(&self.path, gen))
+        } else {
+            Ok(Generation::new(&self.path, 0))
+        }
+    }
+
+    /// Removes old or failed generations.
+    ///
+    /// NOTE: since the keystore does not use any file locks this can lead to a race. It is
+    /// assumed that a single application uses the keystore and that there is only one application
+    /// running.
+    async fn garbage_collect_gens(&self) -> Result<(), Error> {
+        let gen = self.read_gen().await?;
+
+        let mut dir = async_std::fs::read_dir(&self.path).await?;
+        let gen_str = OsString::from(gen.gen().to_string());
+        while let Some(entry) = dir.next().await {
+            let file_name = entry?.file_name();
+            if file_name == "gen" {
+                continue;
+            }
+            if &file_name != gen_str.as_os_str() {
+                async_std::fs::remove_dir_all(self.path.join(&file_name)).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sets the device key.
+    pub async fn set_device_key(
+        &self,
+        device_key: &DeviceKey,
+        password: &Password,
+        force: bool,
+    ) -> Result<(), Error> {
+        if !force && self.read_gen().await?.is_initialized().await {
+            return Err(Error::Initialized);
+        }
+        self.create_gen(device_key, password, 0).await?;
+        Ok(())
+    }
+
+    /// Provisions the keystore.
+    pub async fn provision_device_key(
+        &self,
+        password: &Password,
+        gen: u16,
+    ) -> Result<DeviceKey, Error> {
+        let device_key = DeviceKey::generate().await;
+        self.create_gen(&device_key, password, gen).await?;
+        Ok(device_key)
+    }
+
+    /// Locks the keystore.
+    pub async fn lock(&self) -> Result<(), Error> {
+        self.read_gen().await?.lock().await
+    }
+
+    /// Unlocks the keystore.
+    pub async fn unlock(&self, password: &Password) -> Result<DeviceKey, Error> {
+        self.read_gen().await?.unlock(password).await
+    }
+
+    /// Gets the device key.
+    pub async fn device_key(&self) -> Result<DeviceKey, Error> {
+        self.read_gen().await?.device_key().await
+    }
+
+    /// Gets the password and gen to send to a device during provisioning.
+    pub async fn password(&self) -> Result<(Password, u16), Error> {
+        let gen = self.read_gen().await?;
+        Ok((gen.password().await?, gen.gen()))
+    }
+
+    /// Get current password gen.
+    pub async fn gen(&self) -> Result<u16, Error> {
+        Ok(self.read_gen().await?.gen())
+    }
+
+    /// Change password.
+    pub async fn change_password_mask(&self, password: &Password) -> Result<(Mask, u16), Error> {
+        let gen = self.read_gen().await?;
+        let mask = gen.change_password_mask(password).await?;
+        Ok((mask, gen.gen() + 1))
     }
 
     /// Creates a new generation from a password mask.
     pub async fn apply_mask(&self, mask: &Mask, next_gen: u16) -> Result<(), Error> {
-        let mut gen = self.gen.write().await;
-        if gen.gen() + 1 != next_gen {
+        let gen = self.read_gen().await?;
+        if gen.gen() + mask.len() != next_gen {
             return Err(Error::GenMissmatch);
         }
         let dk = gen.device_key().await?;
         let pass = gen.password().await?.apply_mask(mask);
-        let next_gen = Generation::new(&self.path, next_gen);
-        next_gen.initialize(&dk, &pass, true).await?;
-        let old_gen = std::mem::replace(&mut *gen, next_gen);
-        old_gen.remove().await?;
-        Ok(())
-    }
-
-    /// Returns the generation number.
-    pub async fn gen(&self) -> u16 {
-        self.gen.read().await.gen()
-    }
-
-    /// Checks if the keystore is initialized.
-    pub async fn is_initialized(&self) -> bool {
-        self.gen.read().await.is_initialized().await
-    }
-
-    /// Initializes the keystore.
-    pub async fn initialize(
-        &self,
-        dk: &DeviceKey,
-        pass: &Password,
-        force: bool,
-    ) -> Result<(), Error> {
-        self.gen.write().await.initialize(dk, pass, force).await
-    }
-
-    /// Unlocking the keystore makes the random key decryptable.
-    pub async fn unlock(&self, pass: &Password) -> Result<DeviceKey, Error> {
-        self.gen.write().await.unlock(pass).await
-    }
-
-    /// Locks the keystore by zeroizing the noise file. This makes the encrypted
-    /// random key undecryptable without a password.
-    pub async fn lock(&self) -> Result<(), Error> {
-        self.gen.write().await.lock().await
-    }
-
-    /// The random key is used to decrypt the device key.
-    ///
-    /// NOTE: Only works if the keystore was unlocked.
-    pub async fn device_key(&self) -> Result<DeviceKey, Error> {
-        self.gen.read().await.device_key().await
-    }
-
-    /// The random key is used to recover the password.
-    ///
-    /// NOTE: Only works if the keystore was unlocked.
-    pub async fn password(&self) -> Result<Password, Error> {
-        self.gen.read().await.password().await
-    }
-
-    /// Returns the public device key.
-    pub async fn public(&self) -> Result<PublicDeviceKey, Error> {
-        self.gen.read().await.public().await
-    }
-
-    /// Change password.
-    pub async fn change_password_mask(&self, password: &Password) -> Result<Mask, Error> {
-        self.gen.read().await.change_password_mask(password).await
+        self.create_gen(&dk, &pass, next_gen).await
     }
 }
 
@@ -140,28 +149,26 @@ impl KeyStore {
 mod tests {
     use super::*;
     use crate::types::{DeviceKey, Password};
-    use fail::FailScenario;
     use tempdir::TempDir;
 
     #[async_std::test]
     async fn test_keystore() {
-        fail::cfg("edk-write-fail", "off").unwrap();
-        fail::cfg("gen-rm-fail", "off").unwrap();
         let tmp = TempDir::new("keystore-").unwrap();
-        let store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = Keystore::new(tmp.path());
 
         // generate
         let key = DeviceKey::generate().await;
         let p1 = Password::from("password".to_string());
-        store.initialize(&key, &p1, false).await.unwrap();
+        store.create_gen(&key, &p1, 0).await.unwrap();
 
         // check reading the device key.
         let key2 = store.device_key().await.unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());
 
         // check reading the password.
-        let rp1 = store.password().await.unwrap();
+        let (rp1, gen) = store.password().await.unwrap();
         assert_eq!(p1.expose_secret(), rp1.expose_secret());
+        assert_eq!(gen, 0);
 
         // make sure key is the same after lock/unlock
         store.lock().await.unwrap();
@@ -171,16 +178,13 @@ mod tests {
 
         // change password
         let p2 = Password::from("other password".to_string());
-        let mask = store.change_password_mask(&p2).await.unwrap();
-        store
-            .apply_mask(&mask, store.gen().await + 1)
-            .await
-            .unwrap();
+        let (mask, gen) = store.change_password_mask(&p2).await.unwrap();
+        store.apply_mask(&mask, gen).await.unwrap();
 
         // make sure key is the same after lock/unlock
         store.lock().await.unwrap();
 
-        let store = KeyStore::open(tmp.path()).await.unwrap();
+        let store = Keystore::new(tmp.path());
         store.unlock(&p2).await.unwrap();
         let key2 = store.device_key().await.unwrap();
         assert_eq!(key.expose_secret(), key2.expose_secret());
@@ -202,84 +206,5 @@ mod tests {
                 r.unwrap();
             }
         }
-    }
-
-    #[async_std::test]
-    #[ignore] // Fail tests can not be run in parallel
-    async fn test_edk_write_fail_unlock() {
-        fail::cfg("edk-write-fail", "off").unwrap();
-        fail::cfg("gen-rm-fail", "off").unwrap();
-        let tmp = TempDir::new("keystore-").unwrap();
-        let store = KeyStore::open(tmp.path()).await.unwrap();
-        let key = DeviceKey::generate().await;
-        let pass = Password::generate().await;
-        store.initialize(&key, &pass, false).await.unwrap();
-
-        let scenario = FailScenario::setup();
-
-        fail::cfg("edk-write-fail", "return(())").unwrap();
-        let npass = Password::generate().await;
-        let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen().await + 1).await.ok();
-        store.lock().await.unwrap();
-        store.unlock(&pass).await.unwrap();
-
-        scenario.teardown();
-    }
-
-    #[async_std::test]
-    #[ignore] // Fail tests can not be run in parallel
-    async fn test_edk_write_fail_recovery() {
-        fail::cfg("edk-write-fail", "off").unwrap();
-        fail::cfg("gen-rm-fail", "off").unwrap();
-        let tmp = TempDir::new("keystore-").unwrap();
-        let store = KeyStore::open(tmp.path()).await.unwrap();
-        let key = DeviceKey::generate().await;
-        let pass = Password::generate().await;
-        store.initialize(&key, &pass, false).await.unwrap();
-
-        let scenario = FailScenario::setup();
-
-        fail::cfg("edk-write-fail", "return(())").unwrap();
-        let npass = Password::generate().await;
-        let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen().await + 1).await.ok();
-
-        let key2 = store.device_key().await.unwrap();
-        assert_eq!(key.expose_secret(), key2.expose_secret());
-
-        let store = KeyStore::open(tmp.path()).await.unwrap();
-        let key2 = store.device_key().await.unwrap();
-        assert_eq!(key.expose_secret(), key2.expose_secret());
-
-        scenario.teardown();
-    }
-
-    #[async_std::test]
-    #[ignore] // Fail tests can not be run in parallel
-    async fn test_gen_remove_fail_recovery() {
-        fail::cfg("edk-write-fail", "off").unwrap();
-        fail::cfg("gen-rm-fail", "off").unwrap();
-        let tmp = TempDir::new("keystore-").unwrap();
-        let store = KeyStore::open(tmp.path()).await.unwrap();
-        let key = DeviceKey::generate().await;
-        let pass = Password::generate().await;
-        store.initialize(&key, &pass, false).await.unwrap();
-
-        let scenario = FailScenario::setup();
-
-        fail::cfg("gen-rm-fail", "return(())").unwrap();
-        let npass = Password::generate().await;
-        let mask = store.change_password_mask(&npass).await.unwrap();
-        store.apply_mask(&mask, store.gen().await + 1).await.ok();
-
-        let key2 = store.device_key().await.unwrap();
-        assert_eq!(key.expose_secret(), key2.expose_secret());
-
-        let store = KeyStore::open(tmp.path()).await.unwrap();
-        let key2 = store.device_key().await.unwrap();
-        assert_eq!(key.expose_secret(), key2.expose_secret());
-
-        scenario.teardown();
     }
 }

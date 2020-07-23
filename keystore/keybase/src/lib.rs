@@ -7,6 +7,6 @@ mod types;
 
 pub use bip39;
 pub use error::Error;
-pub use keystore::KeyStore;
+pub use keystore::Keystore;
 pub use strobe_rs::AuthError;
 pub use types::{DeviceKey, Mask, NotEnoughEntropyError, Password};

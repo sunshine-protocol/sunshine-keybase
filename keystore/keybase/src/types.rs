@@ -92,7 +92,7 @@ impl Password {
     }
 
     pub(crate) fn mask(&self, other: &Password) -> Mask {
-        Mask(self.0.xor(&other.0))
+        Mask(self.0.xor(&other.0), 1)
     }
 
     pub(crate) fn apply_mask(&self, mask: &Mask) -> Password {
@@ -109,18 +109,20 @@ impl PartialEq for Password {
 impl Eq for Password {}
 
 impl From<String> for Password {
-    fn from(s: String) -> Password {
+    fn from(s: String) -> Self {
         Self::new(&SecretString::new(s))
+    }
+}
+
+impl From<[u8; 32]> for Password {
+    fn from(s: [u8; 32]) -> Self {
+        Self(Secret::new(s))
     }
 }
 
 pub struct PublicDeviceKey(pub Secret);
 
 impl PublicDeviceKey {
-    pub fn new(pdk: [u8; SECRET_LEN]) -> Self {
-        Self(Secret::new(pdk))
-    }
-
     pub(crate) fn private(&self, pass: &Password) -> RandomKey {
         RandomKey(self.0.xor(&pass.0))
     }
@@ -134,11 +136,19 @@ impl core::ops::Deref for PublicDeviceKey {
     }
 }
 
-pub struct Mask(Secret);
+pub struct Mask(Secret, u16);
 
 impl Mask {
     pub fn new(mask: [u8; SECRET_LEN]) -> Self {
-        Self(Secret::new(mask))
+        Self(Secret::new(mask), 1)
+    }
+
+    pub fn join(&self, mask: &Mask) -> Self {
+        Self(self.0.xor(&mask.0), self.1 + mask.1)
+    }
+
+    pub(crate) fn len(&self) -> u16 {
+        self.1
     }
 }
 

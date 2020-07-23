@@ -4,7 +4,6 @@ use crate::types::{
     DeviceKey, EncryptedDeviceKey, EncryptedRandomKey, Mask, Password, PublicDeviceKey, RandomKey,
 };
 use async_std::path::{Path, PathBuf};
-use fail::fail_point;
 
 pub struct Generation {
     gen: u16,
@@ -34,22 +33,18 @@ impl Generation {
         self.gen
     }
 
+    /// Returns the path of the generation.
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
     /// Checks if the keystore is initialized.
     pub async fn is_initialized(&self) -> bool {
         self.edk.exists().await
     }
 
     /// Initializes the keystore.
-    pub async fn initialize(
-        &self,
-        dk: &DeviceKey,
-        pass: &Password,
-        force: bool,
-    ) -> Result<(), Error> {
-        if !force && self.is_initialized().await {
-            return Err(Error::Initialized);
-        }
-
+    pub async fn initialize(&self, dk: &DeviceKey, pass: &Password) -> Result<(), Error> {
         let path = self.edk.parent().expect("joined a file name on init; qed");
         async_std::fs::create_dir_all(path).await?;
 
@@ -70,7 +65,6 @@ impl Generation {
         // End unlock
 
         // Write private key at the end.
-        fail_point!("edk-write-fail", |_| Err(Error::Corrupted));
         self.edk.write(&edk.0).await?;
 
         // Make sure keystore is in a valid state.
@@ -135,11 +129,5 @@ impl Generation {
         let old_password = self.password().await?;
         let mask = old_password.mask(password);
         Ok(mask)
-    }
-
-    /// Removes a generation.
-    pub async fn remove(self) -> Result<(), Error> {
-        fail_point!("gen-rm-fail", |_| Ok(()));
-        Ok(async_std::fs::remove_dir_all(&self.path).await?)
     }
 }
