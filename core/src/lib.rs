@@ -47,12 +47,22 @@ pub trait Keystore<T: Runtime>: Send + Sync {
         password: &SecretString,
         force: bool,
     ) -> Result<(), Self::Error>;
+    async fn password(&self) -> Result<([u8; 32], u16), Self::Error>;
+    async fn provision_device(
+        &mut self,
+        password: &[u8; 32],
+        gen: u16,
+    ) -> Result<T::AccountId, Self::Error>;
+
     async fn lock(&mut self) -> Result<(), Self::Error>;
     async fn unlock(&mut self, password: &SecretString) -> Result<(), Self::Error>;
 
-    async fn gen(&self) -> u16;
-    async fn change_password_mask(&self, password: &SecretString) -> Result<[u8; 32], Self::Error>;
-    async fn apply_mask(&self, mask: &[u8; 32], gen: u16) -> Result<(), Self::Error>;
+    fn gen(&self) -> u16;
+    async fn change_password_mask(
+        &self,
+        password: &SecretString,
+    ) -> Result<([u8; 32], u16), Self::Error>;
+    async fn apply_mask(&mut self, mask: &[u8; 32], gen: u16) -> Result<(), Self::Error>;
 }
 
 #[async_trait]

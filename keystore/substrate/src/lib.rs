@@ -11,8 +11,9 @@ use substrate_subxt::{
 use sunshine_core::{ChainSigner, InvalidSuri, OffchainSigner, SecretString};
 
 pub struct Keystore<T: Runtime, P: Pair<Seed = [u8; 32]>> {
-    keystore: keybase_keystore::KeyStore,
+    keystore: keybase_keystore::Keystore,
     signer: Option<PairSigner<T, P>>,
+    gen: u16,
 }
 
 impl<T: Runtime, P: Pair<Seed = [u8; 32]>> Keystore<T, P>
@@ -23,21 +24,25 @@ where
     <T::Signature as Verify>::Signer: From<P::Public> + IdentifyAccount<AccountId = T::AccountId>,
 {
     pub async fn open(path: PathBuf) -> Result<Self, Error> {
-        let keystore = keybase_keystore::KeyStore::open(path).await?;
-        let signer = if keystore.is_initialized().await {
-            let key = Key::from_seed(keystore.device_key().await?);
-            Some(key.to_signer())
+        let keystore = keybase_keystore::Keystore::new(path);
+        let gen = keystore.gen().await?;
+        let signer = if let Ok(key) = keystore.device_key().await {
+            Some(Key::from_seed(key).to_signer())
         } else {
             None
         };
-        Ok(Self { keystore, signer })
+        Ok(Self {
+            keystore,
+            signer,
+            gen,
+        })
     }
 }
 
 #[async_trait]
 impl<T: Runtime, P: Pair<Seed = [u8; 32]>> sunshine_core::Keystore<T> for Keystore<T, P>
 where
-    T::AccountId: Into<T::Address>,
+    T::AccountId: Clone + Into<T::Address>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     T::Signature: From<P::Signature>,
     <T::Signature as Verify>::Signer: From<P::Public> + IdentifyAccount<AccountId = T::AccountId>,
@@ -60,15 +65,33 @@ where
         force: bool,
     ) -> Result<(), Error> {
         self.keystore
-            .initialize(&device_key.key, &Password::new(password), force)
+            .set_device_key(&device_key.key, &Password::new(password), force)
             .await?;
         self.signer = Some(device_key.to_signer());
         Ok(())
     }
 
+    async fn password(&self) -> Result<([u8; 32], u16), Self::Error> {
+        let (password, gen) = self.keystore.password().await?;
+        // TODO: not
+        Ok((*password.expose_secret(), gen))
+    }
+
+    async fn provision_device(
+        &mut self,
+        password: &[u8; 32],
+        gen: u16,
+    ) -> Result<T::AccountId, Error> {
+        let password = Password::from(*password);
+        let device_key = self.keystore.provision_device_key(&password, gen).await?;
+        let key = Key::from_seed(device_key);
+        self.signer = Some(key.to_signer());
+        Ok(self.chain_signer().unwrap().account_id().clone())
+    }
+
     async fn lock(&mut self) -> Result<(), Self::Error> {
         self.signer = None;
-        Ok(self.keystore.lock().await?)
+        self.keystore.lock().await
     }
 
     async fn unlock(&mut self, password: &SecretString) -> Result<(), Self::Error> {
@@ -77,19 +100,26 @@ where
         Ok(())
     }
 
-    async fn gen(&self) -> u16 {
-        self.keystore.gen().await
+    fn gen(&self) -> u16 {
+        self.gen
     }
 
-    async fn change_password_mask(&self, password: &SecretString) -> Result<[u8; 32], Self::Error> {
-        Ok(*self
+    async fn change_password_mask(
+        &self,
+        password: &SecretString,
+    ) -> Result<([u8; 32], u16), Self::Error> {
+        let (mask, gen) = self
             .keystore
             .change_password_mask(&Password::new(password))
-            .await?)
+            .await?;
+        Ok((*mask, gen))
     }
 
-    async fn apply_mask(&self, mask: &[u8; 32], gen: u16) -> Result<(), Self::Error> {
-        self.keystore.apply_mask(&Mask::new(*mask), gen).await
+    async fn apply_mask(&mut self, mask: &[u8; 32], next_gen: u16) -> Result<(), Self::Error> {
+        let mask = Mask::new(*mask);
+        self.keystore.apply_mask(&mask, next_gen).await?;
+        self.gen = next_gen;
+        Ok(())
     }
 }
 

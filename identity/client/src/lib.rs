@@ -29,7 +29,7 @@ pub trait IdentityClient<T: Runtime + Identity>: ChainClient<T> {
     async fn add_key(&self, key: &<T as System>::AccountId) -> Result<(), Self::Error>;
     async fn remove_key(&self, key: &<T as System>::AccountId) -> Result<(), Self::Error>;
     async fn change_password(&self, password: &SecretString) -> Result<(), Self::Error>;
-    async fn update_password(&self) -> Result<(), Self::Error>;
+    async fn update_password(&mut self) -> Result<(), Self::Error>;
     async fn subscribe_password_changes(&self) -> Result<EventSubscription<T>, Self::Error>;
     async fn fetch_uid(
         &self,
@@ -79,7 +79,7 @@ where
         client::change_password(self, password).await
     }
 
-    async fn update_password(&self) -> Result<(), C::Error> {
+    async fn update_password(&mut self) -> Result<(), C::Error> {
         client::update_password(self).await
     }
 

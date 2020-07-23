@@ -205,8 +205,7 @@ where
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: ChainClient<T>,
 {
-    let mask = client.keystore().change_password_mask(password).await?;
-    let gen = client.keystore().gen().await + 1;
+    let (mask, gen) = client.keystore().change_password_mask(password).await?;
     client
         .chain_client()
         .change_password_and_watch(client.chain_signer()?, &mask, gen)
@@ -214,7 +213,7 @@ where
     Ok(())
 }
 
-pub async fn update_password<T, C>(client: &C) -> Result<(), C::Error>
+pub async fn update_password<T, C>(client: &mut C) -> Result<(), C::Error>
 where
     T: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
@@ -225,7 +224,7 @@ where
         .await?
         .ok_or(Error::NoAccount)?;
     let pgen = client.chain_client().password_gen(uid, None).await?;
-    let gen = client.keystore().gen().await;
+    let gen = client.keystore().gen();
     for g in gen..pgen {
         log::info!("Password change detected: reencrypting keystore");
         let mask = client
@@ -233,7 +232,7 @@ where
             .password_mask(uid, g + 1, None)
             .await?
             .ok_or(Error::RuntimeInvalid)?;
-        client.keystore().apply_mask(&mask, g + 1).await?;
+        client.keystore_mut().apply_mask(&mask, g + 1).await?;
     }
     Ok(())
 }
@@ -501,5 +500,30 @@ mod tests {
         client1.update_password().await.unwrap();
         client1.keystore_mut().lock().await.unwrap();
         client1.keystore_mut().unlock(&password).await.unwrap();
+    }
+
+    #[async_std::test]
+    async fn provision_device() {
+        let (node, _node_tmp) = test_node();
+        let (mut client1, _client1_tmp) = Client::mock(&node, AccountKeyring::Alice).await;
+        let (mut client2, _client2_tmp) = Client::mock(&node, AccountKeyring::Eve).await;
+
+        let password = SecretString::new("abcdefgh".to_string());
+        let (mask, gen) = client1
+            .keystore_mut()
+            .change_password_mask(&password)
+            .await
+            .unwrap();
+        client1.keystore_mut().apply_mask(&mask, gen).await.unwrap();
+
+        let (pass, gen) = client1.keystore().password().await.unwrap();
+        client2
+            .keystore_mut()
+            .provision_device(&pass, gen)
+            .await
+            .unwrap();
+
+        client2.keystore_mut().lock().await.unwrap();
+        client2.keystore_mut().unlock(&password).await.unwrap();
     }
 }
