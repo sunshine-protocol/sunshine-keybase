@@ -17,5 +17,5 @@ sunshine-core = { version = "^0.2.0", path = "../../core" }
 sunshine-identity-client = { version = "0.2.0", path = "../../identity/client" }
 
 [dev-dependencies]
-async-std = { version = "=1.5.0", features = ["attributes"] }
+async-std = { version = "1.6.2", features = ["attributes"] }
 test-client = { path = "../../bin/client", features = ["mock"] }
