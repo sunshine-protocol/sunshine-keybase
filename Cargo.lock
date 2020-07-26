@@ -6726,6 +6726,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sunshine-ffi-utils"
+version = "0.1.0"
+dependencies = [
+ "allo-isolate",
+ "async-std",
+ "log",
+ "once_cell 1.4.0",
+]
+
+[[package]]
 name = "sunshine-identity-cli"
 version = "0.2.3"
 dependencies = [
@@ -6767,12 +6777,10 @@ dependencies = [
 name = "sunshine-identity-ffi"
 version = "0.2.3"
 dependencies = [
- "allo-isolate",
- "async-std",
- "log",
  "substrate-subxt",
  "sunshine-core",
  "sunshine-faucet-client",
+ "sunshine-ffi-utils",
  "sunshine-identity-client",
  "test-client",
  "thiserror",

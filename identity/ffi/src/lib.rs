@@ -1,13 +1,8 @@
-pub use {allo_isolate, async_std, log, substrate_subxt, sunshine_core, sunshine_identity_client};
-
-#[cfg(feature = "faucet")]
-#[doc(hidden)]
-pub use sunshine_faucet_client;
+pub use ffi_utils;
 #[doc(hidden)]
 pub mod error;
 #[doc(hidden)]
 pub mod ffi;
-mod macros;
 
 /// Generate the FFI for the provided runtime
 ///
@@ -21,98 +16,14 @@ mod macros;
 #[macro_export]
 macro_rules! impl_ffi {
     (client: $client: ty) => {
-        use ::std::{
-            ffi::CStr,
-            os::raw,
-            ptr,
-            path::PathBuf,
-            sync::RwLock as StdRwLock
-        };
-        use allo_isolate::Isolate;
-        use async_std::{sync::RwLock, task};
-        use sunshine_identity_client as client;
-        #[cfg(feature = "faucet")]
-        use sunshine_faucet_client as faucet_client;
-        use sunshine_core::bip39::{Language, Mnemonic};
-        use log::{error, info};
-        use substrate_subxt::balances::{Balances, TransferCallExt, TransferEventExt};
-        use substrate_subxt::sp_core::sr25519;
-        use substrate_subxt::{ClientBuilder, Signer};
-        use substrate_subxt::{SignedExtension, SignedExtra};
-        use error::LastError;
+        use ::std::os::raw;
         #[allow(unused)]
-        use $crate::*;
-
-        /// cbindgen:ignore
-        static mut CLIENT: Option<RwLock<$client>> = None;
-        /// cbindgen:ignore
-        static mut LAST_ERROR: Option<StdRwLock<LastError>> = None;
-
-        enum_result! {
-          CLIENT_UNKNOWN = -1,
-          CLIENT_OK = 1,
-          CLIENT_BAD_CSTR = 2,
-          CLIENT_CREATE_ERR = 3,
-          CLIENT_UNINIT = 4,
-          CLIENT_ALREADY_INIT = 5,
-        }
-
-        /// Setup the Sunshine identity client using the provided path as the base path
-        ///
-        /// ### Safety
-        /// This assumes that the path is non-null c string.
-        /// Calling this function more than once can result in a data race.
-        #[allow(clippy::not_unsafe_ptr_arg_deref)]
-        #[no_mangle]
-        pub extern "C" fn client_init(port: i64, path: *const raw::c_char, chain_spec: *const raw::c_char) -> i32 {
-            // check if we already created the client, and return `CLIENT_ALREADY_INIT`
-            // if it is already created to avoid any unwanted work
-            // SAFETY:
-            // this safe we only check that before doing anything else.
-            unsafe {
-                if CLIENT.is_some() {
-                    return CLIENT_ALREADY_INIT;
-                }
-            }
-            let root = PathBuf::from(cstr!(path));
-            let chain_spec = PathBuf::from(cstr!(chain_spec));
-            let isolate = Isolate::new(port);
-            let t = isolate.task(async move {
-                let client = <$client>::new(&root, Some(&chain_spec)).await;
-                let client = result!(client, CLIENT_CREATE_ERR);
-
-                // SAFETY:
-                // this safe since we checked that the client is already not created before.
-                unsafe {
-                    CLIENT.replace(RwLock::new(client));
-                    LAST_ERROR.replace(StdRwLock::new(LastError::new()));
-                }
-                CLIENT_OK
-            });
-            task::spawn(t);
-            CLIENT_OK
-        }
-        /// Get last error that happened when you expected a value but got a null instead
-        /// this will return an immutable pointer to the underlaying error buffer, you are not allowed to modify/free
-        /// this pointer, otherwise there is an UB may occur.
-        /// in most cases you should read this pointer as UTF-8 string and make a copy of it in your side.
-        #[no_mangle]
-        pub extern "C" fn client_last_error() -> *const raw::c_char {
-            let last_err = last_error!(err = ptr::null());
-            if let Ok(e) = last_err.read() {
-                if let Some(e) = e.read() {
-                    e.as_ptr()
-                } else {
-                    log::warn!("there is no last error to read");
-                    ptr::null()
-                }
-            } else {
-                log::error!("Failed to read last error");
-                ptr::null()
-            }
-        }
+        use $crate::ffi_utils::*;
+        #[allow(unused)]
+        use $crate::ffi::*;
 
         gen_ffi! {
+            client = $client;
             /// Set a new Key for this device if not already exist.
             /// you should call `client_has_device_key` first to see if you have already a key.
             ///

@@ -15,4 +15,5 @@ members = [
     "identity/utils",
     "keystore/keybase",
     "keystore/substrate",
+    "ffi-utils",
 ]
