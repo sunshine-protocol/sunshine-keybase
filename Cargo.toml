@@ -17,3 +17,6 @@ members = [
     "keystore/substrate",
     "ffi-utils",
 ]
+
+[patch.crates-io]
+substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt" }

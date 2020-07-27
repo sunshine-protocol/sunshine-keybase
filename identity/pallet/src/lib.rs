@@ -5,7 +5,7 @@ use codec::FullCodec;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::StoredMap;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, Parameter};
-use frame_system::{self as system, ensure_signed, Trait as System};
+use frame_system::{ensure_signed, Trait as System};
 use orml_utilities::OrderedSet;
 use sp_runtime::traits::{CheckedAdd, Member};
 

@@ -1,10 +1,13 @@
 use crate::Runtime;
 use sled::transaction::TransactionError;
 use sled::Tree;
+use sp_database::error::DatabaseError;
 use sp_database::{Change, Database, Transaction};
 use std::path::Path;
 use std::sync::Arc;
-use substrate_subxt::client::{DatabaseConfig, Role, SubxtClient, SubxtClientConfig};
+use substrate_subxt::client::{
+    DatabaseConfig, KeystoreConfig, Role, SubxtClient, SubxtClientConfig,
+};
 use substrate_subxt::{Client, ClientBuilder};
 use thiserror::Error;
 
@@ -34,12 +37,15 @@ pub async fn build_light_client(tree: Tree, chain_spec: &Path) -> Result<Client<
         author: test_node::AUTHOR,
         copyright_start_year: test_node::COPYRIGHT_START_YEAR,
         db: DatabaseConfig::Custom(Arc::new(SubstrateDb(tree))),
-        builder: test_node::service::new_light,
+        keystore: KeystoreConfig::InMemory,
         role: Role::Light,
         chain_spec,
-    };
+        enable_telemetry: true,
+    }
+    .to_service_config();
+    let (task_manager, rpc) = test_node::service::new_light(config)?;
     let client = ClientBuilder::new()
-        .set_client(SubxtClient::new(config)?)
+        .set_client(SubxtClient::new(task_manager, rpc))
         .build()
         .await?;
     Ok(client)
@@ -70,7 +76,7 @@ impl<H> Database<H> for SubstrateDb
 where
     H: Clone + Send + Sync + Eq + PartialEq + Default + AsRef<[u8]>,
 {
-    fn commit(&self, transaction: Transaction<H>) {
+    fn commit(&self, transaction: Transaction<H>) -> Result<(), DatabaseError> {
         let changes = &transaction.0;
         self.0
             .transaction::<_, _, TransactionError>(|tree| {
@@ -92,7 +98,7 @@ where
                 }
                 Ok(())
             })
-            .ok();
+            .map_err(|err| DatabaseError(Box::new(err)))
     }
 
     fn get(&self, col: u32, key: &[u8]) -> Option<Vec<u8>> {

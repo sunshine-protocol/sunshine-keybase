@@ -9,7 +9,7 @@ use substrate_keybase_keystore::Keystore;
 use substrate_subxt::balances::{AccountData, Balances};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
 use substrate_subxt::system::System;
-use substrate_subxt::{sp_core, sp_runtime};
+use substrate_subxt::{extrinsic, sp_core, sp_runtime};
 use sunshine_core::{ChainClient, ChainSigner, Keystore as _, OffchainSigner};
 use thiserror::Error;
 
@@ -51,7 +51,7 @@ impl Faucet for Runtime {}
 
 impl substrate_subxt::Runtime for Runtime {
     type Signature = sp_runtime::MultiSignature;
-    type Extra = substrate_subxt::DefaultExtra<Self>;
+    type Extra = extrinsic::DefaultExtra<Self>;
 }
 
 pub struct Client<S = OffchainStore> {
@@ -73,7 +73,7 @@ impl Client<OffchainStore> {
             substrate_subxt::ClientBuilder::new().build().await?
         };
 
-        let config = Config::from_tree(db_ipfs);
+        let config = Config::new(db_ipfs, Default::default());
         let store = OffchainStore::new(config)?;
         let offchain = OffchainClient::new(store);
 
@@ -197,7 +197,9 @@ impl From<codec::Error> for Error {
 #[cfg(feature = "mock")]
 pub mod mock {
     pub use sp_keyring::AccountKeyring;
-    use substrate_subxt::client::{DatabaseConfig, Role, SubxtClient, SubxtClientConfig};
+    use substrate_subxt::client::{
+        DatabaseConfig, KeystoreConfig, Role, SubxtClient, SubxtClientConfig,
+    };
     pub use tempdir::TempDir;
 
     pub type TestNode = jsonrpsee::Client;
@@ -214,11 +216,14 @@ pub mod mock {
                 path: tmp.path().into(),
                 cache_size: 128,
             },
-            builder: test_node::service::new_full,
+            keystore: KeystoreConfig::InMemory,
             chain_spec: test_node::chain_spec::development_config(),
             role: Role::Authority(AccountKeyring::Alice),
-        };
-        let client = SubxtClient::new(config).unwrap().into();
+            enable_telemetry: false,
+        }
+        .to_service_config();
+        let (task_manager, rpc) = test_node::service::new_full(config).unwrap();
+        let client = SubxtClient::new(task_manager, rpc).into();
         (client, tmp)
     }
 }

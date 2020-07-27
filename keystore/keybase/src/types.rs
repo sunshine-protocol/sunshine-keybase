@@ -17,7 +17,7 @@ impl DeviceKey {
     }
 
     pub fn from_mnemonic(mnemonic: &Mnemonic) -> Result<Self, NotEnoughEntropyError> {
-        let entropy = mnemonic.entropy();
+        let entropy = mnemonic.to_entropy();
         if entropy.len() < SECRET_LEN {
             return Err(NotEnoughEntropyError);
         }
