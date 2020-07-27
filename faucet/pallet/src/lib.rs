@@ -53,7 +53,7 @@ impl<T: Trait> ValidateUnsigned for Module<T> {
     type Call = Call<T>;
 
     fn validate_unsigned(_source: TransactionSource, _call: &Self::Call) -> TransactionValidity {
-        let current_block = <frame_system::Module<T>>::block_number();
+        let current_block = <system::Module<T>>::block_number();
         ValidTransaction::with_tag_prefix("Faucet")
             .and_provides(current_block)
             .build()
