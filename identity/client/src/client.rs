@@ -129,7 +129,7 @@ where
         return Err(Error::InvalidClaim("seqno").into());
     }
     let block = Decode::decode(&mut &claim.claim().block[..])?;
-    let keys = client.chain_client().keys(uid, Some(block)).await?;
+    let keys = client.chain_client().device_keys(uid, Some(block)).await?;
     let key = keys
         .iter()
         .find(|k| k.to_ss58check() == claim.claim().public)
@@ -168,11 +168,11 @@ where
     let mnemonic = Mnemonic::generate(24).expect("word count is a multiple of six; qed");
     let key = <C::Keystore as Keystore<T>>::Key::from_mnemonic(&mnemonic)
         .expect("have enough entropy bits; qed");
-    add_key(client, &key.to_account_id()).await?;
+    add_device_key(client, &key.to_account_id()).await?;
     Ok(mnemonic)
 }
 
-pub async fn add_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<(), C::Error>
+pub async fn add_device_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<(), C::Error>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
@@ -180,13 +180,13 @@ where
 {
     client
         .chain_client()
-        .add_key_and_watch(client.chain_signer()?, key)
+        .add_device_key_and_watch(client.chain_signer()?, key)
         .await?
-        .key_added()?;
+        .device_key_added()?;
     Ok(())
 }
 
-pub async fn remove_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<(), C::Error>
+pub async fn remove_device_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<(), C::Error>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
@@ -194,9 +194,9 @@ where
 {
     client
         .chain_client()
-        .remove_key_and_watch(client.chain_signer()?, key)
+        .remove_device_key_and_watch(client.chain_signer()?, key)
         .await?
-        .key_removed()?;
+        .device_key_removed()?;
     Ok(())
 }
 
@@ -261,10 +261,10 @@ where
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: ChainClient<T>,
 {
-    Ok(client.chain_client().uid_lookup(key, None).await?)
+    Ok(client.chain_client().uid_of_key(key, None).await?)
 }
 
-pub async fn fetch_keys<T, C>(
+pub async fn fetch_device_keys<T, C>(
     client: &C,
     uid: T::Uid,
     hash: Option<T::Hash>,
@@ -275,7 +275,7 @@ where
     C: ChainClient<T>,
     C::Error: From<Error>,
 {
-    let keys = client.chain_client().keys(uid, hash).await?;
+    let keys = client.chain_client().device_keys(uid, hash).await?;
     if keys.is_empty() {
         return Err(Error::ResolveFailure.into());
     }

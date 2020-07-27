@@ -40,11 +40,11 @@ decl_storage! {
     trait Store for Module<T: Trait> as IdentityModule {
         UidCounter: T::Uid;
 
-        pub UidLookup get(fn key): map
+        pub UidOfKey get(fn uid_of_key): map
             hasher(blake2_128_concat) <T as System>::AccountId
             => Option<T::Uid>;
 
-        pub Keys get(fn keys): map
+        pub DeviceKeys get(fn device_keys): map
             hasher(blake2_128_concat) T::Uid
             => OrderedSet<<T as System>::AccountId>;
 
@@ -77,8 +77,8 @@ decl_event!(
         Gen = <T as Trait>::Gen,
     {
         AccountCreated(Uid),
-        KeyAdded(Uid, AccountId),
-        KeyRemoved(Uid, AccountId),
+        DeviceKeyAdded(Uid, AccountId),
+        DeviceKeyRemoved(Uid, AccountId),
         IdentityChanged(Uid, Cid),
         PasswordChanged(Uid, Gen, Mask),
     }
@@ -116,35 +116,36 @@ decl_module! {
 
         /// Create account.
         #[weight = 0]
-        pub fn create_account_for(origin, key: <T as System>::AccountId) -> DispatchResult {
+        pub fn create_account_for(origin, device_key: <T as System>::AccountId) -> DispatchResult {
             let _ = ensure_signed(origin)?;
-            Self::ensure_key_unused(&key)?;
+            Self::ensure_key_unused(&device_key)?;
 
-            Self::create_account(key)?;
+            Self::create_account(device_key)?;
             Ok(())
         }
 
-        /// Add a key.
+        /// Adds a device key.
         #[weight = 0]
-        pub fn add_key(origin, key: <T as System>::AccountId) -> DispatchResult {
+        pub fn add_device_key(origin, device_key: <T as System>::AccountId) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let uid = Self::ensure_uid(&who)?;
-            Self::ensure_key_unused(&key)?;
+            Self::ensure_key_unused(&device_key)?;
 
-            Self::add_key_to_uid(uid, key);
+            Self::add_device_key_to_uid(uid, device_key);
             Ok(())
         }
 
-        /// Remove a key.
+        /// Removes a device key and rotate the user key.
         #[weight = 0]
-        pub fn remove_key(origin, key: <T as System>::AccountId) -> DispatchResult {
+        pub fn remove_device_key(origin, device_key: <T as System>::AccountId) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let uid = Self::ensure_uid(&who)?;
+
             // Prevent user from locking himself out.
-            ensure!(who != key, Error::<T>::CantRemoveSelf);
-            ensure!(<UidLookup<T>>::get(&key) == Some(uid), Error::<T>::Unauthorized);
+            ensure!(who != device_key, Error::<T>::CantRemoveSelf);
+            ensure!(<UidOfKey<T>>::get(&device_key) == Some(uid), Error::<T>::Unauthorized);
 
-            Self::remove_key_from_uid(uid, key);
+            Self::remove_device_key_from_uid(uid, device_key);
             Ok(())
         }
 
@@ -182,15 +183,15 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     fn ensure_uid(key: &<T as System>::AccountId) -> Result<T::Uid, Error<T>> {
-        let uid = <UidLookup<T>>::get(&key).ok_or(Error::<T>::NoAccount)?;
-        if !<Keys<T>>::get(uid).contains(key) {
+        let uid = <UidOfKey<T>>::get(&key).ok_or(Error::<T>::NoAccount)?;
+        if !<DeviceKeys<T>>::get(uid).contains(key) {
             return Err(Error::<T>::Unauthorized);
         }
         Ok(uid)
     }
 
     fn ensure_key_unused(key: &<T as System>::AccountId) -> Result<(), Error<T>> {
-        if <UidLookup<T>>::get(&key).is_some() {
+        if <UidOfKey<T>>::get(&key).is_some() {
             Err(Error::<T>::KeyInUse)
         } else {
             Ok(())
@@ -206,28 +207,28 @@ impl<T: Trait> Module<T> {
         <UidCounter<T>>::put(next_uid);
         <PasswordGen<T>>::insert(uid, gen);
         Self::deposit_event(RawEvent::AccountCreated(uid));
-        Self::add_key_to_uid(uid, key);
+        Self::add_device_key_to_uid(uid, key);
         Ok(uid)
     }
 
-    fn add_key_to_uid(uid: T::Uid, key: <T as System>::AccountId) {
-        <UidLookup<T>>::insert(key.clone(), uid);
-        <Keys<T>>::mutate(uid, |keys| keys.insert(key.clone()));
-        Self::deposit_event(RawEvent::KeyAdded(uid, key));
+    fn add_device_key_to_uid(uid: T::Uid, key: <T as System>::AccountId) {
+        <UidOfKey<T>>::insert(key.clone(), uid);
+        <DeviceKeys<T>>::mutate(uid, |keys| keys.insert(key.clone()));
+        Self::deposit_event(RawEvent::DeviceKeyAdded(uid, key));
     }
 
-    fn remove_key_from_uid(uid: T::Uid, key: <T as System>::AccountId) {
+    fn remove_device_key_from_uid(uid: T::Uid, key: <T as System>::AccountId) {
         // The lookup can't be removed in case someone sends a transaction
         // to an old key or the same key being added to a different account
         // after being revoked.
-        <Keys<T>>::mutate(uid, |keys| keys.remove(&key));
-        Self::deposit_event(RawEvent::KeyRemoved(uid, key));
+        <DeviceKeys<T>>::mutate(uid, |keys| keys.remove(&key));
+        Self::deposit_event(RawEvent::DeviceKeyRemoved(uid, key));
     }
 }
 
 impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> for Module<T> {
     fn get(k: &<T as System>::AccountId) -> <T as Trait>::AccountData {
-        if let Some(uid) = <UidLookup<T>>::get(k) {
+        if let Some(uid) = <UidOfKey<T>>::get(k) {
             <Account<T>>::get(&uid)
         } else {
             <T as Trait>::AccountData::default()
@@ -235,17 +236,17 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
     }
 
     fn is_explicit(k: &<T as System>::AccountId) -> bool {
-        <UidLookup<T>>::get(k).is_some()
+        <UidOfKey<T>>::get(k).is_some()
     }
 
     fn mutate<R>(
         k: &<T as System>::AccountId,
         f: impl FnOnce(&mut <T as Trait>::AccountData) -> R,
     ) -> R {
-        if <UidLookup<T>>::get(k).is_none() {
+        if <UidOfKey<T>>::get(k).is_none() {
             Self::create_account(k.clone()).ok();
         }
-        if let Some(uid) = <UidLookup<T>>::get(k) {
+        if let Some(uid) = <UidOfKey<T>>::get(k) {
             <Account<T>>::mutate(&uid, f)
         } else {
             // This should only happen if uid overflows.
@@ -257,10 +258,10 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
         k: &<T as System>::AccountId,
         f: impl FnOnce(&mut Option<<T as Trait>::AccountData>) -> R,
     ) -> R {
-        if <UidLookup<T>>::get(k).is_none() {
+        if <UidOfKey<T>>::get(k).is_none() {
             Self::create_account(k.clone()).ok();
         }
-        if let Some(uid) = <UidLookup<T>>::get(k) {
+        if let Some(uid) = <UidOfKey<T>>::get(k) {
             <Account<T>>::mutate_exists(&uid, f)
         } else {
             // This should only happen if uid overflows.
@@ -272,10 +273,10 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
         k: &<T as System>::AccountId,
         f: impl FnOnce(&mut Option<<T as Trait>::AccountData>) -> Result<R, E>,
     ) -> Result<R, E> {
-        if <UidLookup<T>>::get(k).is_none() {
+        if <UidOfKey<T>>::get(k).is_none() {
             Self::create_account(k.clone()).ok();
         }
-        if let Some(uid) = <UidLookup<T>>::get(k) {
+        if let Some(uid) = <UidOfKey<T>>::get(k) {
             <Account<T>>::try_mutate_exists(&uid, f)
         } else {
             // This should only happen if uid overflows.
@@ -284,7 +285,7 @@ impl<T: Trait> StoredMap<<T as System>::AccountId, <T as Trait>::AccountData> fo
     }
 
     fn remove(k: &<T as System>::AccountId) {
-        if let Some(uid) = <UidLookup<T>>::get(k) {
+        if let Some(uid) = <UidOfKey<T>>::get(k) {
             <Account<T>>::remove(&uid);
         }
     }

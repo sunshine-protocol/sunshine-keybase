@@ -26,8 +26,8 @@ use sunshine_core::{bip39::Mnemonic, ChainClient, SecretString};
 pub trait IdentityClient<T: Runtime + Identity>: ChainClient<T> {
     async fn create_account_for(&self, key: &<T as System>::AccountId) -> Result<(), Self::Error>;
     async fn add_paperkey(&self) -> Result<Mnemonic, Self::Error>;
-    async fn add_key(&self, key: &<T as System>::AccountId) -> Result<(), Self::Error>;
-    async fn remove_key(&self, key: &<T as System>::AccountId) -> Result<(), Self::Error>;
+    async fn add_device_key(&self, key: &<T as System>::AccountId) -> Result<(), Self::Error>;
+    async fn remove_device_key(&self, key: &<T as System>::AccountId) -> Result<(), Self::Error>;
     async fn change_password(&self, password: &SecretString) -> Result<(), Self::Error>;
     async fn update_password(&mut self) -> Result<(), Self::Error>;
     async fn subscribe_password_changes(&self) -> Result<EventSubscription<T>, Self::Error>;
@@ -35,7 +35,7 @@ pub trait IdentityClient<T: Runtime + Identity>: ChainClient<T> {
         &self,
         key: &<T as System>::AccountId,
     ) -> Result<Option<T::Uid>, Self::Error>;
-    async fn fetch_keys(
+    async fn fetch_device_keys(
         &self,
         uid: T::Uid,
         hash: Option<<T as System>::Hash>,
@@ -67,12 +67,12 @@ where
         client::add_paperkey(self).await
     }
 
-    async fn add_key(&self, key: &<T as System>::AccountId) -> Result<(), C::Error> {
-        client::add_key(self, key).await
+    async fn add_device_key(&self, key: &<T as System>::AccountId) -> Result<(), C::Error> {
+        client::add_device_key(self, key).await
     }
 
-    async fn remove_key(&self, key: &<T as System>::AccountId) -> Result<(), C::Error> {
-        client::remove_key(self, key).await
+    async fn remove_device_key(&self, key: &<T as System>::AccountId) -> Result<(), C::Error> {
+        client::remove_device_key(self, key).await
     }
 
     async fn change_password(&self, password: &SecretString) -> Result<(), C::Error> {
@@ -91,12 +91,12 @@ where
         client::fetch_uid(self, key).await
     }
 
-    async fn fetch_keys(
+    async fn fetch_device_keys(
         &self,
         uid: T::Uid,
         hash: Option<<T as System>::Hash>,
     ) -> Result<Vec<<T as System>::AccountId>, C::Error> {
-        client::fetch_keys(self, uid, hash).await
+        client::fetch_device_keys(self, uid, hash).await
     }
 
     async fn fetch_account(&self, uid: T::Uid) -> Result<T::IdAccountData, C::Error> {

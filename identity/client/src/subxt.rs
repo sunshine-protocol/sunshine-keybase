@@ -23,13 +23,13 @@ pub trait Identity: System {
 }
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
-pub struct UidLookupStore<'a, T: Identity> {
+pub struct UidOfKeyStore<'a, T: Identity> {
     #[store(returns = Option<T::Uid>)]
     key: &'a <T as System>::AccountId,
 }
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
-pub struct KeysStore<T: Identity> {
+pub struct DeviceKeysStore<T: Identity> {
     #[store(returns = Vec<<T as System>::AccountId>)]
     uid: T::Uid,
 }
@@ -61,17 +61,17 @@ pub struct AccountStore<T: Identity> {
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
 pub struct CreateAccountForCall<'a, T: Identity> {
-    key: &'a <T as System>::AccountId,
+    device_key: &'a <T as System>::AccountId,
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
-pub struct AddKeyCall<'a, T: Identity> {
-    key: &'a <T as System>::AccountId,
+pub struct AddDeviceKeyCall<'a, T: Identity> {
+    device_key: &'a <T as System>::AccountId,
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
-pub struct RemoveKeyCall<'a, T: Identity> {
-    key: &'a <T as System>::AccountId,
+pub struct RemoveDeviceKeyCall<'a, T: Identity> {
+    device_key: &'a <T as System>::AccountId,
 }
 
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
@@ -92,13 +92,13 @@ pub struct AccountCreatedEvent<T: Identity> {
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]
-pub struct KeyAddedEvent<T: Identity> {
+pub struct DeviceKeyAddedEvent<T: Identity> {
     uid: T::Uid,
     key: <T as System>::AccountId,
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]
-pub struct KeyRemovedEvent<T: Identity> {
+pub struct DeviceKeyRemovedEvent<T: Identity> {
     uid: T::Uid,
     key: <T as System>::AccountId,
 }
