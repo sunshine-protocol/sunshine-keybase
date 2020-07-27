@@ -1,3 +1,4 @@
+use ffi_utils::async_std;
 use std::ffi::CString;
 use thiserror::Error;
 

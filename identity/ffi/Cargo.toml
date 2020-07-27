@@ -9,10 +9,8 @@ documentation = "https://docs.rs/sunshine-identity-ffi"
 repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
-allo-isolate = "0.1.4"
-async-std = { version = "1.6.2", features = ["attributes"] }
-log = "0.4.11"
 substrate-subxt = "0.10.1"
+ffi-utils = { version = "^0.1", path = "../../ffi-utils", package = "sunshine-ffi-utils" }
 sunshine-core = { version = "^0.2", path = "../../core" }
 sunshine-faucet-client = { version = "^0.2", path = "../../faucet/client", optional = true }
 sunshine-identity-client = { version = "^0.2", path = "../client" }

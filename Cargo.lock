@@ -5669,9 +5669,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.56"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3433e879a558dde8b5e8feb2a04899cf34fdde1fafb894687e52105fc1162ac3"
+checksum = "164eacbdb13512ec2745fb09d51fd5b22b0d65ed294a1dcf7285a360c80a675c"
 dependencies = [
  "itoa",
  "ryu",
@@ -6808,6 +6808,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sunshine-ffi-utils"
+version = "0.1.0"
+dependencies = [
+ "allo-isolate",
+ "async-std",
+ "log",
+ "once_cell",
+]
+
+[[package]]
 name = "sunshine-identity-cli"
 version = "0.2.3"
 dependencies = [
@@ -6848,12 +6858,10 @@ dependencies = [
 name = "sunshine-identity-ffi"
 version = "0.2.3"
 dependencies = [
- "allo-isolate",
- "async-std",
- "log",
  "substrate-subxt",
  "sunshine-core",
  "sunshine-faucet-client",
+ "sunshine-ffi-utils",
  "sunshine-identity-client",
  "test-client",
  "thiserror",

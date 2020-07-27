@@ -1,7 +1,10 @@
 use crate::error::Error;
 use crate::generation::Generation;
 use crate::types::*;
+#[cfg(unix)]
 use async_std::os::unix::fs::symlink;
+#[cfg(windows)]
+use async_std::os::windows::fs::symlink_dir as symlink;
 use async_std::path::{Path, PathBuf};
 use async_std::prelude::*;
 use std::ffi::OsString;
@@ -145,7 +148,7 @@ impl Keystore {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use crate::types::{DeviceKey, Password};

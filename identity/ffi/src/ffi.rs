@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use async_std::sync::RwLock;
+use ffi_utils::async_std::sync::RwLock;
 use std::marker::PhantomData;
 use substrate_subxt::{
     balances::{AccountData, Balances, TransferCallExt, TransferEventExt},
