@@ -10,7 +10,7 @@ repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 async-std = { version = "1.6.2", features = ["unstable"] }
-bip39 = "1.0.0-rc1"
+bip39 = { version = "1.0.0-rc1", features = ["rand"] }
 rand = "0.7.3"
 secrecy = "0.7.0"
 strobe-rs = "0.5.4"

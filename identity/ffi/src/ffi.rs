@@ -7,7 +7,7 @@ use substrate_subxt::{
     system::System,
     Runtime, SignedExtension, SignedExtra,
 };
-use sunshine_core::bip39::{Language, Mnemonic};
+use sunshine_core::bip39::Mnemonic;
 use sunshine_core::{ExposeSecret, Keystore, SecretString, Ss58};
 #[cfg(feature = "faucet")]
 use sunshine_faucet_client::{Faucet as SunshineFaucet, FaucetClient};
@@ -68,8 +68,7 @@ where
             return Err(Error::PasswordTooShort);
         }
         let dk = if let Some(paperkey) = paperkey {
-            let mnemonic = Mnemonic::from_phrase(paperkey.into(), Language::English)
-                .map_err(|_| Error::InvalidMnemonic)?;
+            let mnemonic = Mnemonic::parse(paperkey.into()).map_err(|_| Error::InvalidMnemonic)?;
             <C::Keystore as Keystore<R>>::Key::from_mnemonic(&mnemonic)
                 .map_err(|_| Error::InvalidMnemonic)?
         } else if let Some(suri) = suri {
@@ -208,7 +207,7 @@ where
             .add_paperkey()
             .await
             .map_err(Error::Client)?;
-        Ok(mnemonic.into_phrase())
+        Ok(mnemonic.as_str().into())
     }
 }
 

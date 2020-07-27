@@ -13,7 +13,7 @@ use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{EventSubscription, EventsDecoder, Runtime, SignedExtra};
-use sunshine_core::bip39::{Language, Mnemonic, MnemonicType};
+use sunshine_core::bip39::Mnemonic;
 use sunshine_core::{ChainClient, Key, Keystore, SecretString};
 
 async fn set_identity<T, C>(client: &C, claim: Claim) -> Result<(), C::Error>
@@ -165,8 +165,9 @@ where
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: ChainClient<T>,
 {
-    let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
-    let key = <C::Keystore as Keystore<T>>::Key::from_mnemonic(&mnemonic).unwrap();
+    let mnemonic = Mnemonic::generate(24).expect("word count is a multiple of six; qed");
+    let key = <C::Keystore as Keystore<T>>::Key::from_mnemonic(&mnemonic)
+        .expect("have enough entropy bits; qed");
     add_key(client, &key.to_account_id()).await?;
     Ok(mnemonic)
 }

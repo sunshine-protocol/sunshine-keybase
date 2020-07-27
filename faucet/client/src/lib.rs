@@ -35,10 +35,7 @@ where
     async fn mint(&self) -> Result<Option<MintedEvent<T>>, C::Error> {
         let account = self.chain_signer()?.account_id();
         let call = MintCall { account };
-        let unsigned = self
-            .chain_client()
-            .create_unsigned(call, account, None)
-            .await?;
+        let unsigned = self.chain_client().create_unsigned(call)?;
         let decoder = self.chain_client().events_decoder::<MintCall<T>>();
         let event = self
             .chain_client()

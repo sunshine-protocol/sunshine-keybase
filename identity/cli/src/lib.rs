@@ -9,7 +9,7 @@ pub use crate::error::{Error, Result};
 
 use substrate_subxt::system::System;
 use substrate_subxt::Runtime;
-use sunshine_core::bip39::{Language, Mnemonic};
+use sunshine_core::bip39::Mnemonic;
 use sunshine_core::{ChainClient, ExposeSecret, Key, Keystore, SecretString};
 
 pub fn ask_for_new_password(length: u8) -> std::result::Result<SecretString, std::io::Error> {
@@ -51,7 +51,7 @@ pub async fn ask_for_phrase(prompt: &str) -> std::result::Result<Mnemonic, std::
             }
         }
         println!();
-        if let Ok(mnemonic) = Mnemonic::from_phrase(&words.join(" "), Language::English) {
+        if let Ok(mnemonic) = Mnemonic::parse(&words.join(" ")) {
             return Ok(mnemonic);
         }
         println!("Invalid mnemonic");

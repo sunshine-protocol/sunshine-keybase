@@ -200,12 +200,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d25d88fd6b8041580a654f9d0c581a047baee2b3efee13275f2fc392fc75034"
 
 [[package]]
-name = "array-init"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f30bbe2f5e3d117f55bd8c7a1f9191e4a5deba9f15f595bbea4f670c59c765db"
-
-[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -445,6 +439,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74754271d6ea9def32223d8febf6dbba06172a50887e1babd8b8621415107f43"
 dependencies = [
  "bitcoin_hashes",
+ "rand 0.6.5",
  "unicode-normalization",
 ]
 
@@ -2180,16 +2175,18 @@ checksum = "2ee15951c035f79eddbef745611ec962f63f4558f1dadf98ab723cc603487c6f"
 
 [[package]]
 name = "ipfs-embed"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c611d9917339ca758464e1b8bbbeefe41640b411a2df3328d07d1ffe31a6b60"
+checksum = "273d44a3affa0ead19c839b9a2ec3a1731bcc8d02104ef9b4e1c0e5e889a74d1"
 dependencies = [
  "async-std",
+ "ip_network",
  "libipld",
- "libp2p 0.21.1",
+ "libp2p",
  "libp2p-bitswap",
  "log",
- "sled 0.32.1",
+ "names",
+ "sled",
  "thiserror",
 ]
 
@@ -2623,34 +2620,6 @@ checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
 
 [[package]]
 name = "libp2p"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d743d03fab397cde23925a17cb87b35b25994f44ab8c6a9e46a7e953ec739cd"
-dependencies = [
- "bytes 0.5.6",
- "futures 0.3.5",
- "lazy_static",
- "libp2p-core",
- "libp2p-core-derive",
- "libp2p-identify",
- "libp2p-kad",
- "libp2p-mdns",
- "libp2p-mplex",
- "libp2p-ping",
- "libp2p-secio",
- "libp2p-swarm",
- "libp2p-tcp",
- "libp2p-yamux",
- "multihash",
- "parity-multiaddr",
- "parking_lot 0.10.2",
- "pin-project",
- "smallvec 1.4.1",
- "wasm-timer",
-]
-
-[[package]]
-name = "libp2p"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0306a49ee6a89468f96089906f36b0eef82c988dcfc8acf3e2dcd6ad1c859f85"
@@ -2667,6 +2636,7 @@ dependencies = [
  "libp2p-mplex",
  "libp2p-noise",
  "libp2p-ping",
+ "libp2p-secio",
  "libp2p-swarm",
  "libp2p-tcp",
  "libp2p-wasm-ext",
@@ -2690,7 +2660,7 @@ dependencies = [
  "fnv",
  "futures 0.3.5",
  "libipld-core",
- "libp2p 0.22.0",
+ "libp2p",
  "log",
  "prost",
  "prost-build",
@@ -5215,7 +5185,7 @@ dependencies = [
  "futures_codec",
  "hex",
  "ip_network",
- "libp2p 0.22.0",
+ "libp2p",
  "linked-hash-map",
  "linked_hash_set",
  "log",
@@ -5257,7 +5227,7 @@ checksum = "107fe4db233157c9a0026a3261e73ff8612619d3f8407d31f9140d82afab5ed2"
 dependencies = [
  "futures 0.3.5",
  "futures-timer 3.0.2",
- "libp2p 0.22.0",
+ "libp2p",
  "log",
  "lru",
  "sc-network",
@@ -5300,7 +5270,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5306e7ac8caa470ad9b2fb85e198d68a7bc6065d0ef77d42f35aff8d20930727"
 dependencies = [
  "futures 0.3.5",
- "libp2p 0.22.0",
+ "libp2p",
  "log",
  "serde_json",
  "sp-utils",
@@ -5478,7 +5448,7 @@ checksum = "5001b6b0f8359b0d0a2e2af48d3f0e2998e396d4e9302214ca258fdc25605ba6"
 dependencies = [
  "futures 0.3.5",
  "futures-timer 3.0.2",
- "libp2p 0.22.0",
+ "libp2p",
  "log",
  "parking_lot 0.10.2",
  "pin-project",
@@ -5805,24 +5775,6 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "sled"
-version = "0.32.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e3dbbb8ee10611bd1d020767c27599ccbbf8365f7e0ed7e54429cc8b9433ad8"
-dependencies = [
- "array-init",
- "backtrace",
- "crc32fast",
- "crossbeam-epoch",
- "crossbeam-utils",
- "fs2",
- "fxhash",
- "libc",
- "log",
- "parking_lot 0.11.0",
-]
-
-[[package]]
-name = "sled"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b2aed3832b6d0c828efe6bcb6c309a18cf487dffc5cc0787da2ce140f0fb0ce"
@@ -6113,7 +6065,7 @@ dependencies = [
  "derive_more",
  "futures 0.3.5",
  "futures-timer 3.0.2",
- "libp2p 0.22.0",
+ "libp2p",
  "log",
  "parity-scale-codec",
  "parking_lot 0.10.2",
@@ -7075,7 +7027,7 @@ dependencies = [
  "libipld",
  "parity-scale-codec",
  "sc-service",
- "sled 0.34.0",
+ "sled",
  "sp-database",
  "sp-keyring",
  "substrate-keybase-keystore",

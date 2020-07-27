@@ -67,7 +67,7 @@ impl Keystore {
             if file_name == "gen" {
                 continue;
             }
-            if &file_name != gen_str.as_os_str() {
+            if file_name != gen_str.as_os_str() {
                 async_std::fs::remove_dir_all(self.path.join(&file_name)).await?;
             }
         }

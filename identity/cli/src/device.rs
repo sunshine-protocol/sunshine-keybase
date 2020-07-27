@@ -88,7 +88,7 @@ impl DevicePaperkeyCommand {
         println!("Generating a new paper key.");
         let mnemonic = client.add_paperkey().await.map_err(Error::Client)?;
         println!("Here is your secret paper key phrase:");
-        let words: Vec<_> = mnemonic.phrase().split(' ').collect();
+        let words: Vec<_> = mnemonic.as_str().split(' ').collect();
         println!();
         println!("{}", words[..12].join(" "));
         println!("{}", words[12..].join(" "));

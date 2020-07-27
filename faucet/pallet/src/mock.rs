@@ -47,6 +47,7 @@ impl system::Trait for Test {
     type AccountData = balances::AccountData<u128>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
+    type SystemWeightInfo = ();
 }
 parameter_types! {
     pub const ExistentialDeposit: u128 = 500;
@@ -57,6 +58,7 @@ impl balances::Trait for Test {
     type ExistentialDeposit = ExistentialDeposit;
     type DustRemoval = ();
     type AccountStore = system::Module<Test>;
+    type WeightInfo = ();
 }
 pub const MINT_UNIT: u128 = 10_000_000;
 pub type AccountStore = <Test as balances::Trait>::AccountStore;
