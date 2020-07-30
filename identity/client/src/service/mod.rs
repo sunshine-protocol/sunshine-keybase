@@ -1,6 +1,5 @@
-use crate::claim::Claim;
+use crate::offchain::Claim;
 use crate::error::Result;
-use crate::github;
 use core::str::FromStr;
 use libipld::cbor::DagCborCodec;
 use libipld::codec::Codec;
@@ -8,6 +7,8 @@ use libipld::json::DagJsonCodec;
 use libipld::multibase::{encode, Base};
 use libipld::{DagCbor, Ipld};
 use thiserror::Error;
+
+mod github;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, DagCbor)]
 pub enum Service {
@@ -59,9 +60,9 @@ impl Service {
         })
     }
 
-    pub fn cli_instructions(&self) -> String {
+    pub fn proof_instructions(&self) -> String {
         match self {
-            Self::Github(_) => github::cli_instructions(),
+            Self::Github(_) => github::proof_instructions(),
         }
     }
 }

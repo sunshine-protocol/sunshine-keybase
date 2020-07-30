@@ -79,7 +79,7 @@ pub fn proof(
     signature: &str,
 ) -> String {
     format!(
-        include_str!("../github-proof-template.md"),
+        include_str!("proof-template.md"),
         genesis = genesis,
         block = block,
         uid = uid,
@@ -90,9 +90,9 @@ pub fn proof(
     )
 }
 
-pub fn cli_instructions() -> String {
+pub fn proof_instructions() -> String {
     format!(
-        include_str!("../github-proof-instructions.md"),
+        include_str!("proof-instructions.md"),
         gist_name = GIST_NAME,
     )
 }

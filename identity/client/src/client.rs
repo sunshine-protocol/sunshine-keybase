@@ -1,4 +1,4 @@
-use crate::claim::{Claim, ClaimBody, IdentityInfo, IdentityStatus, UnsignedClaim};
+use crate::offchain::{Claim, ClaimBody, IdentityInfo, IdentityStatus, UnsignedClaim};
 use crate::error::Error;
 use crate::service::Service;
 use crate::subxt::*;

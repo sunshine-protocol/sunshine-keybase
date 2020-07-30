@@ -1,12 +1,11 @@
-mod claim;
 mod client;
 mod error;
-mod github;
+mod offchain;
 mod service;
 mod subxt;
 mod utils;
 
-pub use claim::{Claim, IdentityInfo, IdentityStatus};
+pub use offchain::{Claim, IdentityInfo, IdentityStatus};
 pub use error::Error;
 pub use service::{Service, ServiceParseError};
 pub use subxt::*;
@@ -98,6 +97,10 @@ where
     ) -> Result<Vec<<T as System>::AccountId>, C::Error> {
         client::fetch_device_keys(self, uid, hash).await
     }
+
+    /*async fn fetch_user_key(&self, uid: T::Uid) -> Result<<T as System>::AccountId>, C::Error> {
+        client::fetch_user_key(self, uid).await
+    }*/
 
     async fn fetch_account(&self, uid: T::Uid) -> Result<T::IdAccountData, C::Error> {
         client::fetch_account(self, uid).await
