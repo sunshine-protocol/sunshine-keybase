@@ -3480,6 +3480,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "parity-scale-codec",
+ "serde",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -6761,6 +6762,38 @@ name = "subtle"
 version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
+
+[[package]]
+name = "sunshine-chain-client"
+version = "0.1.0"
+
+[[package]]
+name = "sunshine-chain-pallet"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-utilities",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-trie",
+ "sunshine-chain-utils",
+]
+
+[[package]]
+name = "sunshine-chain-utils"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "rand 0.7.3",
+ "sp-core",
+ "sp-trie",
+ "strobe-rs",
+ "thiserror",
+ "x25519-dalek",
+]
 
 [[package]]
 name = "sunshine-core"
