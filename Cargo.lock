@@ -6766,6 +6766,11 @@ checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 [[package]]
 name = "sunshine-chain-client"
 version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "substrate-subxt",
+]
 
 [[package]]
 name = "sunshine-chain-pallet"
