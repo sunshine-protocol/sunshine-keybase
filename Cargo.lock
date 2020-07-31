@@ -3647,21 +3647,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-sudo"
-version = "2.0.0-rc5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76ae534ae474aa72f63a0816e105479cf2ef1bfec8a9200051f56c7d369ba82d"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "serde",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-timestamp"
 version = "2.0.0-rc5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6767,9 +6752,15 @@ checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 name = "sunshine-chain-client"
 version = "0.1.0"
 dependencies = [
+ "async-std",
+ "async-trait",
  "frame-support",
  "parity-scale-codec",
  "substrate-subxt",
+ "sunshine-chain-utils",
+ "sunshine-core",
+ "test-client",
+ "thiserror",
 ]
 
 [[package]]
@@ -6783,7 +6774,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-trie",
+ "sp-std",
  "sunshine-chain-utils",
 ]
 
@@ -6791,9 +6782,13 @@ dependencies = [
 name = "sunshine-chain-utils"
 version = "0.1.0"
 dependencies = [
+ "blake2-rfc",
+ "hash-db",
+ "hash256-std-hasher",
  "parity-scale-codec",
  "rand 0.7.3",
  "sp-core",
+ "sp-std",
  "sp-trie",
  "strobe-rs",
  "thiserror",
@@ -7081,6 +7076,7 @@ dependencies = [
  "sp-keyring",
  "substrate-keybase-keystore",
  "substrate-subxt",
+ "sunshine-chain-client",
  "sunshine-core",
  "sunshine-faucet-client",
  "sunshine-identity-client",
@@ -7130,7 +7126,6 @@ dependencies = [
  "pallet-balances",
  "pallet-grandpa",
  "pallet-randomness-collective-flip",
- "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "parity-scale-codec",
@@ -7148,6 +7143,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder-runner",
+ "sunshine-chain-pallet",
  "sunshine-faucet-pallet",
  "sunshine-identity-pallet",
  "sunshine-identity-utils",
