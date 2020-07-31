@@ -49,14 +49,14 @@ decl_storage! {
 decl_event! {
     pub enum Event<T>
     where
-        Authority = <T as System>::AccountId,
+        AccountId = <T as System>::AccountId,
         Number = <T as Trait>::Number,
         ChainId = <T as Trait>::ChainId,
     {
         NewChain(ChainId),
-        NewBlock(ChainId, Number, H256, Authority),
-        AuthorityAdded(ChainId, Authority),
-        AuthorityRemoved(ChainId, Authority),
+        NewBlock(ChainId, Number, H256, AccountId),
+        AuthorityAdded(ChainId, AccountId),
+        AuthorityRemoved(ChainId, AccountId),
     }
 }
 
