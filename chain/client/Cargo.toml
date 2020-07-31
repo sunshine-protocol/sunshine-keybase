@@ -5,6 +5,14 @@ authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1.36"
 frame-support = "2.0.0-rc5"
 parity-scale-codec = "1.3.4"
-substrate-subxt = "0.10.1"
+substrate-subxt = "0.11.0"
+sunshine-chain-utils = { path = "../utils" }
+sunshine-core = { path = "../../core" }
+thiserror = "1.0.20"
+
+[dev-dependencies]
+async-std = { version = "1.6.2", features = ["attributes"] }
+test-client = { path = "../../bin/client" }
