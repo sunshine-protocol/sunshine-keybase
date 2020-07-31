@@ -1,11 +1,8 @@
+use crate::{Layout, VerifyError, H256};
 use parity_scale_codec::{Decode, Encode};
-use sp_core::{Blake2Hasher, H256};
 use sp_trie::{MemoryDB, TrieConfiguration, TrieDBMut, TrieError, TrieMut};
 use std::collections::BTreeMap;
 use thiserror::Error;
-
-pub type Layout = sp_trie::Layout<Blake2Hasher>;
-pub type VerifyError = sp_trie::VerifyError<H256, sp_trie::Error>;
 
 /// An immutable OffchainBlock.
 #[derive(Clone, Debug, Eq, PartialEq)]

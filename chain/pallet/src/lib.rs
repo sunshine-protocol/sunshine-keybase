@@ -12,10 +12,9 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter
 use frame_system::{ensure_signed, Trait as System};
 use orml_utilities::OrderedSet;
 use parity_scale_codec::Encode;
+use sp_core::H256;
 use sp_runtime::traits::{CheckedAdd, Member};
-
-pub type TrieLayout = sp_trie::Layout<sp_core::Blake2Hasher>;
-pub type TrieHash = sp_trie::TrieHash<TrieLayout>;
+use sp_std::prelude::*;
 
 /// The pallet's configuration trait.
 pub trait Trait: System {
@@ -39,7 +38,7 @@ decl_storage! {
 
         pub ChainRoot get(fn chain_head): map
             hasher(blake2_128_concat) T::ChainId
-            => Option<TrieHash>;
+            => Option<H256>;
 
         pub ChainNumber get(fn block_number): map
             hasher(blake2_128_concat) T::ChainId
@@ -55,7 +54,7 @@ decl_event! {
         ChainId = <T as Trait>::ChainId,
     {
         NewChain(ChainId),
-        NewBlock(ChainId, Number, TrieHash, Authority),
+        NewBlock(ChainId, Number, H256, Authority),
         AuthorityAdded(ChainId, Authority),
         AuthorityRemoved(ChainId, Authority),
     }
@@ -133,7 +132,7 @@ decl_module! {
             } else {
                 0u8.into()
             };
-            sp_trie::verify_trie_proof::<TrieLayout, _, _, _>(
+            sunshine_chain_utils::verify_trie_proof(
                 &root,
                 &proof,
                 &[
