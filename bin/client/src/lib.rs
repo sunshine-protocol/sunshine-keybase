@@ -1,3 +1,4 @@
+use chain_client::Chain;
 use faucet_client::Faucet;
 use identity_client::{Claim, Identity};
 use identity_utils::cid::CidBytes;
@@ -13,6 +14,7 @@ use substrate_subxt::{extrinsic, sp_core, sp_runtime};
 use sunshine_core::{ChainClient, ChainSigner, Keystore as _, OffchainSigner};
 use thiserror::Error;
 
+pub use chain_client as chain;
 pub use faucet_client as faucet;
 pub use identity_client as identity;
 mod light;
@@ -39,6 +41,13 @@ impl Balances for Runtime {
     type Balance = u128;
 }
 
+impl Chain for Runtime {
+    type ChainId = u64;
+    type Number = u64;
+}
+
+impl Faucet for Runtime {}
+
 impl Identity for Runtime {
     type Uid = Uid;
     type Cid = CidBytes;
@@ -46,8 +55,6 @@ impl Identity for Runtime {
     type Gen = u16;
     type IdAccountData = AccountData<<Self as Balances>::Balance>;
 }
-
-impl Faucet for Runtime {}
 
 impl substrate_subxt::Runtime for Runtime {
     type Signature = sp_runtime::MultiSignature;
@@ -175,7 +182,7 @@ pub enum Error {
     #[error(transparent)]
     Keystore(#[from] substrate_keybase_keystore::Error),
     #[error(transparent)]
-    Chain(#[from] substrate_subxt::Error),
+    Subxt(#[from] substrate_subxt::Error),
     #[error(transparent)]
     Offchain(#[from] ipfs_embed::Error),
     #[error(transparent)]
@@ -185,12 +192,14 @@ pub enum Error {
     #[error(transparent)]
     Db(#[from] sled::Error),
     #[error(transparent)]
+    Chain(#[from] chain_client::Error),
+    #[error(transparent)]
     Identity(#[from] identity_client::Error),
 }
 
 impl From<codec::Error> for Error {
     fn from(error: codec::Error) -> Self {
-        Self::Chain(error.into())
+        Self::Subxt(error.into())
     }
 }
 

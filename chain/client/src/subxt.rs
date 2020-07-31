@@ -55,7 +55,7 @@ pub struct RemoveAuthorityCall<'a, T: Chain> {
 pub struct AuthorBlockCall<'a, T: Chain> {
     pub chain_id: T::ChainId,
     pub root: H256,
-    pub proof: &'a Vec<Vec<u8>>,
+    pub proof: &'a [Vec<u8>],
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]

@@ -236,9 +236,7 @@ parameter_types! {
 }
 
 impl balances::Trait for Runtime {
-    /// The type for recording an account's balance.
     type Balance = Balance;
-    /// The ubiquitous event type.
     type Event = Event;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
@@ -258,23 +256,23 @@ impl transaction_payment::Trait for Runtime {
     type FeeMultiplierUpdate = ();
 }
 
-impl sudo::Trait for Runtime {
+impl chain::Trait for Runtime {
+    type ChainId = u64;
+    type Number = u64;
     type Event = Event;
-    type Call = Call;
 }
 
-/// Used for the identity module.
+impl faucet::Trait for Runtime {
+    const MINT_UNIT: Self::Balance = 1_000_000_000;
+    type Event = Event;
+}
+
 impl identity::Trait for Runtime {
     type Uid = u32;
     type Cid = identity_utils::cid::CidBytes;
     type Mask = [u8; 32];
     type Gen = u16;
     type AccountData = balances::AccountData<Balance>;
-    type Event = Event;
-}
-
-impl faucet::Trait for Runtime {
-    const MINT_UNIT: Self::Balance = 1_000_000_000;
     type Event = Event;
 }
 
@@ -291,11 +289,10 @@ construct_runtime!(
         Grandpa: grandpa::{Module, Call, Storage, Config, Event},
         Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
         TransactionPayment: transaction_payment::{Module, Storage},
-        Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
-        // Used for the identity module.
-        Identity: identity::{Module, Call, Storage, Event<T>},
-        // Faucet for the testnet.
+
+        Chain: chain::{Module, Call, Event<T>, Storage},
         Faucet: faucet::{Module, Call, Event<T>, ValidateUnsigned},
+        Identity: identity::{Module, Call, Storage, Event<T>},
     }
 );
 
