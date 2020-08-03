@@ -54,9 +54,9 @@ decl_event! {
         ChainId = <T as Trait>::ChainId,
     {
         NewChain(ChainId),
-        NewBlock(ChainId, Number, H256, AccountId),
-        AuthorityAdded(ChainId, AccountId),
-        AuthorityRemoved(ChainId, AccountId),
+        NewBlock(ChainId, Number, AccountId, H256),
+        AuthorityAdded(ChainId, Number, AccountId, AccountId),
+        AuthorityRemoved(ChainId, Number, AccountId, AccountId),
     }
 }
 
@@ -92,16 +92,20 @@ decl_module! {
                 .ok_or(Error::<T>::ChainIdOverflow)?;
             <ChainIdCounter<T>>::put(next_chain_id);
             Self::deposit_event(RawEvent::NewChain(chain_id));
-            Self::add_authority_to_chain(chain_id, who);
+            Self::add_authority_to_chain(chain_id, who.clone(), who);
             Ok(())
         }
 
         /// Add an authority.
         #[weight = 0]
-        pub fn add_authority(origin, chain_id: T::ChainId, authority: <T as System>::AccountId) -> DispatchResult {
+        pub fn add_authority(
+            origin,
+            chain_id: T::ChainId,
+            authority: <T as System>::AccountId,
+        ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_authorized(chain_id, &who)?;
-            Self::add_authority_to_chain(chain_id, authority);
+            Self::add_authority_to_chain(chain_id, who, authority);
             Ok(())
         }
 
@@ -110,7 +114,7 @@ decl_module! {
         pub fn remove_authority(origin, chain_id: T::ChainId, authority: <T as System>::AccountId) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_authorized(chain_id, &who)?;
-            Self::remove_authority_from_chain(chain_id, authority);
+            Self::remove_authority_from_chain(chain_id, who, authority);
             Ok(())
         }
 
@@ -142,41 +146,55 @@ decl_module! {
             ).map_err(|_| Error::<T>::InvalidProof)?;
             <ChainRoot<T>>::insert(chain_id, root);
             <ChainNumber<T>>::insert(chain_id, number);
-            Self::deposit_event(RawEvent::NewBlock(chain_id, number, root, who));
+            Self::deposit_event(RawEvent::NewBlock(chain_id, number, who, root));
             Ok(())
         }
     }
 }
 
 impl<T: Trait> Module<T> {
-    fn is_authority(chain_id: T::ChainId, authority: &<T as System>::AccountId) -> bool {
-        <Authorities<T>>::get(chain_id).contains(authority)
+    fn height(chain_id: T::ChainId) -> T::Number {
+        <ChainNumber<T>>::get(chain_id)
+    }
+
+    fn is_authority(chain_id: T::ChainId, who: &<T as System>::AccountId) -> bool {
+        <Authorities<T>>::get(chain_id).contains(who)
     }
 
     fn ensure_authorized(
         chain_id: T::ChainId,
-        authority: &<T as System>::AccountId,
+        who: &<T as System>::AccountId,
     ) -> Result<(), Error<T>> {
-        if Self::is_authority(chain_id, authority) {
+        if Self::is_authority(chain_id, who) {
             Ok(())
         } else {
             Err(Error::<T>::Unauthorized)
         }
     }
 
-    fn add_authority_to_chain(chain_id: T::ChainId, authority: <T as System>::AccountId) {
+    fn add_authority_to_chain(
+        chain_id: T::ChainId,
+        who: <T as System>::AccountId,
+        authority: <T as System>::AccountId,
+    ) {
         if !Self::is_authority(chain_id, &authority) {
             <Authorities<T>>::mutate(chain_id, |authorities| {
                 authorities.insert(authority.clone())
             });
-            Self::deposit_event(RawEvent::AuthorityAdded(chain_id, authority));
+            let number = Self::height(chain_id);
+            Self::deposit_event(RawEvent::AuthorityAdded(chain_id, number, who, authority));
         }
     }
 
-    fn remove_authority_from_chain(chain_id: T::ChainId, authority: <T as System>::AccountId) {
+    fn remove_authority_from_chain(
+        chain_id: T::ChainId,
+        who: <T as System>::AccountId,
+        authority: <T as System>::AccountId,
+    ) {
         if Self::is_authority(chain_id, &authority) {
             <Authorities<T>>::mutate(chain_id, |authorities| authorities.remove(&authority));
-            Self::deposit_event(RawEvent::AuthorityRemoved(chain_id, authority));
+            let number = Self::height(chain_id);
+            Self::deposit_event(RawEvent::AuthorityRemoved(chain_id, number, who, authority));
         }
     }
 }

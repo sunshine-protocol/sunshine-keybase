@@ -67,18 +67,22 @@ pub struct NewChainEvent<T: Chain> {
 pub struct NewBlockEvent<T: Chain> {
     pub chain_id: T::ChainId,
     pub number: T::Number,
+    pub who: <T as System>::AccountId,
     pub root: H256,
-    pub authority: <T as System>::AccountId,
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]
 pub struct AuthorityAddedEvent<T: Chain> {
     pub chain_id: T::ChainId,
+    pub number: T::Number,
+    pub who: <T as System>::AccountId,
     pub authority: <T as System>::AccountId,
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]
 pub struct AuthorityRemovedEvent<T: Chain> {
     pub chain_id: T::ChainId,
+    pub number: T::Number,
+    pub who: <T as System>::AccountId,
     pub authority: <T as System>::AccountId,
 }

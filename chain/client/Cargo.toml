@@ -15,4 +15,4 @@ thiserror = "1.0.20"
 
 [dev-dependencies]
 async-std = { version = "1.6.2", features = ["attributes"] }
-test-client = { path = "../../bin/client" }
+test-client = { path = "../../bin/client", features = ["mock"] }
