@@ -15,7 +15,7 @@ pub mod ffi;
 /// ```
 #[macro_export]
 macro_rules! impl_ffi {
-    (client: $client: ty) => {
+    () => {
         use ::std::os::raw;
         #[allow(unused)]
         use $crate::ffi_utils::*;
@@ -23,7 +23,6 @@ macro_rules! impl_ffi {
         use $crate::ffi::*;
 
         gen_ffi! {
-            client = $client;
             /// Set a new Key for this device if not already exist.
             /// you should call `client_has_device_key` first to see if you have already a key.
             ///
@@ -91,5 +90,9 @@ macro_rules! impl_ffi {
             Faucet::mint => fn client_faucet_mint() -> String;
 
         }
+    };
+    (client: $client: ty) => {
+        gen_ffi!(client = $client);
+        crate::impl_ffi!();
     };
 }

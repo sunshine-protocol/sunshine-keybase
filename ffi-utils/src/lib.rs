@@ -90,6 +90,21 @@ macro_rules! gen_ffi {
             1
         }
     };
+     (
+        $(
+            $(#[$outer:meta])*
+            $struct: ident :: $method: ident => fn $name: ident(
+                $($param: ident : $ty: ty = $val: expr),*
+            ) -> $ret: ty;
+        )+
+    ) => {
+        $(
+            $crate::gen_ffi!(
+                $(#[$outer])*
+                $struct::$method => fn $name($($param: $ty = $val),*) -> $ret;
+            );
+        )+
+    };
 
     (
         client = $client: ty;
