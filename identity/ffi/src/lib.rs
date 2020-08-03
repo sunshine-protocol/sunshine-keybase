@@ -93,6 +93,6 @@ macro_rules! impl_ffi {
     };
     (client: $client: ty) => {
         gen_ffi!(client = $client);
-        crate::impl_ffi!();
+        $crate::impl_ffi!();
     };
 }
