@@ -10,6 +10,7 @@ repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 substrate-subxt = "0.11.0"
+sunshine-client-utils = { path = "../../../sunshine-core/client" }
 sunshine-faucet-client = { version = "^0.2", path = "../../faucet/client", optional = true }
 sunshine-ffi-utils = { version = "^0.1", path = "../../../sunshine-core/ffi" }
 sunshine-identity-client = { version = "^0.2", path = "../client" }

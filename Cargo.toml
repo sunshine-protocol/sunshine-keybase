@@ -12,7 +12,7 @@ members = [
     "faucet/pallet",
     "identity/cli",
     "identity/client",
-    #"identity/ffi",
+    "identity/ffi",
     "identity/pallet",
     "identity/utils",
 ]

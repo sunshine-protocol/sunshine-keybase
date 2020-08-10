@@ -1,6 +1,4 @@
-pub use sunshine_ffi_utils;
-#[doc(hidden)]
-pub mod error;
+pub use sunshine_ffi_utils as utils;
 #[doc(hidden)]
 pub mod ffi;
 
@@ -18,7 +16,7 @@ macro_rules! impl_ffi {
     () => {
         use ::std::os::raw;
         #[allow(unused)]
-        use $crate::ffi_utils::*;
+        use $crate::utils::*;
         #[allow(unused)]
         use $crate::ffi::*;
 
