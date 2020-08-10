@@ -1,16 +1,16 @@
 pub mod account;
 pub mod device;
-mod error;
 pub mod id;
 pub mod key;
 pub mod wallet;
 
-pub use crate::error::{Error, Result};
-
 use substrate_subxt::system::System;
 use substrate_subxt::Runtime;
-use sunshine_core::bip39::Mnemonic;
-use sunshine_core::{ChainClient, ExposeSecret, Key, Keystore, SecretString};
+use sunshine_client_utils::crypto::bip39::Mnemonic;
+use sunshine_client_utils::crypto::keychain::TypedPair;
+use sunshine_client_utils::crypto::keystore::{Keystore, KeystoreInitialized};
+use sunshine_client_utils::crypto::secrecy::{ExposeSecret, SecretString};
+use sunshine_client_utils::{Client, Result};
 
 pub fn ask_for_new_password(length: u8) -> std::result::Result<SecretString, std::io::Error> {
     loop {
@@ -63,28 +63,24 @@ pub async fn set_device_key<T, C>(
     paperkey: bool,
     suri: Option<&str>,
     force: bool,
-) -> Result<<T as System>::AccountId, C::Error>
+) -> Result<<T as System>::AccountId>
 where
     T: Runtime,
-    C: ChainClient<T>,
+    C: Client<T>,
 {
-    if client.keystore().chain_signer().is_some() && !force {
-        return Err(Error::HasDeviceKey);
+    if client.keystore().is_initialized().await? && !force {
+        return Err(KeystoreInitialized.into());
     }
     let password = ask_for_new_password(8)?;
 
     let dk = if paperkey {
         let mnemonic = ask_for_phrase("Please enter your backup phrase:").await?;
-        <C::Keystore as Keystore<T>>::Key::from_mnemonic(&mnemonic)?
+        TypedPair::<C::KeyType>::from_mnemonic(&mnemonic)?
     } else if let Some(suri) = &suri {
-        <C::Keystore as Keystore<T>>::Key::from_suri(&suri)?
+        TypedPair::<C::KeyType>::from_suri(&suri)?
     } else {
-        <C::Keystore as Keystore<T>>::Key::generate().await
+        TypedPair::<C::KeyType>::generate().await
     };
-    client
-        .keystore_mut()
-        .set_device_key(&dk, &password, force)
-        .await
-        .map_err(|e| Error::Client(e.into()))?;
-    Ok(dk.to_account_id())
+    client.set_key(dk, &password, force).await?;
+    Ok(client.signer()?.account_id().clone())
 }

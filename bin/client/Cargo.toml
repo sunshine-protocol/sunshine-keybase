@@ -7,33 +7,16 @@ publish = false
 
 [features]
 mock = [
-    "env_logger",
-    "jsonrpsee",
-    "sp-keyring",
-    "tempdir",
+    "sunshine-client-utils/mock",
 ]
 
 [dependencies]
-async-std = "1.6.2"
 async-trait = "0.1.36"
-chain-client = { package = "sunshine-chain-client", path = "../../chain/client" }
-faucet-client = { package = "sunshine-faucet-client", path = "../../faucet/client" }
-identity-client = { package = "sunshine-identity-client",  path = "../../identity/client" }
-identity-utils = { package = "sunshine-identity-utils", path = "../../identity/utils" }
-ipfs-embed = "0.3.0"
 ipld-block-builder = "0.4.1"
 libipld = { version = "0.3.0", default-features = false }
-codec = { version = "1.3.1", package = "parity-scale-codec" }
-sled = "0.34.2"
-sc-service = "0.8.0-rc5"
-sp-database = "2.0.0-rc5"
-substrate-subxt = { version = "0.11.0", features = ["client"] }
-substrate-keybase-keystore = { path = "../../keystore/substrate" }
-sunshine-core = { path = "../../core" }
+substrate-subxt = "0.11.0"
+sunshine-chain-client = { path = "../../chain/client" }
+sunshine-client-utils = { path = "../../../sunshine-core/client" }
+sunshine-faucet-client = { path = "../../faucet/client" }
+sunshine-identity-client = { path = "../../identity/client" }
 test-node = { path = "../node" }
-thiserror = "1.0.20"
-
-env_logger = { version = "0.7.1", optional = true }
-jsonrpsee = { version = "0.1.0", optional = true }
-sp-keyring = { version = "2.0.0-rc5", optional = true }
-tempdir = { version = "0.3.7", optional = true }

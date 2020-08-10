@@ -1,4 +1,4 @@
-pub use ffi_utils;
+pub use sunshine_ffi_utils;
 #[doc(hidden)]
 pub mod error;
 #[doc(hidden)]

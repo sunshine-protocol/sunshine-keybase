@@ -2,12 +2,11 @@ mod subxt;
 
 pub use subxt::*;
 
-use async_trait::async_trait;
 use parity_scale_codec::{Decode, Encode};
 use substrate_subxt::{system::System, Runtime, SignedExtension, SignedExtra};
-use sunshine_chain_utils::block::GenericBlock;
-use sunshine_chain_utils::trie::TreeEncode;
-use sunshine_core::ChainClient as Client;
+use sunshine_client_utils::block::GenericBlock;
+use sunshine_client_utils::codec::TreeEncode;
+use sunshine_client_utils::{async_trait, Client, Result};
 use thiserror::Error;
 
 /*pub struct BlockSubscription<T: Runtime + Chain, B: Decode> {
@@ -19,31 +18,31 @@ use thiserror::Error;
 }*/
 
 #[async_trait]
-pub trait ChainClient<T: Runtime + Chain>: Client<T> {
-    async fn create_chain(&self) -> Result<T::ChainId, Self::Error>;
+pub trait ChainClient<R: Runtime + Chain>: Client<R> {
+    async fn create_chain(&self) -> Result<R::ChainId>;
     async fn author_block<B: Encode + ?Sized + Send + Sync>(
         &self,
-        chain_id: T::ChainId,
+        chain_id: R::ChainId,
         block: &B,
-    ) -> Result<T::Number, Self::Error>;
+    ) -> Result<R::Number>;
     async fn subscribe<B: Decode>(
         &self,
-        chain_id: T::ChainId,
-        number: T::Number,
-    ) -> Result<GenericBlock<B>, Self::Error>;
-    async fn authorities(&self, chain_id: T::ChainId) -> Result<Vec<T::AccountId>, Self::Error>;
+        chain_id: R::ChainId,
+        number: R::Number,
+    ) -> Result<GenericBlock<B, R::Hasher>>;
+    async fn authorities(&self, chain_id: R::ChainId) -> Result<Vec<R::AccountId>>;
     async fn add_authority(
         &self,
-        chain_id: T::ChainId,
-        authority: &T::AccountId,
-    ) -> Result<T::Number, Self::Error>;
+        chain_id: R::ChainId,
+        authority: &R::AccountId,
+    ) -> Result<R::Number>;
     async fn remove_authority(
         &self,
-        chain_id: T::ChainId,
-        authority: &<T as System>::AccountId,
-    ) -> Result<T::Number, Self::Error>;
-    async fn follow(&self, chain_id: T::ChainId) -> Result<(), Self::Error>;
-    async fn unfollow(&self, chain_id: T::ChainId) -> Result<(), Self::Error>;
+        chain_id: R::ChainId,
+        authority: &<R as System>::AccountId,
+    ) -> Result<R::Number>;
+    async fn follow(&self, chain_id: R::ChainId) -> Result<()>;
+    async fn unfollow(&self, chain_id: R::ChainId) -> Result<()>;
 }
 
 #[async_trait]
@@ -52,12 +51,11 @@ where
     T: Runtime + Chain<Number = u64>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<T>,
-    C::Error: From<Error>,
 {
-    async fn create_chain(&self) -> Result<T::ChainId, C::Error> {
+    async fn create_chain(&self) -> Result<T::ChainId> {
         Ok(self
             .chain_client()
-            .create_chain_and_watch(self.chain_signer()?)
+            .create_chain_and_watch(&self.chain_signer()?)
             .await?
             .new_chain()?
             .ok_or(Error::CreateChain)?
@@ -68,18 +66,18 @@ where
         &self,
         chain_id: T::ChainId,
         block: &B,
-    ) -> Result<T::Number, C::Error> {
+    ) -> Result<T::Number> {
         let signer = self.chain_signer()?;
         let number = self.chain_client().chain_number(chain_id, None).await?;
         let ancestor = self.chain_client().chain_root(chain_id, None).await?;
-        let full_block = GenericBlock {
+        let full_block = GenericBlock::<_, T::Hasher> {
             number,
             ancestor,
             payload: block,
         };
-        let sealed = full_block.seal().map_err(|e| Error::Trie(e))?;
+        let sealed = full_block.seal()?;
         self.chain_client()
-            .author_block(signer, chain_id, sealed.offchain.root, &sealed.proof)
+            .author_block(&signer, chain_id, *sealed.offchain.root(), &sealed.proof)
             .await?;
         //self.offchain_client().insert(sealed
         Ok(number)
@@ -89,7 +87,7 @@ where
         &self,
         _chain_id: T::ChainId,
         _number: T::Number,
-    ) -> Result<GenericBlock<B>, C::Error> {
+    ) -> Result<GenericBlock<B, T::Hasher>> {
         /*let sub = self.chain_client().subscribe_events().await?;
         let mut decoder = EventsDecoder::<T>::new(self.chain_client().metadata().clone());
         decoder.with_chain();
@@ -99,7 +97,7 @@ where
         unimplemented!()
     }
 
-    async fn authorities(&self, chain_id: T::ChainId) -> Result<Vec<T::AccountId>, C::Error> {
+    async fn authorities(&self, chain_id: T::ChainId) -> Result<Vec<T::AccountId>> {
         Ok(self.chain_client().authorities(chain_id, None).await?)
     }
 
@@ -107,10 +105,10 @@ where
         &self,
         chain_id: T::ChainId,
         authority: &T::AccountId,
-    ) -> Result<T::Number, C::Error> {
+    ) -> Result<T::Number> {
         Ok(self
             .chain_client()
-            .add_authority_and_watch(self.chain_signer()?, chain_id, authority)
+            .add_authority_and_watch(&self.chain_signer()?, chain_id, authority)
             .await?
             .authority_added()?
             .ok_or(Error::AddAuthority)?
@@ -121,21 +119,21 @@ where
         &self,
         chain_id: T::ChainId,
         authority: &<T as System>::AccountId,
-    ) -> Result<T::Number, C::Error> {
+    ) -> Result<T::Number> {
         Ok(self
             .chain_client()
-            .remove_authority_and_watch(self.chain_signer()?, chain_id, authority)
+            .remove_authority_and_watch(&self.chain_signer()?, chain_id, authority)
             .await?
             .authority_removed()?
             .ok_or(Error::RemoveAuthority)?
             .number)
     }
 
-    async fn follow(&self, _chain_id: T::ChainId) -> Result<(), C::Error> {
+    async fn follow(&self, _chain_id: T::ChainId) -> Result<()> {
         Ok(())
     }
 
-    async fn unfollow(&self, _chain_id: T::ChainId) -> Result<(), C::Error> {
+    async fn unfollow(&self, _chain_id: T::ChainId) -> Result<()> {
         Ok(())
     }
 }
@@ -148,16 +146,13 @@ pub enum Error {
     AddAuthority,
     #[error("Couldn't remove authority.")]
     RemoveAuthority,
-    #[error(transparent)]
-    Trie(#[from] sunshine_chain_utils::trie::Error),
 }
 
 #[cfg(test)]
 mod tests {
     use parity_scale_codec::{Decode, Encode};
     use test_client::chain::ChainClient;
-    use test_client::mock::{test_node, AccountKeyring};
-    use test_client::Client;
+    use test_client::mock::{test_node, AccountKeyring, Client};
 
     #[derive(Clone, Debug, Eq, PartialEq, Decode, Encode)]
     struct Block {
@@ -165,9 +160,10 @@ mod tests {
     }
 
     #[async_std::test]
+    #[ignore]
     async fn test_chain() {
         let (node, _node_tmp) = test_node();
-        let (client, _client_tmp) = Client::mock(&node, AccountKeyring::Alice).await;
+        let client = Client::mock(&node, AccountKeyring::Alice).await;
 
         let chain_id = client.create_chain().await.unwrap();
         assert_eq!(chain_id, 0);

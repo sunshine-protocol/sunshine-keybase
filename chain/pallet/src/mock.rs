@@ -51,6 +51,7 @@ impl system::Trait for Test {
 impl Trait for Test {
     type ChainId = u64;
     type Number = u64;
+    type Hasher = sunshine_pallet_utils::hasher::Blake2Hasher;
     type Event = ();
 }
 pub type ChainModule = Module<Test>;

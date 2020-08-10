@@ -1,9 +1,8 @@
-use async_trait::async_trait;
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 use substrate_subxt::balances::{Balances, BalancesEventsDecoder};
 use substrate_subxt::system::{System, SystemEventsDecoder};
 use substrate_subxt::{module, Call, Event, Runtime, SignedExtension, SignedExtra};
-use sunshine_core::ChainClient;
+use sunshine_client_utils::{async_trait, Client, Result};
 use sunshine_identity_client::{Identity, IdentityEventsDecoder};
 
 #[module]
@@ -21,8 +20,8 @@ pub struct MintedEvent<T: Faucet> {
 }
 
 #[async_trait]
-pub trait FaucetClient<T: Runtime + Faucet>: ChainClient<T> {
-    async fn mint(&self) -> Result<Option<MintedEvent<T>>, Self::Error>;
+pub trait FaucetClient<T: Runtime + Faucet>: Client<T> {
+    async fn mint(&self) -> Result<Option<MintedEvent<T>>>;
 }
 
 #[async_trait]
@@ -30,10 +29,10 @@ impl<T, C> FaucetClient<T> for C
 where
     T: Runtime + Faucet,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
 {
-    async fn mint(&self) -> Result<Option<MintedEvent<T>>, C::Error> {
-        let account = self.chain_signer()?.account_id();
+    async fn mint(&self) -> Result<Option<MintedEvent<T>>> {
+        let account = self.signer()?.account_id();
         let call = MintCall { account };
         let unsigned = self.chain_client().create_unsigned(call)?;
         let decoder = self.chain_client().events_decoder::<MintCall<T>>();
@@ -49,13 +48,12 @@ where
 #[cfg(test)]
 mod tests {
     use test_client::faucet::FaucetClient;
-    use test_client::mock::{test_node, AccountKeyring};
-    use test_client::Client;
+    use test_client::mock::{test_node, AccountKeyring, Client};
 
     #[async_std::test]
     async fn test_mint() {
         let (node, _node_tmp) = test_node();
-        let (client, _client_tmp) = Client::mock(&node, AccountKeyring::Eve).await;
+        let client = Client::mock(&node, AccountKeyring::Eve).await;
         client.mint().await.unwrap();
     }
 }

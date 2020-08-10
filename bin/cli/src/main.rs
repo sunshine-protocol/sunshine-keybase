@@ -1,39 +1,31 @@
 use crate::command::*;
 use async_std::task;
 use clap::Clap;
-use exitfailure::ExitDisplay;
 use std::time::Duration;
-use sunshine_core::{ChainClient, Keystore};
+use sunshine_client_utils::{Client as _, ConfigDirNotFound, Result};
 use sunshine_faucet_cli::MintCommand;
-use sunshine_identity_cli::{key::KeySetCommand, set_device_key, Error};
-use test_client::{identity::IdentityClient, Client, Error as ClientError};
+use sunshine_identity_cli::{key::KeySetCommand, set_device_key};
+use test_client::{identity::IdentityClient, Client};
 
 mod command;
 
 #[async_std::main]
-async fn main() -> Result<(), ExitDisplay<Error<ClientError>>> {
-    Ok(run().await?)
-}
-
-async fn run() -> Result<(), Error<ClientError>> {
+async fn main() -> Result<()> {
     env_logger::init();
     let opts: Opts = Opts::parse();
     let root = if let Some(root) = opts.path {
         root
     } else {
         dirs::config_dir()
-            .ok_or(Error::ConfigDirNotFound)?
+            .ok_or(ConfigDirNotFound)?
             .join("sunshine-identity")
     };
 
-    let mut client = Client::new(&root, None).await.map_err(Error::Client)?;
+    let mut client = Client::new(&root, None).await?;
 
-    let mut password_changes = if client.keystore().chain_signer().is_some() {
-        let sub = client
-            .subscribe_password_changes()
-            .await
-            .map_err(Error::Client)?;
-        client.update_password().await.map_err(Error::Client)?;
+    let mut password_changes = if client.chain_signer().is_ok() {
+        let sub = client.subscribe_password_changes().await?;
+        client.update_password().await?;
         Some(sub)
     } else {
         None
@@ -49,12 +41,8 @@ async fn run() -> Result<(), Error<ClientError>> {
                 let account_id =
                     set_device_key(&mut client, paperkey, suri.as_deref(), force).await?;
                 println!("your device key is {}", account_id.to_string());
-                MintCommand.exec(&client).await.map_err(Error::Client)?;
-                let uid = client
-                    .fetch_uid(&account_id)
-                    .await
-                    .map_err(Error::Client)?
-                    .unwrap();
+                MintCommand.exec(&client).await?;
+                let uid = client.fetch_uid(&account_id).await?.unwrap();
                 println!("your user id is {}", uid);
                 Ok(())
             }
@@ -64,7 +52,7 @@ async fn run() -> Result<(), Error<ClientError>> {
         SubCommand::Account(AccountCommand { cmd }) => match cmd {
             AccountSubCommand::Create(cmd) => cmd.exec(&client).await,
             AccountSubCommand::Password(cmd) => cmd.exec(&client).await,
-            AccountSubCommand::Mint(cmd) => cmd.exec(&client).await.map_err(Error::Client),
+            AccountSubCommand::Mint(cmd) => cmd.exec(&client).await,
         },
         SubCommand::Device(DeviceCommand { cmd }) => match cmd {
             DeviceSubCommand::Add(cmd) => cmd.exec(&client).await,
@@ -84,7 +72,7 @@ async fn run() -> Result<(), Error<ClientError>> {
         SubCommand::Run => loop {
             if let Some(sub) = password_changes.as_mut() {
                 if sub.next().await.is_some() {
-                    client.update_password().await.map_err(Error::Client)?;
+                    client.update_password().await?;
                 }
             } else {
                 task::sleep(Duration::from_millis(100)).await

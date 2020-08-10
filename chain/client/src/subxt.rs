@@ -1,6 +1,6 @@
 use frame_support::Parameter;
 use parity_scale_codec::{Decode, Encode};
-use sp_core::H256;
+use sp_core::{Hasher, H256};
 use sp_runtime::traits::{CheckedAdd, Member};
 use std::marker::PhantomData;
 use substrate_subxt::system::{System, SystemEventsDecoder};
@@ -11,6 +11,10 @@ use substrate_subxt::{sp_core, sp_runtime};
 pub trait Chain: System {
     /// Chain ID type.
     type ChainId: Parameter + Member + Copy + Default + CheckedAdd + From<u8>;
+
+    /// Trie hasher.
+    #[module(ignore)]
+    type Hasher: Hasher<Out = H256>;
 
     /// Block number type.
     type Number: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Encode;

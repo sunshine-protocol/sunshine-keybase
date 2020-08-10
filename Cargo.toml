@@ -4,19 +4,18 @@ members = [
     "bin/client",
     "bin/node",
     "bin/runtime",
-    "core",
     "chain/client",
     "chain/pallet",
-    "chain/utils",
     "faucet/cli",
     "faucet/client",
+    "faucet/ffi",
     "faucet/pallet",
     "identity/cli",
     "identity/client",
-    "identity/ffi",
+    #"identity/ffi",
     "identity/pallet",
     "identity/utils",
-    "keystore/keybase",
-    "keystore/substrate",
-    "ffi-utils",
 ]
+
+[patch.crates-io]
+libipld = { path = "../../ipld/rust-ipld" }

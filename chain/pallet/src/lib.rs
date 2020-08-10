@@ -12,9 +12,10 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter
 use frame_system::{ensure_signed, Trait as System};
 use orml_utilities::OrderedSet;
 use parity_scale_codec::Encode;
-use sp_core::H256;
+use sp_core::{Hasher, H256};
 use sp_runtime::traits::{CheckedAdd, Member};
 use sp_std::prelude::*;
+use sp_trie::Layout;
 
 /// The pallet's configuration trait.
 pub trait Trait: System {
@@ -23,6 +24,9 @@ pub trait Trait: System {
 
     /// Block number type.
     type Number: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Encode;
+
+    /// Trie hasher.
+    type Hasher: Hasher<Out = H256>;
 
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as System>::Event>;
@@ -123,7 +127,7 @@ decl_module! {
         pub fn author_block(
             origin,
             chain_id: T::ChainId,
-            root: sp_core::H256,
+            root: H256,
             proof: Vec<Vec<u8>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -136,7 +140,7 @@ decl_module! {
             } else {
                 0u8.into()
             };
-            sunshine_chain_utils::verify_trie_proof(
+            sp_trie::verify_trie_proof::<Layout<T::Hasher>, _, _, _>(
                 &root,
                 &proof,
                 &[

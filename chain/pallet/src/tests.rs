@@ -1,9 +1,9 @@
 use crate::mock::*;
 use frame_support::assert_ok;
-use sunshine_chain_utils::block::GenericBlock;
-use sunshine_chain_utils::trie::TreeEncode;
+use sunshine_client_utils::block::GenericBlock;
+use sunshine_client_utils::codec::TreeEncode;
 
-type Block = GenericBlock<()>;
+type Block = GenericBlock<(), sunshine_pallet_utils::hasher::Blake2Hasher>;
 
 #[test]
 fn test_block_authoring() {
@@ -22,13 +22,13 @@ fn test_block_authoring() {
         assert_ok!(ChainModule::author_block(
             key.clone(),
             chain_id,
-            block.offchain.root.clone(),
+            block.offchain.root().clone(),
             block.proof
         ));
 
         let block = Block {
             number: 1,
-            ancestor: Some(block.offchain.root),
+            ancestor: Some(*block.offchain.root()),
             payload: (),
         }
         .seal()
@@ -36,13 +36,12 @@ fn test_block_authoring() {
         assert_ok!(ChainModule::author_block(
             key.clone(),
             chain_id,
-            block.offchain.root.clone(),
+            *block.offchain.root(),
             block.proof.clone(),
         ));
 
         assert!(
-            ChainModule::author_block(key, chain_id, block.offchain.root.clone(), block.proof)
-                .is_err()
+            ChainModule::author_block(key, chain_id, *block.offchain.root(), block.proof).is_err()
         );
     });
 }

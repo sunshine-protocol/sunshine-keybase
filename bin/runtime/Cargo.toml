@@ -35,6 +35,7 @@ chain = { default-features = false, package = "sunshine-chain-pallet", path = ".
 faucet = { default-features = false, package = "sunshine-faucet-pallet", path = "../../faucet/pallet" }
 identity = { default-features = false, package = "sunshine-identity-pallet", path = "../../identity/pallet" }
 identity-utils = { default-features = false, package = "sunshine-identity-utils", path = "../../identity/utils" }
+pallet-utils = { default-features = false, package = "sunshine-pallet-utils", path = "../../../sunshine-core/pallet" }
 
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner" }
@@ -52,6 +53,7 @@ std = [
     "grandpa/std",
     "identity/std",
     "identity-utils/std",
+    "pallet-utils/std",
     "randomness-collective-flip/std",
     "serde",
     "sp-api/std",

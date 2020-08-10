@@ -16,7 +16,7 @@ libipld = "0.3.0"
 qr2term = "0.2.1"
 rpassword = "4.0.5"
 substrate-subxt = "0.11.0"
-sunshine-core = { version = "0.2.0", path = "../../core" }
+sunshine-client-utils = { path = "../../../sunshine-core/client" }
 sunshine-identity-client = { version = "0.2.1", path = "../client" }
 textwrap = { version = "0.12.1", features = ["terminal_size"] }
 thiserror = "1.0.20"
