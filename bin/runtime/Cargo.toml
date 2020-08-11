@@ -35,7 +35,7 @@ chain = { default-features = false, package = "sunshine-chain-pallet", path = ".
 faucet = { default-features = false, package = "sunshine-faucet-pallet", path = "../../faucet/pallet" }
 identity = { default-features = false, package = "sunshine-identity-pallet", path = "../../identity/pallet" }
 identity-utils = { default-features = false, package = "sunshine-identity-utils", path = "../../identity/utils" }
-pallet-utils = { default-features = false, package = "sunshine-pallet-utils", path = "../../../sunshine-core/pallet" }
+pallet-utils = { default-features = false, package = "sunshine-pallet-utils", git = "https://github.com/sunshine-protocol/sunshine-core" }
 
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner" }

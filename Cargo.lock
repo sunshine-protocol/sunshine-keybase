@@ -6784,6 +6784,7 @@ dependencies = [
 [[package]]
 name = "sunshine-client-utils"
 version = "0.1.0"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
 dependencies = [
  "anyhow",
  "async-std",
@@ -6809,6 +6810,7 @@ dependencies = [
 [[package]]
 name = "sunshine-codec"
 version = "0.1.0"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
 dependencies = [
  "anyhow",
  "hash-db",
@@ -6820,6 +6822,7 @@ dependencies = [
 [[package]]
 name = "sunshine-crypto"
 version = "0.1.0"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
 dependencies = [
  "aead 0.2.0",
  "anyhow",
@@ -6889,6 +6892,7 @@ dependencies = [
 [[package]]
 name = "sunshine-ffi-utils"
 version = "0.1.0"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
 dependencies = [
  "allo-isolate",
  "async-std",
@@ -6968,6 +6972,7 @@ dependencies = [
 [[package]]
 name = "sunshine-keystore"
 version = "0.1.0"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
 dependencies = [
  "anyhow",
  "async-std",
@@ -6982,6 +6987,7 @@ dependencies = [
 [[package]]
 name = "sunshine-pallet-utils"
 version = "0.1.0"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
 dependencies = [
  "blake2-rfc",
  "hash-db",
