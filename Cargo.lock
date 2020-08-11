@@ -6888,6 +6888,14 @@ dependencies = [
 [[package]]
 name = "sunshine-faucet-ffi"
 version = "0.1.0"
+dependencies = [
+ "substrate-subxt",
+ "sunshine-client-utils",
+ "sunshine-faucet-client",
+ "sunshine-ffi-utils",
+ "test-client",
+ "thiserror",
+]
 
 [[package]]
 name = "sunshine-faucet-pallet"
@@ -6951,7 +6959,6 @@ version = "0.2.3"
 dependencies = [
  "substrate-subxt",
  "sunshine-client-utils",
- "sunshine-faucet-client",
  "sunshine-ffi-utils",
  "sunshine-identity-client",
  "test-client",

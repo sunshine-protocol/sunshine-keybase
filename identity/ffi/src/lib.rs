@@ -1,4 +1,5 @@
 pub use sunshine_ffi_utils as utils;
+
 #[doc(hidden)]
 pub mod ffi;
 
@@ -81,13 +82,7 @@ macro_rules! impl_ffi {
                 identifier: *const raw::c_char = cstr!(identifier),
                 amount: u64 = amount
             ) -> String;
-
-            /// Try to mint the current account, this only enabled in testnet and behind a feature flag
-            /// returned the minted amount or null if there is any errors
-            #[cfg(feature = "faucet")]
-            Faucet::mint => fn client_faucet_mint() -> String;
-
-        }
+        };
     };
     (client: $client: ty) => {
         gen_ffi!(client = $client);
