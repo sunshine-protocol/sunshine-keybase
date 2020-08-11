@@ -2,7 +2,7 @@ use clap::Clap;
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
 use substrate_subxt::Runtime;
-use sunshine_client_utils::Result;
+use sunshine_cli_utils::Result;
 use sunshine_identity_client::{resolve, Identifier, Identity, IdentityClient, Service};
 
 #[derive(Clone, Debug, Clap)]

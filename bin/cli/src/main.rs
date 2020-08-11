@@ -2,9 +2,9 @@ use crate::command::*;
 use async_std::task;
 use clap::Clap;
 use std::time::Duration;
-use sunshine_client_utils::{Client as _, ConfigDirNotFound, Result};
+use sunshine_cli_utils::{set_key, Client as _, ConfigDirNotFound, Result};
 use sunshine_faucet_cli::MintCommand;
-use sunshine_identity_cli::{key::KeySetCommand, set_device_key};
+use sunshine_identity_cli::key::KeySetCommand;
 use test_client::{identity::IdentityClient, Client};
 
 mod command;
@@ -38,8 +38,7 @@ async fn main() -> Result<()> {
                 suri,
                 force,
             }) => {
-                let account_id =
-                    set_device_key(&mut client, paperkey, suri.as_deref(), force).await?;
+                let account_id = set_key(&mut client, paperkey, suri.as_deref(), force).await?;
                 println!("your device key is {}", account_id.to_string());
                 MintCommand.exec(&client).await?;
                 let uid = client.fetch_uid(&account_id).await?.unwrap();

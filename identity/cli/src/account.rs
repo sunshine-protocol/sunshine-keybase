@@ -1,10 +1,9 @@
-use crate::ask_for_new_password;
 use clap::Clap;
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
 use substrate_subxt::Runtime;
-use sunshine_client_utils::crypto::ss58::Ss58;
-use sunshine_client_utils::Result;
+use sunshine_cli_utils::client::crypto::ss58::Ss58;
+use sunshine_cli_utils::{ask_for_new_password, Result};
 use sunshine_identity_client::{Identity, IdentityClient};
 
 #[derive(Clone, Debug, Clap)]

@@ -4,9 +4,9 @@ use substrate_subxt::balances::{AccountData, Balances, TransferCallExt, Transfer
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
 use substrate_subxt::{Runtime, SignedExtension, SignedExtra};
-use sunshine_client_utils::Result;
+pub use sunshine_cli_utils::wallet::{TransferEventDecode, TransferEventFind};
+use sunshine_cli_utils::Result;
 use sunshine_identity_client::{resolve, Identifier, Identity, IdentityClient};
-use thiserror::Error;
 
 #[derive(Clone, Debug, Clap)]
 pub struct WalletBalanceCommand {
@@ -66,11 +66,3 @@ impl WalletTransferCommand {
         Ok(())
     }
 }
-
-#[derive(Debug, Error)]
-#[error("Failed to decode transfer event")]
-pub struct TransferEventDecode;
-
-#[derive(Debug, Error)]
-#[error("Failed to find transfer event")]
-pub struct TransferEventFind;

@@ -6782,9 +6782,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "sunshine-cli-utils"
+version = "0.1.0"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
+dependencies = [
+ "async-std",
+ "clap 3.0.0-beta.1",
+ "rpassword 5.0.0",
+ "substrate-subxt",
+ "sunshine-client-utils",
+ "thiserror",
+]
+
+[[package]]
 name = "sunshine-client-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
 dependencies = [
  "anyhow",
  "async-std",
@@ -6810,7 +6823,7 @@ dependencies = [
 [[package]]
 name = "sunshine-codec"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
 dependencies = [
  "anyhow",
  "hash-db",
@@ -6822,7 +6835,7 @@ dependencies = [
 [[package]]
 name = "sunshine-crypto"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
 dependencies = [
  "aead 0.2.0",
  "anyhow",
@@ -6892,7 +6905,7 @@ dependencies = [
 [[package]]
 name = "sunshine-ffi-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
 dependencies = [
  "allo-isolate",
  "async-std",
@@ -6904,17 +6917,13 @@ dependencies = [
 name = "sunshine-identity-cli"
 version = "0.2.3"
 dependencies = [
- "async-std",
  "clap 3.0.0-beta.1",
- "libipld",
  "parity-scale-codec",
  "qr2term",
- "rpassword 5.0.0",
  "substrate-subxt",
- "sunshine-client-utils",
+ "sunshine-cli-utils",
  "sunshine-identity-client",
  "textwrap 0.12.1",
- "thiserror",
 ]
 
 [[package]]
@@ -6972,7 +6981,7 @@ dependencies = [
 [[package]]
 name = "sunshine-keystore"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
 dependencies = [
  "anyhow",
  "async-std",
@@ -6987,7 +6996,7 @@ dependencies = [
 [[package]]
 name = "sunshine-pallet-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#d17d00858b4bbdbde97c7a7e53acf08639c6a967"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
 dependencies = [
  "blake2-rfc",
  "hash-db",
@@ -7124,7 +7133,7 @@ dependencies = [
  "clap 3.0.0-beta.1",
  "dirs",
  "env_logger",
- "sunshine-client-utils",
+ "sunshine-cli-utils",
  "sunshine-faucet-cli",
  "sunshine-identity-cli",
  "test-client",
