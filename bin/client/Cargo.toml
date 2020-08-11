@@ -13,7 +13,7 @@ mock = [
 [dependencies]
 async-trait = "0.1.36"
 ipld-block-builder = "0.4.1"
-libipld = { version = "0.3.0", default-features = false }
+libipld = { version = "0.3.1", default-features = false }
 substrate-subxt = "0.11.0"
 sunshine-chain-client = { path = "../../chain/client" }
 sunshine-client-utils = { path = "../../../sunshine-core/client" }

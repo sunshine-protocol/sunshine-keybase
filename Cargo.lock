@@ -2520,12 +2520,14 @@ checksum = "3286f09f7d4926fc486334f28d8d2e6ebe4f7f9994494b6dab27ddfad2c9b11b"
 
 [[package]]
 name = "libipld"
-version = "0.3.0"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "770f3987680b80468d5cb91cf0e1a807e29ef027c117be5f665f8ef63efb035f"
 dependencies = [
  "async-std",
  "libipld-cbor",
  "libipld-cbor-derive",
- "libipld-core 0.3.0",
+ "libipld-core",
  "libipld-json",
  "libipld-macro",
  "thiserror",
@@ -2534,15 +2536,19 @@ dependencies = [
 [[package]]
 name = "libipld-cbor"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d243510ff13f7155c2d5a5ef4609ca37c67729b5c4a4d5b628ea40bcc1a5d1a8"
 dependencies = [
  "byteorder",
- "libipld-core 0.3.0",
+ "libipld-core",
  "thiserror",
 ]
 
 [[package]]
 name = "libipld-cbor-derive"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ebad2c94813ea57b19acf05135674caf44650b94f6a897c376da9670af32e90"
 dependencies = [
  "proc-macro2",
  "quote 1.0.7",
@@ -2552,19 +2558,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-core"
-version = "0.3.0"
-dependencies = [
- "cid",
- "multibase",
- "multihash",
- "thiserror",
-]
-
-[[package]]
-name = "libipld-core"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55cb1d6e9195f4c088b65dd96b942efae068fbc49fd2ca9f15ac7f4407a9292d"
+checksum = "1644ab401cd98c4804d66b36a085c0ddc0841e93e0090d64b91c3663471c586c"
 dependencies = [
  "cid",
  "multibase",
@@ -2575,9 +2571,11 @@ dependencies = [
 [[package]]
 name = "libipld-json"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00e431b859578ecbfc64f4d13bf349ad305ac81cc3db51a5528245498b2311dc"
 dependencies = [
  "base64 0.12.3",
- "libipld-core 0.3.0",
+ "libipld-core",
  "serde",
  "serde_json",
 ]
@@ -2585,8 +2583,10 @@ dependencies = [
 [[package]]
 name = "libipld-macro"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34e065cbbf044ae30ff3bb84f91a94089f797521270d22db2e147511d5f2ac73"
 dependencies = [
- "libipld-core 0.3.0",
+ "libipld-core",
 ]
 
 [[package]]
@@ -2646,7 +2646,7 @@ dependencies = [
  "async-std",
  "fnv",
  "futures 0.3.5",
- "libipld-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libipld-core",
  "libp2p",
  "log",
  "prost",
@@ -4616,6 +4616,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rpassword"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d755237fc0f99d98641540e66abac8bc46a0652f19148ac9e21de2da06b326c9"
+dependencies = [
+ "libc",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "rust-argon2"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4822,7 +4832,7 @@ dependencies = [
  "nix",
  "parity-util-mem",
  "regex",
- "rpassword",
+ "rpassword 4.0.5",
  "sc-client-api",
  "sc-informant",
  "sc-network",
@@ -6895,7 +6905,7 @@ dependencies = [
  "libipld",
  "parity-scale-codec",
  "qr2term",
- "rpassword",
+ "rpassword 5.0.0",
  "substrate-subxt",
  "sunshine-client-utils",
  "sunshine-identity-client",

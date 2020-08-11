@@ -16,6 +16,3 @@ members = [
     "identity/pallet",
     "identity/utils",
 ]
-
-[patch.crates-io]
-libipld = { path = "../../ipld/rust-ipld" }
