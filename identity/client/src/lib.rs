@@ -51,7 +51,7 @@ pub trait IdentityClient<R: Runtime + Identity>: Client<R> {
 #[async_trait]
 impl<R, C, K> IdentityClient<R> for C
 where
-    R: Runtime + Identity<Gen = u16, Mask = keystore::Mask>,
+    R: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
     <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     R::AccountId: Into<R::Address> + Ss58Codec,
     R::Signature: From<<<C::KeyType as KeyType>::Pair as Pair>::Signature> + Decode,

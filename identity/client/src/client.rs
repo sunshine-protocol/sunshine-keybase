@@ -210,7 +210,7 @@ where
 
 pub async fn change_password<T, C, K>(client: &C, password: &SecretString) -> Result<()>
 where
-    T: Runtime + Identity<Gen = u16, Mask = Mask>,
+    T: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<T, KeyType = K, Keystore = Keystore<K>>,
     K: KeyType,
@@ -218,14 +218,14 @@ where
     let (mask, gen) = client.keystore().change_password_mask(password).await?;
     client
         .chain_client()
-        .change_password_and_watch(&client.chain_signer()?, &mask, gen)
+        .change_password_and_watch(&client.chain_signer()?, mask.as_ref(), gen)
         .await?;
     Ok(())
 }
 
 pub async fn update_password<T, C, K>(client: &mut C) -> Result<()>
 where
-    T: Runtime + Identity<Gen = u16, Mask = Mask>,
+    T: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<T, KeyType = K, Keystore = Keystore<K>>,
     K: KeyType,
@@ -242,7 +242,10 @@ where
             .password_mask(uid, g + 1, None)
             .await?
             .ok_or(Error::RuntimeInvalid)?;
-        client.keystore_mut().apply_mask(&mask, g + 1).await?;
+        client
+            .keystore_mut()
+            .apply_mask(&Mask::new(mask), g + 1)
+            .await?;
     }
     Ok(())
 }
@@ -485,7 +488,6 @@ mod tests {
     }
 
     #[async_std::test]
-    #[ignore]
     async fn change_password() {
         let (node, _node_tmp) = test_node();
         let (mut client1, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Alice).await;
@@ -506,7 +508,6 @@ mod tests {
     }
 
     #[async_std::test]
-    #[ignore]
     async fn provision_device() {
         let (node, _node_tmp) = test_node();
         let (mut client1, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Alice).await;

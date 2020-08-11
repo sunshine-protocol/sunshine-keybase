@@ -1,4 +1,3 @@
-use sunshine_ffi_utils::async_std::sync::RwLock;
 use std::marker::PhantomData;
 use substrate_subxt::{
     balances::{AccountData, Balances, TransferCallExt, TransferEventExt},
@@ -6,19 +5,18 @@ use substrate_subxt::{
     system::System,
     Runtime, SignedExtension, SignedExtra,
 };
-use sunshine_client_utils::Result;
 use sunshine_client_utils::crypto::{
     bip39::Mnemonic,
+    keychain::TypedPair,
     keystore::Keystore,
     secrecy::{ExposeSecret, SecretString},
     ss58::Ss58,
-    keychain::TypedPair,
 };
+use sunshine_client_utils::Result;
 #[cfg(feature = "faucet")]
 use sunshine_faucet_client::{Faucet as SunshineFaucet, FaucetClient};
-use sunshine_identity_client::{
-    resolve, Identifier, Identity, IdentityClient, Service,
-};
+use sunshine_ffi_utils::async_std::sync::RwLock;
+use sunshine_identity_client::{resolve, Identifier, Identity, IdentityClient, Service};
 use thiserror::Error;
 
 macro_rules! make {
@@ -84,31 +82,18 @@ where
             .await
             .set_key(dk, &password, false)
             .await?;
-        let account_id = self.client
-            .read()
-            .await
-            .signer()?
-            .account_id()
-            .to_string();
+        let account_id = self.client.read().await.signer()?.account_id().to_string();
         Ok(account_id)
     }
 
     pub async fn lock(&self) -> Result<bool> {
-        self.client
-            .write()
-            .await
-            .lock()
-            .await?;
+        self.client.write().await.lock().await?;
         Ok(true)
     }
 
     pub async fn unlock(&self, password: impl Into<&str>) -> Result<bool> {
         let password = SecretString::new(password.into().to_string());
-        self.client
-            .write()
-            .await
-            .unlock(&password)
-            .await?;
+        self.client.write().await.unlock(&password).await?;
         Ok(true)
     }
 }
@@ -134,11 +119,7 @@ where
         if password.expose_secret().len() < 8 {
             return Err(Error::PasswordTooShort.into());
         }
-        self.client
-            .read()
-            .await
-            .change_password(&password)
-            .await?;
+        self.client.read().await.change_password(&password).await?;
         Ok(true)
     }
 }
@@ -161,29 +142,20 @@ where
 
     pub async fn add(&self, device: impl Into<&str>) -> Result<bool> {
         let device: Ss58<R> = device.into().parse()?;
-        self.client
-            .read()
-            .await
-            .add_key(&device.0)
-            .await?;
+        self.client.read().await.add_key(&device.0).await?;
         Ok(true)
     }
 
     pub async fn remove(&self, device: impl Into<&str>) -> Result<bool> {
         let device: Ss58<R> = device.into().parse()?;
-        self.client
-            .read()
-            .await
-            .remove_key(&device.0)
-            .await?;
+        self.client.read().await.remove_key(&device.0).await?;
         Ok(true)
     }
 
     pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>> {
         let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = resolve(&*client, Some(identifier))
-            .await?;
+        let uid = resolve(&*client, Some(identifier)).await?;
         let list = client
             .fetch_keys(uid, None)
             .await?
@@ -194,12 +166,7 @@ where
     }
 
     pub async fn paperkey(&self) -> Result<String> {
-        let mnemonic = self
-            .client
-            .read()
-            .await
-            .add_paperkey()
-            .await?;
+        let mnemonic = self.client.read().await.add_paperkey().await?;
         Ok(mnemonic.as_str().into())
     }
 }
@@ -213,16 +180,14 @@ where
     pub async fn resolve(&self, identifier: impl Into<&str>) -> Result<String> {
         let identifier: Identifier<R> = identifier.into().parse()?;
         let client = self.client.read().await;
-        let uid = resolve(&*client, Some(identifier))
-            .await?;
+        let uid = resolve(&*client, Some(identifier)).await?;
         Ok(uid.to_string())
     }
 
     pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>> {
         let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = resolve(&*client, Some(identifier))
-            .await?;
+        let uid = resolve(&*client, Some(identifier)).await?;
         let list = client
             .identity(uid)
             .await?
@@ -235,22 +200,13 @@ where
     pub async fn prove(&self, service: impl Into<&str>) -> Result<Vec<String>> {
         let service: Service = service.into().parse()?;
         let instructions = service.cli_instructions();
-        let proof = self
-            .client
-            .read()
-            .await
-            .prove_identity(service)
-            .await?;
+        let proof = self.client.read().await.prove_identity(service).await?;
         Ok(vec![instructions, proof])
     }
 
     pub async fn revoke(&self, service: impl Into<&str>) -> Result<bool> {
         let service: Service = service.into().parse()?;
-        self.client
-            .read()
-            .await
-            .revoke_identity(service)
-            .await?;
+        self.client.read().await.revoke_identity(service).await?;
         Ok(true)
     }
 }
@@ -267,8 +223,7 @@ where
     pub async fn balance(&self, identifier: impl Into<&str>) -> Result<R::Balance> {
         let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = resolve(&*client, Some(identifier))
-            .await?;
+        let uid = resolve(&*client, Some(identifier)).await?;
         let account = client.fetch_account(uid).await?;
         Ok(account.free)
     }
@@ -281,8 +236,7 @@ where
         let client = self.client.read().await;
         let identifier: Identifier<R> = identifier.into().parse()?;
         let signer = client.chain_signer()?;
-        let uid = resolve(&*client, Some(identifier))
-            .await?;
+        let uid = resolve(&*client, Some(identifier)).await?;
         let keys = client.fetch_keys(uid, None).await?;
         client
             .chain_client()
@@ -305,12 +259,7 @@ where
     R: Runtime + Identity + SunshineFaucet,
 {
     pub async fn mint(&self) -> Result<R::Balance> {
-        let event = self
-            .client
-            .read()
-            .await
-            .mint()
-            .await?;
+        let event = self.client.read().await.mint().await?;
         if let Some(minted) = event {
             Ok(minted.amount)
         } else {

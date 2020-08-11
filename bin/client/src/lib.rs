@@ -11,7 +11,6 @@ use sunshine_client_utils::client::{GenericClient, KeystoreImpl, OffchainStoreIm
 use sunshine_client_utils::crypto::keychain::KeyType;
 use sunshine_client_utils::crypto::sr25519;
 use sunshine_client_utils::hasher::Blake2Hasher;
-use sunshine_client_utils::keystore::Mask;
 use sunshine_client_utils::node::{
     ChainSpecError, Configuration, NodeConfig, RpcHandlers, ScServiceError, TaskManager,
 };
@@ -56,7 +55,7 @@ impl Faucet for Runtime {}
 impl Identity for Runtime {
     type Uid = Uid;
     type Cid = CidBytes;
-    type Mask = Mask;
+    type Mask = [u8; 32];
     type Gen = u16;
     type IdAccountData = AccountData<<Self as Balances>::Balance>;
 }
