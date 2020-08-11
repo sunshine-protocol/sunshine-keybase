@@ -10,9 +10,9 @@ repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
 substrate-subxt = "0.11.0"
-ffi-utils = { version = "^0.1", path = "../../ffi-utils", package = "sunshine-ffi-utils" }
-sunshine-core = { version = "^0.2", path = "../../core" }
+sunshine-client-utils = { git = "https://github.com/sunshine-protocol/sunshine-core" }
 sunshine-faucet-client = { version = "^0.2", path = "../../faucet/client", optional = true }
+sunshine-ffi-utils = { git = "https://github.com/sunshine-protocol/sunshine-core" }
 sunshine-identity-client = { version = "^0.2", path = "../client" }
 thiserror = "1.0.20"
 

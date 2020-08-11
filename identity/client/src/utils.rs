@@ -4,21 +4,17 @@ use crate::{Identity, IdentityClient};
 use sp_core::crypto::Ss58Codec;
 use std::str::FromStr;
 use substrate_subxt::{sp_core, system::System, Runtime};
-use sunshine_core::{ChainClient, Ss58};
+use sunshine_client_utils::{crypto::ss58::Ss58, Result};
 
-pub async fn resolve<T, C>(
-    client: &C,
-    identifier: Option<Identifier<T>>,
-) -> Result<T::Uid, C::Error>
+pub async fn resolve<T, C>(client: &C, identifier: Option<Identifier<T>>) -> Result<T::Uid>
 where
     T: Runtime + Identity,
     C: IdentityClient<T>,
-    <C as ChainClient<T>>::Error: From<Error>,
 {
     let identifier = if let Some(identifier) = identifier {
         identifier
     } else {
-        Identifier::Account(client.chain_signer()?.account_id().clone())
+        Identifier::Account(client.signer()?.account_id().clone())
     };
     let uid = match identifier {
         Identifier::Uid(uid) => uid,

@@ -1,12 +1,9 @@
-use crate::error::{Error, Result};
 use clap::Clap;
 use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
 use substrate_subxt::Runtime;
-use sunshine_core::ChainClient;
-use sunshine_identity_client::{
-    resolve, Error as IdentityError, Identifier, Identity, IdentityClient, Service,
-};
+use sunshine_cli_utils::Result;
+use sunshine_identity_client::{resolve, Identifier, Identity, IdentityClient, Service};
 
 #[derive(Clone, Debug, Clap)]
 pub struct IdListCommand {
@@ -14,22 +11,18 @@ pub struct IdListCommand {
 }
 
 impl IdListCommand {
-    pub async fn exec<R: Runtime + Identity, C: IdentityClient<R>>(
-        &self,
-        client: &C,
-    ) -> Result<(), C::Error>
+    pub async fn exec<R: Runtime + Identity, C: IdentityClient<R>>(&self, client: &C) -> Result<()>
     where
         <R as System>::AccountId: Ss58Codec,
-        <C as ChainClient<R>>::Error: From<IdentityError>,
     {
         let identifier: Option<Identifier<R>> = if let Some(identifier) = &self.identifier {
             Some(identifier.parse()?)
         } else {
             None
         };
-        let uid = resolve(client, identifier).await.map_err(Error::Client)?;
+        let uid = resolve(client, identifier).await?;
         println!("Your user id is {}", uid);
-        for id in client.identity(uid).await.map_err(Error::Client)? {
+        for id in client.identity(uid).await? {
             println!("{}", id);
         }
         Ok(())
@@ -45,16 +38,10 @@ impl IdProveCommand {
     pub async fn exec<R: Runtime + Identity, C: IdentityClient<R>>(
         &self,
         client: &C,
-    ) -> Result<(), C::Error>
-    where
-        <C as ChainClient<R>>::Error: From<IdentityError>,
-    {
+    ) -> Result<()> {
         println!("Claiming {}...", self.service);
         let instructions = self.service.cli_instructions();
-        let proof = client
-            .prove_identity(self.service.clone())
-            .await
-            .map_err(Error::Client)?;
+        let proof = client.prove_identity(self.service.clone()).await?;
         println!("{}", instructions);
         print!("{}", proof);
         Ok(())
@@ -70,14 +57,8 @@ impl IdRevokeCommand {
     pub async fn exec<R: Runtime + Identity, C: IdentityClient<R>>(
         &self,
         client: &C,
-    ) -> Result<(), C::Error>
-    where
-        <C as ChainClient<R>>::Error: From<IdentityError>,
-    {
-        client
-            .revoke_identity(self.service.clone())
-            .await
-            .map_err(Error::Client)?;
+    ) -> Result<()> {
+        client.revoke_identity(self.service.clone()).await?;
         Ok(())
     }
 }

@@ -15,7 +15,7 @@ pub trait Identity: System {
 
     type Cid: Parameter + Member + Default + From<Cid> + TryInto<Cid, Error = CidError>;
 
-    type Mask: Parameter + Member + Default + From<[u8; 32]> + Into<[u8; 32]>;
+    type Mask: Parameter + Member + Default;
 
     type Gen: Parameter + Member + Copy + Default + CheckedAdd + From<u16> + Into<u16> + Ord;
 

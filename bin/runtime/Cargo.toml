@@ -13,12 +13,11 @@ balances = { version = "2.0.0-rc5", default-features = false, package = "pallet-
 frame-support = { version = "2.0.0-rc5", default-features = false }
 grandpa = { version = "2.0.0-rc5", default-features = false, package = "pallet-grandpa" }
 randomness-collective-flip = { version = "2.0.0-rc5", default-features = false, package = "pallet-randomness-collective-flip" }
-sudo = { version = "2.0.0-rc5", default-features = false, package = "pallet-sudo" }
 system = { version = "2.0.0-rc5", default-features = false, package = "frame-system" }
 timestamp = { version = "2.0.0-rc5", default-features = false, package = "pallet-timestamp" }
 transaction-payment = { version = "2.0.0-rc5", default-features = false, package = "pallet-transaction-payment" }
 frame-executive = { version = "2.0.0-rc5", default-features = false }
-serde = { version = "1.0.114", optional = true, features = ["derive"] }
+serde = { version = "1.0.115", optional = true, features = ["derive"] }
 sp-api = { version = "2.0.0-rc5", default-features = false }
 sp-block-builder = { version = "2.0.0-rc5", default-features = false }
 sp-consensus-aura = { version = "0.8.0-rc5", default-features = false }
@@ -32,9 +31,11 @@ sp-std = { version = "2.0.0-rc5", default-features = false }
 sp-transaction-pool = { version = "2.0.0-rc5", default-features = false }
 sp-version = { version = "2.0.0-rc5", default-features = false }
 
+chain = { default-features = false, package = "sunshine-chain-pallet", path = "../../chain/pallet" }
 faucet = { default-features = false, package = "sunshine-faucet-pallet", path = "../../faucet/pallet" }
 identity = { default-features = false, package = "sunshine-identity-pallet", path = "../../identity/pallet" }
 identity-utils = { default-features = false, package = "sunshine-identity-utils", path = "../../identity/utils" }
+pallet-utils = { default-features = false, package = "sunshine-pallet-utils", git = "https://github.com/sunshine-protocol/sunshine-core" }
 
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner" }
@@ -44,6 +45,7 @@ default = ["std"]
 std = [
     "aura/std",
     "balances/std",
+    "chain/std",
     "codec/std",
     "faucet/std",
     "frame-executive/std",
@@ -51,6 +53,7 @@ std = [
     "grandpa/std",
     "identity/std",
     "identity-utils/std",
+    "pallet-utils/std",
     "randomness-collective-flip/std",
     "serde",
     "sp-api/std",
@@ -65,7 +68,6 @@ std = [
     "sp-std/std",
     "sp-transaction-pool/std",
     "sp-version/std",
-    "sudo/std",
     "system/std",
     "timestamp/std",
     "transaction-payment/std",

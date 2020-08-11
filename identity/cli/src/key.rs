@@ -1,8 +1,8 @@
-use crate::{ask_for_password, set_device_key, Error, Result};
 use clap::Clap;
 use substrate_subxt::Runtime;
-use sunshine_core::{ChainClient, Keystore};
-use sunshine_identity_client::{Error as IdentityError, Identity, IdentityClient};
+pub use sunshine_cli_utils::key::{KeyLockCommand, KeyUnlockCommand};
+use sunshine_cli_utils::{set_key, Result};
+use sunshine_identity_client::{Identity, IdentityClient};
 use textwrap::Wrapper;
 
 #[derive(Clone, Debug, Clap)]
@@ -24,15 +24,11 @@ impl KeySetCommand {
     pub async fn exec<R: Runtime + Identity, C: IdentityClient<R>>(
         &self,
         client: &mut C,
-    ) -> Result<(), C::Error>
-    where
-        <C as ChainClient<R>>::Error: From<IdentityError>,
-    {
-        let account_id =
-            set_device_key(client, self.paperkey, self.suri.as_deref(), self.force).await?;
+    ) -> Result<()> {
+        let account_id = set_key(client, self.paperkey, self.suri.as_deref(), self.force).await?;
         let account_id_str = account_id.to_string();
         println!("Your device id is {}", &account_id_str);
-        if let Some(uid) = client.fetch_uid(&account_id).await.map_err(Error::Client)? {
+        if let Some(uid) = client.fetch_uid(&account_id).await? {
             println!("Your user id is {}", uid);
         } else {
             let p = "Creating an account requires making a `create_account_for` \
@@ -43,41 +39,6 @@ impl KeySetCommand {
             println!("{}\n", Wrapper::with_termwidth().fill(p));
             qr2term::print_qr(&account_id_str)?;
         }
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Clap)]
-pub struct KeyLockCommand;
-
-impl KeyLockCommand {
-    pub async fn exec<R: Runtime, C: ChainClient<R>>(
-        &self,
-        client: &mut C,
-    ) -> Result<(), C::Error> {
-        client
-            .keystore_mut()
-            .lock()
-            .await
-            .map_err(|e| Error::Client(e.into()))?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Clap)]
-pub struct KeyUnlockCommand;
-
-impl KeyUnlockCommand {
-    pub async fn exec<R: Runtime, C: ChainClient<R>>(
-        &self,
-        client: &mut C,
-    ) -> Result<(), C::Error> {
-        let password = ask_for_password("Please enter your password (8+ characters):\n", 8)?;
-        client
-            .keystore_mut()
-            .unlock(&password)
-            .await
-            .map_err(|e| Error::Client(e.into()))?;
         Ok(())
     }
 }

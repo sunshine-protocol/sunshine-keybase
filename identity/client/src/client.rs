@@ -1,5 +1,6 @@
 use crate::claim::{Claim, ClaimBody, IdentityInfo, IdentityStatus, UnsignedClaim};
 use crate::error::Error;
+use crate::keystore::{Keystore, Mask};
 use crate::service::Service;
 use crate::subxt::*;
 use codec::{Decode, Encode};
@@ -9,20 +10,24 @@ use libipld::cid::Cid;
 use std::collections::HashMap;
 use std::time::Duration;
 use std::time::UNIX_EPOCH;
-use substrate_subxt::sp_core::crypto::Ss58Codec;
+use substrate_subxt::sp_core::crypto::{Pair, Ss58Codec};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, SignedExtension, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{EventSubscription, EventsDecoder, Runtime, SignedExtra};
-use sunshine_core::bip39::Mnemonic;
-use sunshine_core::{ChainClient, Key, Keystore, SecretString};
+use sunshine_client_utils::crypto::{
+    bip39::Mnemonic,
+    keychain::{KeyType, TypedPair},
+    secrecy::SecretString,
+    signer::GenericSigner,
+};
+use sunshine_client_utils::{Client, Result, Signer};
 
-async fn set_identity<T, C>(client: &C, claim: Claim) -> Result<(), C::Error>
+async fn set_identity<T, C>(client: &C, claim: Claim) -> Result<()>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
     C::OffchainClient: Cache<Codec, Claim>,
-    C::Error: From<Error>,
 {
     let prev = claim.claim().prev.clone();
     let root = client.offchain_client().insert(claim).await?;
@@ -31,7 +36,7 @@ where
     let root_cid = T::Cid::from(root);
     client
         .chain_client()
-        .set_identity_and_watch(client.chain_signer()?, &prev_cid, &root_cid)
+        .set_identity_and_watch(&client.chain_signer()?, &prev_cid, &root_cid)
         .await?
         .identity_changed()?;
     if let Some(prev) = prev {
@@ -40,12 +45,11 @@ where
     Ok(())
 }
 
-async fn fetch_identity<T, C>(client: &C, uid: T::Uid) -> Result<Option<Cid>, C::Error>
+async fn fetch_identity<T, C>(client: &C, uid: T::Uid) -> Result<Option<Cid>>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
-    C::Error: From<Error>,
+    C: Client<T>,
 {
     if let Some(bytes) = client.chain_client().identity(uid, None).await? {
         Ok(Some(bytes.try_into().map_err(Error::from)?))
@@ -59,13 +63,12 @@ async fn create_claim<T, C>(
     body: ClaimBody,
     expire_in: Option<Duration>,
     uid: T::Uid,
-) -> Result<Claim, C::Error>
+) -> Result<Claim>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
     C::OffchainClient: Cache<Codec, Claim>,
-    C::Error: From<Error>,
     T::AccountId: Ss58Codec,
 {
     let genesis = client.chain_client().genesis().as_ref().to_vec();
@@ -82,7 +85,7 @@ where
     } else {
         0
     };
-    let public = client.chain_signer()?.account_id().to_ss58check();
+    let public = client.signer()?.account_id().to_ss58check();
     let expire_in = expire_in
         .unwrap_or_else(|| Duration::from_millis(u64::MAX))
         .as_millis() as u64;
@@ -98,18 +101,17 @@ where
         expire_in,
         body,
     };
-    let signature = client.offchain_signer()?.sign(&claim.to_bytes()?);
+    let signature = client.signer()?.sign(&claim.to_bytes()?);
     let signature = Encode::encode(&signature);
     Ok(Claim::new(claim, signature))
 }
 
-async fn verify_claim<T, C>(client: &C, uid: T::Uid, claim: &Claim) -> Result<(), C::Error>
+async fn verify_claim<T, C>(client: &C, uid: T::Uid, claim: &Claim) -> Result<()>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
     C::OffchainClient: Cache<Codec, Claim>,
-    C::Error: From<Error>,
     T::Signature: Decode,
     <T::Signature as Verify>::Signer: IdentifyAccount<AccountId = T::AccountId>,
     T::AccountId: Ss58Codec,
@@ -142,90 +144,97 @@ where
     Ok(())
 }
 
-pub async fn create_account_for<T, C>(
-    client: &C,
-    key: &<T as System>::AccountId,
-) -> Result<(), C::Error>
+pub async fn create_account_for<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<()>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
 {
     client
         .chain_client()
-        .create_account_for_and_watch(client.chain_signer()?, key)
+        .create_account_for_and_watch(&client.chain_signer()?, key)
         .await?
         .account_created()?;
     Ok(())
 }
 
-pub async fn add_paperkey<T, C>(client: &C) -> Result<Mnemonic, C::Error>
+pub async fn add_paperkey<T, C, K>(client: &C) -> Result<Mnemonic>
 where
     T: Runtime + Identity,
+    T::AccountId: Into<T::Address>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    <T::Signature as Verify>::Signer: From<<K::Pair as Pair>::Public>
+        + TryInto<<K::Pair as Pair>::Public>
+        + IdentifyAccount<AccountId = T::AccountId>
+        + Clone
+        + Send
+        + Sync,
+    C: Client<T>,
+    K: KeyType,
+    <K::Pair as Pair>::Signature: Into<T::Signature>,
 {
     let mnemonic = Mnemonic::generate(24).expect("word count is a multiple of six; qed");
-    let key = <C::Keystore as Keystore<T>>::Key::from_mnemonic(&mnemonic)
-        .expect("have enough entropy bits; qed");
-    add_key(client, &key.to_account_id()).await?;
+    let key = TypedPair::<K>::from_mnemonic(&mnemonic).expect("have enough entropy bits; qed");
+    let signer = GenericSigner::<T, K>::new(key);
+    add_key(client, signer.account_id()).await?;
     Ok(mnemonic)
 }
 
-pub async fn add_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<(), C::Error>
+pub async fn add_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<()>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
 {
     client
         .chain_client()
-        .add_key_and_watch(client.chain_signer()?, key)
+        .add_key_and_watch(&client.chain_signer()?, key)
         .await?
         .key_added()?;
     Ok(())
 }
 
-pub async fn remove_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<(), C::Error>
+pub async fn remove_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<()>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
 {
     client
         .chain_client()
-        .remove_key_and_watch(client.chain_signer()?, key)
+        .remove_key_and_watch(&client.chain_signer()?, key)
         .await?
         .key_removed()?;
     Ok(())
 }
 
-pub async fn change_password<T, C>(client: &C, password: &SecretString) -> Result<(), C::Error>
+pub async fn change_password<T, C, K>(client: &C, password: &SecretString) -> Result<()>
 where
     T: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T, KeyType = K, Keystore = Keystore<K>>,
+    K: KeyType,
 {
     let (mask, gen) = client.keystore().change_password_mask(password).await?;
     client
         .chain_client()
-        .change_password_and_watch(client.chain_signer()?, &mask, gen)
+        .change_password_and_watch(&client.chain_signer()?, mask.as_ref(), gen)
         .await?;
     Ok(())
 }
 
-pub async fn update_password<T, C>(client: &mut C) -> Result<(), C::Error>
+pub async fn update_password<T, C, K>(client: &mut C) -> Result<()>
 where
     T: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
-    C::Error: From<Error>,
+    C: Client<T, KeyType = K, Keystore = Keystore<K>>,
+    K: KeyType,
 {
-    let uid = fetch_uid(client, client.chain_signer()?.account_id())
+    let uid = fetch_uid(client, &client.signer()?.account_id())
         .await?
         .ok_or(Error::NoAccount)?;
     let pgen = client.chain_client().password_gen(uid, None).await?;
-    let gen = client.keystore().gen();
+    let gen = client.keystore().gen().await?;
     for g in gen..pgen {
         log::info!("Password change detected: reencrypting keystore");
         let mask = client
@@ -233,16 +242,19 @@ where
             .password_mask(uid, g + 1, None)
             .await?
             .ok_or(Error::RuntimeInvalid)?;
-        client.keystore_mut().apply_mask(&mask, g + 1).await?;
+        client
+            .keystore_mut()
+            .apply_mask(&Mask::new(mask), g + 1)
+            .await?;
     }
     Ok(())
 }
 
-pub async fn subscribe_password_changes<T, C>(client: &C) -> Result<EventSubscription<T>, C::Error>
+pub async fn subscribe_password_changes<T, C>(client: &C) -> Result<EventSubscription<T>>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
 {
     let subscription = client.chain_client().subscribe_events().await.unwrap();
     let mut decoder = EventsDecoder::<T>::new(client.chain_client().metadata().clone());
@@ -252,14 +264,11 @@ where
     Ok(subscription)
 }
 
-pub async fn fetch_uid<T, C>(
-    client: &C,
-    key: &<T as System>::AccountId,
-) -> Result<Option<T::Uid>, C::Error>
+pub async fn fetch_uid<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<Option<T::Uid>>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
 {
     Ok(client.chain_client().uid_lookup(key, None).await?)
 }
@@ -268,12 +277,11 @@ pub async fn fetch_keys<T, C>(
     client: &C,
     uid: T::Uid,
     hash: Option<T::Hash>,
-) -> Result<Vec<<T as System>::AccountId>, C::Error>
+) -> Result<Vec<<T as System>::AccountId>>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
-    C::Error: From<Error>,
+    C: Client<T>,
 {
     let keys = client.chain_client().keys(uid, hash).await?;
     if keys.is_empty() {
@@ -282,25 +290,24 @@ where
     Ok(keys)
 }
 
-pub async fn fetch_account<T, C>(client: &C, uid: T::Uid) -> Result<T::IdAccountData, C::Error>
+pub async fn fetch_account<T, C>(client: &C, uid: T::Uid) -> Result<T::IdAccountData>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
 {
     Ok(client.chain_client().account(uid, None).await?)
 }
 
-pub async fn prove_identity<T, C>(client: &C, service: Service) -> Result<String, C::Error>
+pub async fn prove_identity<T, C>(client: &C, service: Service) -> Result<String>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
     C::OffchainClient: Cache<Codec, Claim>,
-    C::Error: From<Error>,
     T::AccountId: Ss58Codec,
 {
-    let uid = fetch_uid(client, client.chain_signer()?.account_id())
+    let uid = fetch_uid(client, client.signer()?.account_id())
         .await?
         .ok_or(Error::NoAccount)?;
     let claim = create_claim(client, ClaimBody::Ownership(service.clone()), None, uid).await?;
@@ -309,18 +316,17 @@ where
     Ok(proof)
 }
 
-pub async fn revoke_identity<T, C>(client: &C, service: Service) -> Result<(), C::Error>
+pub async fn revoke_identity<T, C>(client: &C, service: Service) -> Result<()>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
     C::OffchainClient: Cache<Codec, Claim>,
-    C::Error: From<Error>,
     T::AccountId: Ss58Codec,
     T::Signature: Decode,
     <T::Signature as Verify>::Signer: IdentifyAccount<AccountId = T::AccountId>,
 {
-    let uid = fetch_uid(client, client.chain_signer()?.account_id())
+    let uid = fetch_uid(client, client.signer()?.account_id())
         .await?
         .ok_or(Error::NoAccount)?;
     let id = identity(client, uid)
@@ -335,13 +341,12 @@ where
     Ok(())
 }
 
-pub async fn identity<T, C>(client: &C, uid: T::Uid) -> Result<Vec<IdentityInfo>, C::Error>
+pub async fn identity<T, C>(client: &C, uid: T::Uid) -> Result<Vec<IdentityInfo>>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
     C::OffchainClient: Cache<Codec, Claim>,
-    C::Error: From<Error>,
     T::AccountId: Ss58Codec,
     T::Signature: Decode,
     <T::Signature as Verify>::Signer: IdentifyAccount<AccountId = T::AccountId>,
@@ -417,13 +422,12 @@ where
     Ok(info)
 }
 
-pub async fn resolve<T, C>(client: &C, service: &Service) -> Result<T::Uid, C::Error>
+pub async fn resolve<T, C>(client: &C, service: &Service) -> Result<T::Uid>
 where
     T: Runtime + Identity,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: ChainClient<T>,
+    C: Client<T>,
     C::OffchainClient: Cache<Codec, Claim>,
-    C::Error: From<Error>,
     T::AccountId: Ss58Codec,
     T::Signature: Decode,
     <T::Signature as Verify>::Signer: IdentifyAccount<AccountId = T::AccountId>,
@@ -449,14 +453,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_client::client::Client as _;
     use test_client::identity::{IdentityClient, IdentityStatus, Service};
-    use test_client::mock::{test_node, AccountKeyring};
-    use test_client::Client;
+    use test_client::mock::{test_node, AccountKeyring, ClientWithKeystore as Client};
 
     #[async_std::test]
     async fn prove_identity() {
         let (node, _node_tmp) = test_node();
-        let (client, _client_tmp) = Client::mock(&node, AccountKeyring::Alice).await;
+        let (client, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Alice).await;
         let account_id = AccountKeyring::Alice.to_account_id();
         let uid = client.fetch_uid(&account_id).await.unwrap().unwrap();
         let service = Service::Github("dvc94ch".into());
@@ -486,10 +490,10 @@ mod tests {
     #[async_std::test]
     async fn change_password() {
         let (node, _node_tmp) = test_node();
-        let (mut client1, _client1_tmp) = Client::mock(&node, AccountKeyring::Alice).await;
-        let (client2, _client2_tmp) = Client::mock(&node, AccountKeyring::Eve).await;
+        let (mut client1, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Alice).await;
+        let (client2, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Eve).await;
 
-        let signer2 = client2.chain_signer().unwrap();
+        let signer2 = client2.signer().unwrap();
         client1.add_key(signer2.account_id()).await.unwrap();
         let mut sub = client1.subscribe_password_changes().await.unwrap();
 
@@ -499,15 +503,15 @@ mod tests {
         let event = sub.next().await;
         assert!(event.is_some());
         client1.update_password().await.unwrap();
-        client1.keystore_mut().lock().await.unwrap();
-        client1.keystore_mut().unlock(&password).await.unwrap();
+        client1.lock().await.unwrap();
+        client1.unlock(&password).await.unwrap();
     }
 
     #[async_std::test]
     async fn provision_device() {
         let (node, _node_tmp) = test_node();
-        let (mut client1, _client1_tmp) = Client::mock(&node, AccountKeyring::Alice).await;
-        let (mut client2, _client2_tmp) = Client::mock(&node, AccountKeyring::Eve).await;
+        let (mut client1, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Alice).await;
+        let (mut client2, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Eve).await;
 
         let password = SecretString::new("abcdefgh".to_string());
         let (mask, gen) = client1
@@ -524,7 +528,7 @@ mod tests {
             .await
             .unwrap();
 
-        client2.keystore_mut().lock().await.unwrap();
-        client2.keystore_mut().unlock(&password).await.unwrap();
+        client2.lock().await.unwrap();
+        client2.unlock(&password).await.unwrap();
     }
 }
