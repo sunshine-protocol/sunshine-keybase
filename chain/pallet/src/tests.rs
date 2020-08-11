@@ -22,7 +22,7 @@ fn test_block_authoring() {
         assert_ok!(ChainModule::author_block(
             key.clone(),
             chain_id,
-            block.offchain.root().clone(),
+            *block.offchain.root(),
             block.proof
         ));
 
