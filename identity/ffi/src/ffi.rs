@@ -13,8 +13,6 @@ use sunshine_client_utils::crypto::{
     ss58::Ss58,
 };
 use sunshine_client_utils::Result;
-#[cfg(feature = "faucet")]
-use sunshine_faucet_client::{Faucet as SunshineFaucet, FaucetClient};
 use sunshine_ffi_utils::async_std::sync::RwLock;
 use sunshine_identity_client::{resolve, Identifier, Identity, IdentityClient, Service};
 use thiserror::Error;
@@ -249,32 +247,10 @@ where
     }
 }
 
-#[cfg(feature = "faucet")]
-make!(Faucet);
-
-#[cfg(feature = "faucet")]
-impl<'a, C, R> Faucet<'a, C, R>
-where
-    C: IdentityClient<R> + FaucetClient<R> + Send + Sync,
-    R: Runtime + Identity + SunshineFaucet,
-{
-    pub async fn mint(&self) -> Result<R::Balance> {
-        let event = self.client.read().await.mint().await?;
-        if let Some(minted) = event {
-            Ok(minted.amount)
-        } else {
-            Err(Error::FailedToMint.into())
-        }
-    }
-}
-
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("password too short")]
     PasswordTooShort,
     #[error("transfer event not found")]
     TransferEventFind,
-    #[cfg(feature = "faucet")]
-    #[error("failed to mint")]
-    FailedToMint,
 }
