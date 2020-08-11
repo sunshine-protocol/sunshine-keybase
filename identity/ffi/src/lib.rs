@@ -1,7 +1,5 @@
 pub use sunshine_ffi_utils as utils;
 
-#[cfg(feature = "faucet")]
-pub use sunshine_faucet_ffi as faucet_ffi;
 #[doc(hidden)]
 pub mod ffi;
 
@@ -85,8 +83,6 @@ macro_rules! impl_ffi {
                 amount: u64 = amount
             ) -> String;
         };
-        #[cfg(feature = "faucet")]
-        $crate::faucet_ffi::impl_ffi!();
     };
     (client: $client: ty) => {
         gen_ffi!(client = $client);

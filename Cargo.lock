@@ -6959,7 +6959,6 @@ version = "0.2.3"
 dependencies = [
  "substrate-subxt",
  "sunshine-client-utils",
- "sunshine-faucet-ffi",
  "sunshine-ffi-utils",
  "sunshine-identity-client",
  "test-client",
