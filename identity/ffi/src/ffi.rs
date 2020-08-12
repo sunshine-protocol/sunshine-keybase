@@ -56,21 +56,25 @@ where
     C: IdentityClient<R> + Send + Sync,
     R: Runtime + Identity,
 {
+    pub async fn exists(&self) -> Result<bool> {
+        self.client.read().await.keystore().is_initialized().await
+    }
+
     pub async fn set(
         &self,
-        password: impl Into<&str>,
-        suri: Option<impl Into<&str>>,
-        paperkey: Option<impl Into<&str>>,
+        password: &str,
+        suri: Option<&str>,
+        paperkey: Option<&str>,
     ) -> Result<String> {
-        let password = SecretString::new(password.into().to_string());
+        let password = SecretString::new(password.to_string());
         if password.expose_secret().len() < 8 {
             return Err(Error::PasswordTooShort.into());
         }
         let dk = if let Some(paperkey) = paperkey {
-            let mnemonic = Mnemonic::parse(paperkey.into())?;
+            let mnemonic = Mnemonic::parse(paperkey)?;
             TypedPair::<C::KeyType>::from_mnemonic(&mnemonic)?
         } else if let Some(suri) = suri {
-            TypedPair::<C::KeyType>::from_suri(suri.into())?
+            TypedPair::<C::KeyType>::from_suri(suri)?
         } else {
             TypedPair::<C::KeyType>::generate().await
         };
@@ -84,13 +88,19 @@ where
         Ok(account_id)
     }
 
+    pub async fn uid(&self) -> Result<String> {
+        let client = self.client.read().await;
+        let signer = client.signer()?;
+        Ok(signer.account_id().to_string())
+    }
+
     pub async fn lock(&self) -> Result<bool> {
         self.client.write().await.lock().await?;
         Ok(true)
     }
 
-    pub async fn unlock(&self, password: impl Into<&str>) -> Result<bool> {
-        let password = SecretString::new(password.into().to_string());
+    pub async fn unlock(&self, password: &str) -> Result<bool> {
+        let password = SecretString::new(password.to_string());
         self.client.write().await.unlock(&password).await?;
         Ok(true)
     }
@@ -102,8 +112,8 @@ where
     R: Runtime + Identity,
     <R as System>::AccountId: Ss58Codec,
 {
-    pub async fn create(&self, device: impl Into<&str>) -> Result<bool> {
-        let device: Ss58<R> = device.into().parse()?;
+    pub async fn create(&self, device: &str) -> Result<bool> {
+        let device: Ss58<R> = device.parse()?;
         self.client
             .read()
             .await
@@ -112,8 +122,8 @@ where
         Ok(true)
     }
 
-    pub async fn change_password(&self, password: impl Into<&str>) -> Result<bool> {
-        let password = SecretString::new(password.into().to_string());
+    pub async fn change_password(&self, password: &str) -> Result<bool> {
+        let password = SecretString::new(password.to_string());
         if password.expose_secret().len() < 8 {
             return Err(Error::PasswordTooShort.into());
         }
@@ -138,21 +148,21 @@ where
         Ok(self.client.read().await.keystore().is_initialized().await?)
     }
 
-    pub async fn add(&self, device: impl Into<&str>) -> Result<bool> {
-        let device: Ss58<R> = device.into().parse()?;
+    pub async fn add(&self, device: &str) -> Result<bool> {
+        let device: Ss58<R> = device.parse()?;
         self.client.read().await.add_key(&device.0).await?;
         Ok(true)
     }
 
-    pub async fn remove(&self, device: impl Into<&str>) -> Result<bool> {
-        let device: Ss58<R> = device.into().parse()?;
+    pub async fn remove(&self, device: &str) -> Result<bool> {
+        let device: Ss58<R> = device.parse()?;
         self.client.read().await.remove_key(&device.0).await?;
         Ok(true)
     }
 
-    pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>> {
+    pub async fn list(&self, identifier: &str) -> Result<Vec<String>> {
         let client = self.client.read().await;
-        let identifier: Identifier<R> = identifier.into().parse()?;
+        let identifier: Identifier<R> = identifier.parse()?;
         let uid = resolve(&*client, Some(identifier)).await?;
         let list = client
             .fetch_keys(uid, None)
@@ -175,16 +185,16 @@ where
     R: Runtime + Identity,
     <R as System>::AccountId: Ss58Codec,
 {
-    pub async fn resolve(&self, identifier: impl Into<&str>) -> Result<String> {
-        let identifier: Identifier<R> = identifier.into().parse()?;
+    pub async fn resolve(&self, identifier: &str) -> Result<String> {
+        let identifier: Identifier<R> = identifier.parse()?;
         let client = self.client.read().await;
         let uid = resolve(&*client, Some(identifier)).await?;
         Ok(uid.to_string())
     }
 
-    pub async fn list(&self, identifier: impl Into<&str>) -> Result<Vec<String>> {
+    pub async fn list(&self, identifier: &str) -> Result<Vec<String>> {
         let client = self.client.read().await;
-        let identifier: Identifier<R> = identifier.into().parse()?;
+        let identifier: Identifier<R> = identifier.parse()?;
         let uid = resolve(&*client, Some(identifier)).await?;
         let list = client
             .identity(uid)
@@ -195,15 +205,15 @@ where
         Ok(list)
     }
 
-    pub async fn prove(&self, service: impl Into<&str>) -> Result<Vec<String>> {
-        let service: Service = service.into().parse()?;
+    pub async fn prove(&self, service: &str) -> Result<Vec<String>> {
+        let service: Service = service.parse()?;
         let instructions = service.cli_instructions();
         let proof = self.client.read().await.prove_identity(service).await?;
         Ok(vec![instructions, proof])
     }
 
-    pub async fn revoke(&self, service: impl Into<&str>) -> Result<bool> {
-        let service: Service = service.into().parse()?;
+    pub async fn revoke(&self, service: &str) -> Result<bool> {
+        let service: Service = service.parse()?;
         self.client.read().await.revoke_identity(service).await?;
         Ok(true)
     }
@@ -218,21 +228,25 @@ where
     <<<R as Runtime>::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned:
         Send + Sync,
 {
-    pub async fn balance(&self, identifier: impl Into<&str>) -> Result<R::Balance> {
+    pub async fn balance(&self, identifier: Option<&str>) -> Result<R::Balance> {
         let client = self.client.read().await;
-        let identifier: Identifier<R> = identifier.into().parse()?;
-        let uid = resolve(&*client, Some(identifier)).await?;
+        let account_id: Identifier<R> = if let Some(identifier) = identifier {
+            identifier.parse()?
+        } else {
+            Identifier::Account(client.signer()?.account_id().clone())
+        };
+        let uid = resolve(&*client, Some(account_id)).await?;
         let account = client.fetch_account(uid).await?;
         Ok(account.free)
     }
 
     pub async fn transfer(
         &self,
-        identifier: impl Into<&str>,
+        identifier: &str,
         amount: impl Into<R::Balance>,
     ) -> Result<R::Balance> {
         let client = self.client.read().await;
-        let identifier: Identifier<R> = identifier.into().parse()?;
+        let identifier: Identifier<R> = identifier.parse()?;
         let signer = client.chain_signer()?;
         let uid = resolve(&*client, Some(identifier)).await?;
         let keys = client.fetch_keys(uid, None).await?;
@@ -243,7 +257,7 @@ where
             .transfer()?
             .ok_or(Error::TransferEventFind)?;
 
-        self.balance(uid.to_string().as_str()).await
+        self.balance(None).await
     }
 }
 

@@ -17,3 +17,10 @@ thiserror = "1.0.20"
 
 [dev-dependencies]
 test-client = { path = "../../bin/client" }
+
+[features]
+default = ["identity-key", "identity-wallet", "identity-device", "identity-id"]
+identity-key = []
+identity-wallet = []
+identity-device = []
+identity-id = []

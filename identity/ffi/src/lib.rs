@@ -3,25 +3,17 @@ pub use sunshine_ffi_utils as utils;
 #[doc(hidden)]
 pub mod ffi;
 
-/// Generate the FFI for the provided runtime
-///
-/// ### Example
-/// ```
-/// use test_client::Client;
-/// use sunshine_identity_ffi::impl_ffi;
-///
-/// impl_ffi!(client: Client);
-/// ```
+#[doc(hidden)]
+#[cfg(feature = "identity-key")]
 #[macro_export]
-macro_rules! impl_ffi {
+macro_rules! impl_identity_key_ffi {
     () => {
-        use ::std::os::raw;
-        #[allow(unused)]
-        use $crate::utils::*;
-        #[allow(unused)]
-        use $crate::ffi::*;
-
+        use $crate::ffi::Key;
         gen_ffi! {
+             /// Check if the Keystore is exist and initialized.
+            ///
+            /// this is useful if you want to check if there is an already created account or not.
+            Key::exists => fn client_key_exists() -> bool;
             /// Set a new Key for this device if not already exist.
             /// you should call `client_has_device_key` first to see if you have already a key.
             ///
@@ -39,7 +31,54 @@ macro_rules! impl_ffi {
             /// Unlock your account using the password
             /// return `true` when the account get unlocked, otherwise an error message returned
             Key::unlock => fn client_key_unlock(password: *const raw::c_char = cstr!(password)) -> bool;
+            /// Get current UID as string (if any)
+            /// otherwise null returned
+            Key::uid => fn client_key_uid() -> Option<String>;
+        }
+    }
+}
 
+#[doc(hidden)]
+#[cfg(not(feature = "identity-key"))]
+#[macro_export]
+macro_rules! impl_identity_key_ffi {
+    () => {};
+}
+
+#[doc(hidden)]
+#[cfg(feature = "identity-wallet")]
+#[macro_export]
+macro_rules! impl_identity_wallet_ffi {
+    () => {
+        use $crate::ffi::Wallet;
+        gen_ffi! {
+            /// Get the balance of an identifier.
+            /// returns and string but normally it's a `u128` encoded as string.
+            Wallet::balance => fn client_wallet_balance(identifier: *const raw::c_char = cstr!(identifier, allow_null)) -> String;
+            /// Transfer tokens to another account using there `identifier`
+            /// returns current account balance after the transaction.
+            Wallet::transfer => fn client_wallet_transfer(
+                to: *const raw::c_char = cstr!(to),
+                amount: u64 = amount
+            ) -> String;
+        }
+    };
+}
+
+#[doc(hidden)]
+#[cfg(not(feature = "identity-wallet"))]
+#[macro_export]
+macro_rules! impl_identity_wallet_ffi {
+    () => {};
+}
+
+#[doc(hidden)]
+#[cfg(feature = "identity-device")]
+#[macro_export]
+macro_rules! impl_identity_device_ffi {
+    () => {
+        use $crate::ffi::Device;
+        gen_ffi! {
             /// Check if the current client has a device key already or not
             Device::has_device_key => fn client_device_has_key() -> bool;
             /// Get current Device ID as string (if any)
@@ -57,7 +96,24 @@ macro_rules! impl_ffi {
             /// Generate a new backup paper key that can be used to recover your account
             /// returns a string that contains the phrase, otherwise null if there is an error
             Device::paperkey => fn client_device_paperkey() -> Option<String>;
+        }
+    };
+}
 
+#[doc(hidden)]
+#[cfg(not(feature = "identity-device"))]
+#[macro_export]
+macro_rules! impl_identity_device_ffi {
+    () => {};
+}
+
+#[doc(hidden)]
+#[cfg(feature = "identity-id")]
+#[macro_export]
+macro_rules! impl_identity_id_ffi {
+    () => {
+        use $crate::ffi::ID;
+        gen_ffi! {
             /// Get the `UID` of the provided identifier
             ID::resolve => fn client_id_resolve(identifier: *const raw::c_char = cstr!(identifier)) -> Option<String>;
             /// get a list of identities of the provided identifier.
@@ -73,16 +129,36 @@ macro_rules! impl_ffi {
             /// returns `true` if the identity revoked.
             ID::revoke => fn client_id_revoke(service: *const raw::c_char = cstr!(service)) -> bool;
 
-            /// Get the balance of an identifier.
-            /// returns and string but normally it's a `u128` encoded as string.
-            Wallet::balance => fn client_wallet_balance(identifier: *const raw::c_char = cstr!(identifier)) -> String;
-            /// Transfer tokens to another account using there `identifier`
-            /// returns current account balance after the transaction.
-            Wallet::transfer => fn client_wallet_transfer(
-                identifier: *const raw::c_char = cstr!(identifier),
-                amount: u64 = amount
-            ) -> String;
         };
+    }
+}
+
+#[doc(hidden)]
+#[cfg(not(feature = "identity-id"))]
+#[macro_export]
+macro_rules! impl_identity_id_ffi {
+    () => {};
+}
+
+/// Generate the FFI for the provided runtime
+///
+/// ### Example
+/// ```
+/// use test_client::Client;
+/// use sunshine_identity_ffi::impl_ffi;
+///
+/// impl_ffi!(client: Client);
+/// ```
+#[macro_export]
+macro_rules! impl_ffi {
+    () => {
+        use ::std::os::raw;
+        #[allow(unused)]
+        use $crate::utils::*;
+        $crate::impl_identity_key_ffi!();
+        $crate::impl_identity_device_ffi!();
+        $crate::impl_identity_id_ffi!();
+        $crate::impl_identity_wallet_ffi!();
     };
     (client: $client: ty) => {
         gen_ffi!(client = $client);
