@@ -129,7 +129,7 @@ macro_rules! impl_identity_id_ffi {
             /// returns `true` if the identity revoked.
             ID::revoke => fn client_id_revoke(service: *const raw::c_char = cstr!(service)) -> bool;
 
-        };
+        }
     }
 }
 
@@ -152,15 +152,15 @@ macro_rules! impl_identity_id_ffi {
 #[macro_export]
 macro_rules! impl_ffi {
     () => {
-        use ::std::os::raw;
-        #[allow(unused)]
-        use $crate::utils::*;
         $crate::impl_identity_key_ffi!();
         $crate::impl_identity_device_ffi!();
         $crate::impl_identity_id_ffi!();
         $crate::impl_identity_wallet_ffi!();
     };
     (client: $client: ty) => {
+        use ::std::os::raw;
+        #[allow(unused)]
+        use $crate::utils::*;
         gen_ffi!(client = $client);
         $crate::impl_ffi!();
     };
