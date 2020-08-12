@@ -332,9 +332,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.36"
+version = "0.1.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a265e3abeffdce30b2e26b7a11b222fe37c6067404001b434101457d0385eb92"
+checksum = "caae68055714ff28740f310927e04f2eba76ff580b16fb18ed90073ee71646f7"
 dependencies = [
  "proc-macro2",
  "quote 1.0.7",
@@ -583,7 +583,7 @@ dependencies = [
  "atomic-waker",
  "futures-lite",
  "once_cell",
- "parking",
+ "parking 1.0.6",
  "waker-fn",
 ]
 
@@ -1369,7 +1369,7 @@ dependencies = [
  "parity-scale-codec",
  "paste",
  "serde",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "sp-arithmetic",
  "sp-core",
  "sp-inherents",
@@ -1575,15 +1575,15 @@ checksum = "de27142b013a8e869c14957e6d2edeef89e97c289e69d042ee3a49acd8b51789"
 
 [[package]]
 name = "futures-lite"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbe71459749b2e8e66fb95df721b22fa08661ad384a0c5b519e11d3893b4692a"
+checksum = "97999970129b808f0ccba93211201d431fcc12d7e1ffae03a61b5cedd1a7ced2"
 dependencies = [
  "fastrand",
  "futures-core",
  "futures-io",
  "memchr",
- "parking",
+ "parking 2.0.0",
  "pin-project-lite",
  "waker-fn",
 ]
@@ -2397,7 +2397,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "soketto 0.3.2",
  "thiserror",
  "tokio 0.2.22",
@@ -2450,7 +2450,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0315ef2f688e33844400b31f11c263f2b3dc21d8b9355c6891c5f185fae43f9a"
 dependencies = [
  "parity-util-mem",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
 ]
 
 [[package]]
@@ -2479,7 +2479,7 @@ dependencies = [
  "parking_lot 0.10.2",
  "regex",
  "rocksdb",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
 ]
 
 [[package]]
@@ -2490,9 +2490,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "lazycell"
-version = "1.2.1"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
+checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
@@ -2633,7 +2633,7 @@ dependencies = [
  "parity-multiaddr",
  "parking_lot 0.10.2",
  "pin-project",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "wasm-timer",
 ]
 
@@ -2682,7 +2682,7 @@ dependencies = [
  "ring",
  "rw-stream-sink",
  "sha2 0.8.2",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "thiserror",
  "unsigned-varint 0.4.0",
  "void",
@@ -2722,7 +2722,7 @@ dependencies = [
  "log",
  "prost",
  "prost-build",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "wasm-timer",
 ]
 
@@ -2746,7 +2746,7 @@ dependencies = [
  "prost-build",
  "rand 0.7.3",
  "sha2 0.8.2",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "uint",
  "unsigned-varint 0.4.0",
  "void",
@@ -2770,7 +2770,7 @@ dependencies = [
  "log",
  "net2",
  "rand 0.7.3",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "void",
  "wasm-timer",
 ]
@@ -2868,7 +2868,7 @@ dependencies = [
  "libp2p-core",
  "log",
  "rand 0.7.3",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "void",
  "wasm-timer",
 ]
@@ -3254,7 +3254,7 @@ dependencies = [
  "futures 0.3.5",
  "log",
  "pin-project",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "unsigned-varint 0.4.0",
 ]
 
@@ -3662,7 +3662,7 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "serde",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -3777,7 +3777,7 @@ dependencies = [
  "parity-util-mem-derive",
  "parking_lot 0.10.2",
  "primitive-types",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "winapi 0.3.9",
 ]
 
@@ -3803,6 +3803,12 @@ name = "parking"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6cb300f271742d4a2a66c01b6b2fa0c83dfebd2e0bf11addb879a3547b4ed87c"
+
+[[package]]
+name = "parking"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "427c3892f9e783d91cc128285287e70a59e206ca452770ece88a76f7a3eddd72"
 
 [[package]]
 name = "parking_lot"
@@ -3861,7 +3867,7 @@ dependencies = [
  "cloudabi 0.0.3",
  "libc",
  "redox_syscall",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "winapi 0.3.9",
 ]
 
@@ -3876,7 +3882,7 @@ dependencies = [
  "instant",
  "libc",
  "redox_syscall",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "winapi 0.3.9",
 ]
 
@@ -4180,9 +4186,9 @@ dependencies = [
 
 [[package]]
 name = "protobuf"
-version = "2.16.2"
+version = "2.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d883f78645c21b7281d21305181aa1f4dd9e9363e7cf2566c93121552cff003e"
+checksum = "cb14183cc7f213ee2410067e1ceeadba2a7478a59432ff0747a335202798b1e2"
 
 [[package]]
 name = "qr2term"
@@ -5843,9 +5849,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.4.1"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3757cb9d89161a2f24e1cf78efa0c1fcff485d18e3f55e0aa3480824ddaa0f3f"
+checksum = "fbee7696b84bbf3d89a1c2eccff0850e3047ed46bfcd2e92c29a2d074d57e252"
 
 [[package]]
 name = "smol"
@@ -5912,7 +5918,7 @@ dependencies = [
  "log",
  "rand 0.7.3",
  "sha1",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "static_assertions",
  "thiserror",
 ]
@@ -6389,7 +6395,7 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot 0.10.2",
  "rand 0.7.3",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
  "sp-core",
  "sp-externalities",
  "sp-panic-handler",
@@ -6784,7 +6790,7 @@ dependencies = [
 [[package]]
 name = "sunshine-cli-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#9dfd52e341819e04c375eaeb223ead6c4177c1bc"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
@@ -6797,12 +6803,11 @@ dependencies = [
 [[package]]
 name = "sunshine-client-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#9dfd52e341819e04c375eaeb223ead6c4177c1bc"
 dependencies = [
  "anyhow",
  "async-std",
  "async-trait",
- "env_logger",
  "ipfs-embed",
  "jsonrpsee",
  "libipld",
@@ -6823,7 +6828,7 @@ dependencies = [
 [[package]]
 name = "sunshine-codec"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#9dfd52e341819e04c375eaeb223ead6c4177c1bc"
 dependencies = [
  "anyhow",
  "hash-db",
@@ -6835,7 +6840,7 @@ dependencies = [
 [[package]]
 name = "sunshine-crypto"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#9dfd52e341819e04c375eaeb223ead6c4177c1bc"
 dependencies = [
  "aead 0.2.0",
  "anyhow",
@@ -6913,7 +6918,7 @@ dependencies = [
 [[package]]
 name = "sunshine-ffi-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#9dfd52e341819e04c375eaeb223ead6c4177c1bc"
 dependencies = [
  "allo-isolate",
  "async-std",
@@ -6988,7 +6993,7 @@ dependencies = [
 [[package]]
 name = "sunshine-keystore"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#9dfd52e341819e04c375eaeb223ead6c4177c1bc"
 dependencies = [
  "anyhow",
  "async-std",
@@ -7003,7 +7008,7 @@ dependencies = [
 [[package]]
 name = "sunshine-pallet-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#88fb3d11341079d2f9d9a1856bbe35ac48a9b165"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#9dfd52e341819e04c375eaeb223ead6c4177c1bc"
 dependencies = [
  "blake2-rfc",
  "hash-db",
@@ -7657,7 +7662,7 @@ dependencies = [
  "hashbrown 0.8.2",
  "log",
  "rustc-hex",
- "smallvec 1.4.1",
+ "smallvec 1.4.2",
 ]
 
 [[package]]
@@ -7703,9 +7708,9 @@ checksum = "373c8a200f9e67a0c95e62a4f52fbf80c23b4381c05a17845531982fa99e6b33"
 
 [[package]]
 name = "uint"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "429ffcad8c8c15f874578c7337d156a3727eb4a1c2374c0ae937ad9a9b748c80"
+checksum = "9db035e67dfaf7edd9aebfe8676afcd63eed53c8a4044fed514c8cccf1835177"
 dependencies = [
  "byteorder",
  "crunchy",
