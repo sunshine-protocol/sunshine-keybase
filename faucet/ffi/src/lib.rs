@@ -14,19 +14,16 @@ pub mod ffi;
 #[macro_export]
 macro_rules! impl_ffi {
     () => {
-        #[allow(unused)]
-        use $crate::ffi::*;
-        #[allow(unused)]
-        use $crate::utils::*;
-
+        use $crate::ffi::Faucet;
         gen_ffi! {
             /// Try to mint the current account, this only enabled in testnet and behind a feature flag
             /// returned the minted amount or null if there is any errors
             Faucet::mint => fn client_faucet_mint() -> String;
-
         }
     };
     (client: $client: ty) => {
+        #[allow(unused)]
+        use $crate::utils::*;
         gen_ffi!(client = $client);
         $crate::impl_ffi!();
     };
