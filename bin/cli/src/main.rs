@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
             .join("sunshine-identity")
     };
 
-    let mut client = Client::new(&root, None).await?;
+    let mut client = Client::new(&root, "ws://127.0.0.1:9944").await?;
 
     let mut password_changes = if client.chain_signer().is_ok() {
         let sub = client.subscribe_password_changes().await?;
