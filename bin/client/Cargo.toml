@@ -11,9 +11,8 @@ mock = [
 ]
 
 [dependencies]
-async-trait = "0.1.36"
-ipld-block-builder = "0.4.1"
-libipld = { version = "0.3.1", default-features = false }
+async-trait = "0.1.38"
+libipld = { version = "0.4.0", default-features = false }
 substrate-subxt = "0.11.0"
 sunshine-chain-client = { path = "../../chain/client" }
 sunshine-client-utils = { git = "https://github.com/sunshine-protocol/sunshine-core" }

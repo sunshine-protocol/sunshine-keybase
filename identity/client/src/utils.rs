@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::NoAccount;
 use crate::service::{Service, ServiceParseError};
 use crate::{Identity, IdentityClient};
 use sp_core::crypto::Ss58Codec;
@@ -18,10 +18,7 @@ where
     };
     let uid = match identifier {
         Identifier::Uid(uid) => uid,
-        Identifier::Account(account_id) => client
-            .fetch_uid(&account_id)
-            .await?
-            .ok_or(Error::NoAccount)?,
+        Identifier::Account(account_id) => client.fetch_uid(&account_id).await?.ok_or(NoAccount)?,
         Identifier::Service(service) => client.resolve(&service).await?,
     };
     Ok(uid)

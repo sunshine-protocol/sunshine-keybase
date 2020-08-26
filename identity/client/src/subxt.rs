@@ -1,9 +1,8 @@
 //! Subxt calls.
 use codec::{Decode, Encode, FullCodec};
-use core::convert::TryInto;
 use core::fmt::Display;
 use frame_support::Parameter;
-use libipld::cid::{Cid, Error as CidError};
+use libipld::cid::Cid;
 use std::str::FromStr;
 use substrate_subxt::sp_runtime::traits::{CheckedAdd, Member};
 use substrate_subxt::system::{System, SystemEventsDecoder};
@@ -13,7 +12,7 @@ use substrate_subxt::{module, Call, Event, Store};
 pub trait Identity: System {
     type Uid: Parameter + Member + Copy + Default + CheckedAdd + Into<u64> + FromStr + Display;
 
-    type Cid: Parameter + Member + Default + From<Cid> + TryInto<Cid, Error = CidError>;
+    type Cid: Parameter + Member + Default + From<Cid> + Into<Cid>;
 
     type Mask: Parameter + Member + Default;
 

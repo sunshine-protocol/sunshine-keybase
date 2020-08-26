@@ -1,7 +1,8 @@
-use crate::error::{Error, Result};
+use crate::error::ProofNotFound;
 use async_std::task;
 use serde::Deserialize;
 use std::collections::BTreeMap;
+use sunshine_client_utils::Result;
 
 #[derive(Deserialize)]
 struct Gist {
@@ -40,7 +41,7 @@ async fn find_proofs(user: &str) -> Result<Vec<Proof>> {
 }
 
 pub async fn verify(user: &str, signature: &str) -> Result<String> {
-    find_proofs(user)
+    Ok(find_proofs(user)
         .await?
         .into_iter()
         .filter_map(|proof| {
@@ -52,7 +53,7 @@ pub async fn verify(user: &str, signature: &str) -> Result<String> {
             None
         })
         .next()
-        .ok_or(Error::ProofNotFound)
+        .ok_or(ProofNotFound)?)
 }
 
 pub async fn resolve(user: &str) -> Result<Vec<String>> {

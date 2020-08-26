@@ -1,10 +1,10 @@
-use crate::error::Result;
 use crate::service::Service;
 use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
 use libipld::codec::Codec as _;
 use libipld::DagCbor;
 use std::time::{Duration, UNIX_EPOCH};
+use sunshine_client_utils::Result;
 
 #[derive(Clone, Debug, Eq, PartialEq, DagCbor)]
 pub struct Claim {
@@ -61,7 +61,7 @@ impl UnsignedClaim {
     }
 
     pub fn to_bytes(&self) -> Result<Box<[u8]>> {
-        Ok(DagCborCodec::encode(self)?)
+        Ok(DagCborCodec.encode(self)?)
     }
 }
 

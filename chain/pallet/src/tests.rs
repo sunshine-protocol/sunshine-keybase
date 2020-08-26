@@ -1,9 +1,9 @@
 use crate::mock::*;
 use frame_support::assert_ok;
 use sunshine_client_utils::block::GenericBlock;
-use sunshine_client_utils::codec::TreeEncode;
+use sunshine_client_utils::codec::trie::TreeEncode;
 
-type Block = GenericBlock<(), sunshine_pallet_utils::hasher::Blake2Hasher>;
+type Block = GenericBlock<(), sunshine_pallet_utils::Blake2Hasher>;
 
 #[test]
 fn test_block_authoring() {

@@ -1,12 +1,14 @@
 use crate::claim::{Claim, ClaimBody, IdentityInfo, IdentityStatus, UnsignedClaim};
-use crate::error::Error;
+use crate::error::{InvalidClaim, NoAccount, NoBlockHash, ResolveFailure, RuntimeInvalid};
 use crate::keystore::{Keystore, Mask};
 use crate::service::Service;
 use crate::subxt::*;
 use codec::{Decode, Encode};
 use core::convert::TryInto;
-use ipld_block_builder::{Cache, Codec, ReadonlyCache};
+use libipld::cache::{Cache, ReadonlyCache};
+use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
+use libipld::store::ReadonlyStore;
 use std::collections::HashMap;
 use std::time::Duration;
 use std::time::UNIX_EPOCH;
@@ -20,20 +22,22 @@ use sunshine_client_utils::crypto::{
     secrecy::SecretString,
     signer::GenericSigner,
 };
-use sunshine_client_utils::{Client, Result, Signer};
+use sunshine_client_utils::{Client, OffchainClient, Result, Signer};
 
-async fn set_identity<T, C>(client: &C, claim: Claim) -> Result<()>
+async fn set_identity<R, C>(client: &C, claim: Claim) -> Result<()>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
-    C::OffchainClient: Cache<Codec, Claim>,
+    R: Runtime + Identity,
+    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<R>,
+    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+        From<DagCborCodec> + Into<DagCborCodec>,
 {
     let prev = claim.claim().prev.clone();
     let root = client.offchain_client().insert(claim).await?;
+    let prev_cid = prev.clone().map(Into::into);
+    let root_cid = root.clone().into();
     client.offchain_client().flush().await?;
-    let prev_cid = prev.clone().map(T::Cid::from);
-    let root_cid = T::Cid::from(root);
     client
         .chain_client()
         .set_identity_and_watch(&client.chain_signer()?, &prev_cid, &root_cid)
@@ -51,32 +55,34 @@ where
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<T>,
 {
-    if let Some(bytes) = client.chain_client().identity(uid, None).await? {
-        Ok(Some(bytes.try_into().map_err(Error::from)?))
-    } else {
-        Ok(None)
-    }
+    Ok(client
+        .chain_client()
+        .identity(uid, None)
+        .await?
+        .map(Into::into))
 }
 
-async fn create_claim<T, C>(
+async fn create_claim<R, C>(
     client: &C,
     body: ClaimBody,
     expire_in: Option<Duration>,
-    uid: T::Uid,
+    uid: R::Uid,
 ) -> Result<Claim>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
-    C::OffchainClient: Cache<Codec, Claim>,
-    T::AccountId: Ss58Codec,
+    R: Runtime + Identity,
+    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<R>,
+    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+        From<DagCborCodec> + Into<DagCborCodec>,
+    R::AccountId: Ss58Codec,
 {
     let genesis = client.chain_client().genesis().as_ref().to_vec();
     let block = client
         .chain_client()
         .block_hash(None)
         .await?
-        .ok_or(Error::NoBlockHash)?
+        .ok_or(NoBlockHash)?
         .as_ref()
         .to_vec();
     let prev = fetch_identity(client, uid).await?;
@@ -106,21 +112,23 @@ where
     Ok(Claim::new(claim, signature))
 }
 
-async fn verify_claim<T, C>(client: &C, uid: T::Uid, claim: &Claim) -> Result<()>
+async fn verify_claim<R, C>(client: &C, uid: R::Uid, claim: &Claim) -> Result<()>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
-    C::OffchainClient: Cache<Codec, Claim>,
-    T::Signature: Decode,
-    <T::Signature as Verify>::Signer: IdentifyAccount<AccountId = T::AccountId>,
-    T::AccountId: Ss58Codec,
+    R: Runtime + Identity,
+    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<R>,
+    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+        From<DagCborCodec> + Into<DagCborCodec>,
+    R::Signature: Decode,
+    <R::Signature as Verify>::Signer: IdentifyAccount<AccountId = R::AccountId>,
+    R::AccountId: Ss58Codec,
 {
     if claim.claim().uid != uid.into() {
-        return Err(Error::InvalidClaim("uid").into());
+        return Err(InvalidClaim("uid").into());
     }
     if &claim.claim().genesis[..] != client.chain_client().genesis().as_ref() {
-        return Err(Error::InvalidClaim("genesis").into());
+        return Err(InvalidClaim("genesis").into());
     }
     let prev_seqno = if let Some(prev) = claim.claim().prev.as_ref() {
         client.offchain_client().get(prev).await?.claim().seqno
@@ -128,18 +136,18 @@ where
         0
     };
     if claim.claim().seqno != prev_seqno + 1 {
-        return Err(Error::InvalidClaim("seqno").into());
+        return Err(InvalidClaim("seqno").into());
     }
     let block = Decode::decode(&mut &claim.claim().block[..])?;
     let keys = client.chain_client().keys(uid, Some(block)).await?;
     let key = keys
         .iter()
         .find(|k| k.to_ss58check() == claim.claim().public)
-        .ok_or(Error::InvalidClaim("key"))?;
+        .ok_or(InvalidClaim("key"))?;
     let bytes = claim.claim().to_bytes()?;
-    let signature: T::Signature = Decode::decode(&mut claim.signature())?;
+    let signature: R::Signature = Decode::decode(&mut claim.signature())?;
     if !signature.verify(&bytes[..], key) {
-        return Err(Error::InvalidClaim("signature").into());
+        return Err(InvalidClaim("signature").into());
     }
     Ok(())
 }
@@ -232,7 +240,7 @@ where
 {
     let uid = fetch_uid(client, &client.signer()?.account_id())
         .await?
-        .ok_or(Error::NoAccount)?;
+        .ok_or(NoAccount)?;
     let pgen = client.chain_client().password_gen(uid, None).await?;
     let gen = client.keystore().gen().await?;
     for g in gen..pgen {
@@ -241,7 +249,7 @@ where
             .chain_client()
             .password_mask(uid, g + 1, None)
             .await?
-            .ok_or(Error::RuntimeInvalid)?;
+            .ok_or(RuntimeInvalid)?;
         client
             .keystore_mut()
             .apply_mask(&Mask::new(mask), g + 1)
@@ -285,7 +293,7 @@ where
 {
     let keys = client.chain_client().keys(uid, hash).await?;
     if keys.is_empty() {
-        return Err(Error::ResolveFailure.into());
+        return Err(ResolveFailure.into());
     }
     Ok(keys)
 }
@@ -299,36 +307,40 @@ where
     Ok(client.chain_client().account(uid, None).await?)
 }
 
-pub async fn prove_identity<T, C>(client: &C, service: Service) -> Result<String>
+pub async fn prove_identity<R, C>(client: &C, service: Service) -> Result<String>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
-    C::OffchainClient: Cache<Codec, Claim>,
-    T::AccountId: Ss58Codec,
+    R: Runtime + Identity,
+    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<R>,
+    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+        From<DagCborCodec> + Into<DagCborCodec>,
+    R::AccountId: Ss58Codec,
 {
     let uid = fetch_uid(client, client.signer()?.account_id())
         .await?
-        .ok_or(Error::NoAccount)?;
+        .ok_or(NoAccount)?;
     let claim = create_claim(client, ClaimBody::Ownership(service.clone()), None, uid).await?;
     let proof = service.proof(&claim)?;
     set_identity(client, claim).await?;
     Ok(proof)
 }
 
-pub async fn revoke_identity<T, C>(client: &C, service: Service) -> Result<()>
+pub async fn revoke_identity<R, C>(client: &C, service: Service) -> Result<()>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
-    C::OffchainClient: Cache<Codec, Claim>,
-    T::AccountId: Ss58Codec,
-    T::Signature: Decode,
-    <T::Signature as Verify>::Signer: IdentifyAccount<AccountId = T::AccountId>,
+    R: Runtime + Identity,
+    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<R>,
+    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+        From<DagCborCodec> + Into<DagCborCodec>,
+    R::AccountId: Ss58Codec,
+    R::Signature: Decode,
+    <R::Signature as Verify>::Signer: IdentifyAccount<AccountId = R::AccountId>,
 {
     let uid = fetch_uid(client, client.signer()?.account_id())
         .await?
-        .ok_or(Error::NoAccount)?;
+        .ok_or(NoAccount)?;
     let id = identity(client, uid)
         .await?
         .into_iter()
@@ -341,15 +353,17 @@ where
     Ok(())
 }
 
-pub async fn identity<T, C>(client: &C, uid: T::Uid) -> Result<Vec<IdentityInfo>>
+pub async fn identity<R, C>(client: &C, uid: R::Uid) -> Result<Vec<IdentityInfo>>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
-    C::OffchainClient: Cache<Codec, Claim>,
-    T::AccountId: Ss58Codec,
-    T::Signature: Decode,
-    <T::Signature as Verify>::Signer: IdentifyAccount<AccountId = T::AccountId>,
+    R: Runtime + Identity,
+    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<R>,
+    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+        From<DagCborCodec> + Into<DagCborCodec>,
+    R::AccountId: Ss58Codec,
+    R::Signature: Decode,
+    <R::Signature as Verify>::Signer: IdentifyAccount<AccountId = R::AccountId>,
 {
     let mut claims = vec![];
     let mut next = fetch_identity(client, uid).await?;
@@ -371,12 +385,10 @@ where
                     if let ClaimBody::Ownership(service) = &claim2.claim().body {
                         ids.entry(service.clone()).or_default().push(claim.clone());
                     } else {
-                        return Err(
-                            Error::InvalidClaim("cannot revoke: claim is not revokable").into()
-                        );
+                        return Err(InvalidClaim("cannot revoke: claim is not revokable").into());
                     }
                 } else {
-                    return Err(Error::InvalidClaim("cannot revoke: claim not found").into());
+                    return Err(InvalidClaim("cannot revoke: claim not found").into());
                 }
             }
         }
@@ -422,15 +434,17 @@ where
     Ok(info)
 }
 
-pub async fn resolve<T, C>(client: &C, service: &Service) -> Result<T::Uid>
+pub async fn resolve<R, C>(client: &C, service: &Service) -> Result<R::Uid>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
-    C::OffchainClient: Cache<Codec, Claim>,
-    T::AccountId: Ss58Codec,
-    T::Signature: Decode,
-    <T::Signature as Verify>::Signer: IdentifyAccount<AccountId = T::AccountId>,
+    R: Runtime + Identity,
+    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<R>,
+    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+        From<DagCborCodec> + Into<DagCborCodec>,
+    R::AccountId: Ss58Codec,
+    R::Signature: Decode,
+    <R::Signature as Verify>::Signer: IdentifyAccount<AccountId = R::AccountId>,
 {
     let uids = service.resolve().await?;
     for uid in uids {
@@ -447,7 +461,7 @@ where
             }
         }
     }
-    Err(Error::ResolveFailure.into())
+    Err(ResolveFailure.into())
 }
 
 #[cfg(test)]

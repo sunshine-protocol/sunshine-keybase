@@ -259,7 +259,7 @@ impl transaction_payment::Trait for Runtime {
 impl chain::Trait for Runtime {
     type ChainId = u64;
     type Number = u64;
-    type Hasher = pallet_utils::hasher::Blake2Hasher;
+    type Hasher = pallet_utils::Blake2Hasher;
     type Event = Event;
 }
 
@@ -270,7 +270,7 @@ impl faucet::Trait for Runtime {
 
 impl identity::Trait for Runtime {
     type Uid = u32;
-    type Cid = pallet_utils::cid::CidBytes;
+    type Cid = pallet_utils::Cid;
     type Mask = [u8; 32];
     type Gen = u16;
     type AccountData = balances::AccountData<Balance>;

@@ -1,28 +1,25 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum Error {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[error(transparent)]
-    Cbor(#[from] libipld::cbor::Error),
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
-    #[error(transparent)]
-    Cid(#[from] libipld::cid::Error),
+#[error("Failed to find account associated with key.")]
+pub struct NoAccount;
 
-    #[error("Failed to find account associated with key.")]
-    NoAccount,
-    #[error("invalid claim {0}")]
-    InvalidClaim(&'static str),
-    #[error("failed to resolve identity")]
-    ResolveFailure,
-    #[error("proof not found")]
-    ProofNotFound,
-    #[error("failed to get block hash")]
-    NoBlockHash,
-    #[error("runtime invalid")]
-    RuntimeInvalid,
-}
+#[derive(Debug, Error)]
+#[error("invalid claim {0}")]
+pub struct InvalidClaim(pub &'static str);
 
-pub type Result<T> = core::result::Result<T, Error>;
+#[derive(Debug, Error)]
+#[error("failed to resolve identity")]
+pub struct ResolveFailure;
+
+#[derive(Debug, Error)]
+#[error("proof not found")]
+pub struct ProofNotFound;
+
+#[derive(Debug, Error)]
+#[error("failed to get block hash")]
+pub struct NoBlockHash;
+
+#[derive(Debug, Error)]
+#[error("runtime invalid")]
+pub struct RuntimeInvalid;

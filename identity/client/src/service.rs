@@ -1,5 +1,4 @@
 use crate::claim::Claim;
-use crate::error::Result;
 use crate::github;
 use core::str::FromStr;
 use libipld::cbor::DagCborCodec;
@@ -7,6 +6,7 @@ use libipld::codec::Codec;
 use libipld::json::DagJsonCodec;
 use libipld::multibase::{encode, Base};
 use libipld::{DagCbor, Ipld};
+use sunshine_client_utils::Result;
 use thiserror::Error;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, DagCbor)]
@@ -47,9 +47,9 @@ impl Service {
         let public = &claim.claim().public;
         let signature = encode(Base::Base64, claim.signature());
 
-        let bytes = DagCborCodec::encode(claim.claim())?;
-        let ipld: Ipld = DagCborCodec::decode(&bytes)?;
-        let bytes = DagJsonCodec::encode(&ipld)?;
+        let bytes = DagCborCodec.encode(claim.claim())?;
+        let ipld: Ipld = DagCborCodec.decode(&bytes)?;
+        let bytes = DagJsonCodec.encode(&ipld)?;
         let object = std::str::from_utf8(&bytes).expect("json codec returns valid utf8");
 
         Ok(match self {

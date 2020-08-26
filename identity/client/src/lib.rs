@@ -7,13 +7,14 @@ mod subxt;
 mod utils;
 
 pub use claim::{Claim, IdentityInfo, IdentityStatus};
-pub use error::Error;
 pub use service::{Service, ServiceParseError};
 pub use subxt::*;
 pub use utils::{resolve, Identifier};
 
 use codec::Decode;
-use ipld_block_builder::{Cache, Codec};
+use libipld::cache::Cache;
+use libipld::cbor::DagCborCodec;
+use libipld::store::ReadonlyStore;
 use sp_core::crypto::{Pair, Ss58Codec};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::convert::TryInto;
@@ -23,7 +24,7 @@ use substrate_subxt::{
 use sunshine_client_utils::{
     async_trait,
     crypto::{bip39::Mnemonic, keychain::KeyType, secrecy::SecretString},
-    keystore, Client, Result,
+    keystore, Client, OffchainClient, Result,
 };
 
 #[async_trait]
@@ -62,7 +63,9 @@ where
         + Send
         + Sync,
     C: Client<R, KeyType = K, Keystore = keystore::Keystore<K>>,
-    C::OffchainClient: Cache<Codec, Claim>,
+    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+        From<DagCborCodec> + Into<DagCborCodec>,
     K: KeyType + 'static,
 {
     async fn create_account_for(&self, key: &<R as System>::AccountId) -> Result<()> {

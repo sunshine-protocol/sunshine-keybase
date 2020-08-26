@@ -2,11 +2,15 @@ mod subxt;
 
 pub use subxt::*;
 
+use libipld::block::Block;
+use libipld::store::{ReadonlyStore, Store};
 use parity_scale_codec::{Decode, Encode};
 use substrate_subxt::{system::System, Runtime, SignedExtension, SignedExtra};
 use sunshine_client_utils::block::GenericBlock;
-use sunshine_client_utils::codec::TreeEncode;
-use sunshine_client_utils::{async_trait, Client, Result};
+use sunshine_client_utils::codec::codec::TreeCodec;
+use sunshine_client_utils::codec::hasher::BLAKE2B_256_TREE;
+use sunshine_client_utils::codec::trie::TreeEncode;
+use sunshine_client_utils::{async_trait, Client, OffchainClient, Result};
 use thiserror::Error;
 
 /*pub struct BlockSubscription<T: Runtime + Chain, B: Decode> {
@@ -51,6 +55,7 @@ where
     T: Runtime + Chain<Number = u64>,
     <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<T>,
+    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec: From<TreeCodec>,
 {
     async fn create_chain(&self) -> Result<T::ChainId> {
         Ok(self
@@ -76,10 +81,11 @@ where
             payload: block,
         };
         let sealed = full_block.seal()?;
+        let block = Block::encode(TreeCodec, BLAKE2B_256_TREE, &sealed.offchain)?;
+        self.offchain_client().store().insert(&block).await?;
         self.chain_client()
             .author_block(&signer, chain_id, *sealed.offchain.root(), &sealed.proof)
             .await?;
-        //self.offchain_client().insert(sealed
         Ok(number)
     }
 
