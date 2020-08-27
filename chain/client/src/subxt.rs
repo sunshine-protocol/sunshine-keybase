@@ -1,6 +1,6 @@
 use frame_support::Parameter;
 use parity_scale_codec::{Decode, Encode};
-use sp_core::{Hasher, H256};
+use sp_core::Hasher;
 use sp_runtime::traits::{CheckedAdd, Member};
 use std::marker::PhantomData;
 use substrate_subxt::system::{System, SystemEventsDecoder};
@@ -14,7 +14,17 @@ pub trait Chain: System {
 
     /// Trie hasher.
     #[module(ignore)]
-    type Hasher: Hasher<Out = H256>;
+    type TrieHasher: Hasher<Out = Self::TrieHash>;
+
+    /// Trie hash.
+    type TrieHash: Parameter
+        + Member
+        + AsRef<[u8]>
+        + AsMut<[u8]>
+        + Eq
+        + Default
+        + Copy
+        + core::hash::Hash;
 
     /// Block number type.
     type Number: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Encode;
@@ -28,7 +38,7 @@ pub struct AuthoritiesStore<T: Chain> {
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
 pub struct ChainRootStore<T: Chain> {
-    #[store(returns = Option<H256>)]
+    #[store(returns = Option<T::TrieHash>)]
     pub chain_id: T::ChainId,
 }
 
@@ -58,7 +68,7 @@ pub struct RemoveAuthorityCall<'a, T: Chain> {
 #[derive(Call, Clone, Debug, Eq, Encode, PartialEq)]
 pub struct AuthorBlockCall<'a, T: Chain> {
     pub chain_id: T::ChainId,
-    pub root: H256,
+    pub root: T::TrieHash,
     pub proof: &'a [Vec<u8>],
 }
 
@@ -72,7 +82,7 @@ pub struct NewBlockEvent<T: Chain> {
     pub chain_id: T::ChainId,
     pub number: T::Number,
     pub who: <T as System>::AccountId,
-    pub root: H256,
+    pub root: T::TrieHash,
 }
 
 #[derive(Clone, Debug, Decode, Eq, Event, PartialEq)]

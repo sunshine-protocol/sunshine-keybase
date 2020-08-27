@@ -9,7 +9,9 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use grandpa::{fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
+use pallet_grandpa::{
+    fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
+};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -28,7 +30,6 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 // A few exports that help ease life for downstream crates.
-pub use balances::Call as BalancesCall;
 pub use frame_support::{
     construct_runtime, parameter_types,
     traits::{KeyOwnerProofSystem, Randomness},
@@ -38,15 +39,11 @@ pub use frame_support::{
     },
     StorageValue,
 };
+pub use pallet_balances::Call as BalancesCall;
+pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
-pub use timestamp::Call as TimestampCall;
-
-/// Importing the faucet pallet
-pub use faucet;
-/// Importing the identity pallet
-pub use identity;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -139,7 +136,7 @@ parameter_types! {
     pub const Version: RuntimeVersion = VERSION;
 }
 
-impl system::Trait for Runtime {
+impl frame_system::Trait for Runtime {
     /// The basic call filter to use in dispatchable.
     type BaseCallFilter = ();
     /// The identifier used to distinguish between accounts.
@@ -198,11 +195,11 @@ impl system::Trait for Runtime {
     type SystemWeightInfo = ();
 }
 
-impl aura::Trait for Runtime {
+impl pallet_aura::Trait for Runtime {
     type AuthorityId = AuraId;
 }
 
-impl grandpa::Trait for Runtime {
+impl pallet_grandpa::Trait for Runtime {
     type Event = Event;
     type Call = Call;
 
@@ -223,7 +220,7 @@ parameter_types! {
     pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
 }
 
-impl timestamp::Trait for Runtime {
+impl pallet_timestamp::Trait for Runtime {
     /// A timestamp: milliseconds since the unix epoch.
     type Moment = u64;
     type OnTimestampSet = Aura;
@@ -235,7 +232,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 500;
 }
 
-impl balances::Trait for Runtime {
+impl pallet_balances::Trait for Runtime {
     type Balance = Balance;
     type Event = Event;
     type DustRemoval = ();
@@ -248,32 +245,33 @@ parameter_types! {
     pub const TransactionByteFee: Balance = 1;
 }
 
-impl transaction_payment::Trait for Runtime {
-    type Currency = balances::Module<Runtime>;
+impl pallet_transaction_payment::Trait for Runtime {
+    type Currency = pallet_balances::Module<Runtime>;
     type OnTransactionPayment = ();
     type TransactionByteFee = TransactionByteFee;
     type WeightToFee = IdentityFee<Balance>;
     type FeeMultiplierUpdate = ();
 }
 
-impl chain::Trait for Runtime {
+impl sunshine_chain_pallet::Trait for Runtime {
     type ChainId = u64;
     type Number = u64;
-    type Hasher = pallet_utils::Blake2Hasher;
+    type TrieHasher = sunshine_codec::hasher::TreeHasherBlake2b256;
+    type TrieHash = sunshine_codec::hasher::TreeHashBlake2b256;
     type Event = Event;
 }
 
-impl faucet::Trait for Runtime {
+impl sunshine_faucet_pallet::Trait for Runtime {
     const MINT_UNIT: Self::Balance = 1_000_000_000;
     type Event = Event;
 }
 
-impl identity::Trait for Runtime {
+impl sunshine_identity_pallet::Trait for Runtime {
     type Uid = u32;
-    type Cid = pallet_utils::Cid;
+    type Cid = sunshine_codec::Cid;
     type Mask = [u8; 32];
     type Gen = u16;
-    type AccountData = balances::AccountData<Balance>;
+    type AccountData = pallet_balances::AccountData<Balance>;
     type Event = Event;
 }
 
@@ -283,17 +281,17 @@ construct_runtime!(
         NodeBlock = opaque::Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: system::{Module, Call, Config, Storage, Event<T>},
-        RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
-        Timestamp: timestamp::{Module, Call, Storage, Inherent},
-        Aura: aura::{Module, Config<T>, Inherent},
-        Grandpa: grandpa::{Module, Call, Storage, Config, Event},
-        Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-        TransactionPayment: transaction_payment::{Module, Storage},
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+        Aura: pallet_aura::{Module, Config<T>, Inherent},
+        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+        TransactionPayment: pallet_transaction_payment::{Module, Storage},
 
-        Chain: chain::{Module, Call, Event<T>, Storage},
-        Faucet: faucet::{Module, Call, Event<T>, ValidateUnsigned},
-        Identity: identity::{Module, Call, Storage, Event<T>},
+        Chain: sunshine_chain_pallet::{Module, Call, Event<T>, Storage},
+        Faucet: sunshine_faucet_pallet::{Module, Call, Event<T>, ValidateUnsigned},
+        Identity: sunshine_identity_pallet::{Module, Call, Storage, Event<T>},
     }
 );
 
@@ -309,21 +307,26 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
-    system::CheckSpecVersion<Runtime>,
-    system::CheckTxVersion<Runtime>,
-    system::CheckGenesis<Runtime>,
-    system::CheckEra<Runtime>,
-    system::CheckNonce<Runtime>,
-    system::CheckWeight<Runtime>,
-    transaction_payment::ChargeTransactionPayment<Runtime>,
+    frame_system::CheckSpecVersion<Runtime>,
+    frame_system::CheckTxVersion<Runtime>,
+    frame_system::CheckGenesis<Runtime>,
+    frame_system::CheckEra<Runtime>,
+    frame_system::CheckNonce<Runtime>,
+    frame_system::CheckWeight<Runtime>,
+    pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-    frame_executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
+pub type Executive = frame_executive::Executive<
+    Runtime,
+    Block,
+    frame_system::ChainContext<Runtime>,
+    Runtime,
+    AllModules,
+>;
 
 impl_runtime_apis! {
     impl sp_api::Core<Block> for Runtime {

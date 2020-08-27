@@ -12,7 +12,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter
 use frame_system::{ensure_signed, Trait as System};
 use orml_utilities::OrderedSet;
 use parity_scale_codec::Encode;
-use sp_core::{Hasher, H256};
+use sp_core::Hasher;
 use sp_runtime::traits::{CheckedAdd, Member};
 use sp_std::prelude::*;
 use sp_trie::Layout;
@@ -26,7 +26,17 @@ pub trait Trait: System {
     type Number: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Encode;
 
     /// Trie hasher.
-    type Hasher: Hasher<Out = H256>;
+    type TrieHasher: Hasher<Out = Self::TrieHash>;
+
+    /// Trie hash.
+    type TrieHash: Parameter
+        + Member
+        + AsRef<[u8]>
+        + AsMut<[u8]>
+        + Eq
+        + Default
+        + Copy
+        + core::hash::Hash;
 
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as System>::Event>;
@@ -42,7 +52,7 @@ decl_storage! {
 
         pub ChainRoot get(fn chain_head): map
             hasher(blake2_128_concat) T::ChainId
-            => Option<H256>;
+            => Option<T::TrieHash>;
 
         pub ChainNumber get(fn block_number): map
             hasher(blake2_128_concat) T::ChainId
@@ -56,9 +66,10 @@ decl_event! {
         AccountId = <T as System>::AccountId,
         Number = <T as Trait>::Number,
         ChainId = <T as Trait>::ChainId,
+        TrieHash = <T as Trait>::TrieHash,
     {
         NewChain(ChainId),
-        NewBlock(ChainId, Number, AccountId, H256),
+        NewBlock(ChainId, Number, AccountId, TrieHash),
         AuthorityAdded(ChainId, Number, AccountId, AccountId),
         AuthorityRemoved(ChainId, Number, AccountId, AccountId),
     }
@@ -127,7 +138,7 @@ decl_module! {
         pub fn author_block(
             origin,
             chain_id: T::ChainId,
-            root: H256,
+            root: T::TrieHash,
             proof: Vec<Vec<u8>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -140,7 +151,7 @@ decl_module! {
             } else {
                 0u8.into()
             };
-            sp_trie::verify_trie_proof::<Layout<T::Hasher>, _, _, _>(
+            sp_trie::verify_trie_proof::<Layout<T::TrieHasher>, _, _, _>(
                 &root,
                 &proof,
                 &[

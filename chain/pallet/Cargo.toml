@@ -17,7 +17,6 @@ sp-trie = { version = "2.0.0-rc6", default-features = false }
 [dev-dependencies]
 sp-io = { version = "2.0.0-rc6", default-features = false }
 sunshine-client-utils = { version = "0.1.0", git = "https://github.com/sunshine-protocol/sunshine-core" }
-sunshine-pallet-utils = { version = "0.1.0", git = "https://github.com/sunshine-protocol/sunshine-core" }
 
 [features]
 default = ["std"]

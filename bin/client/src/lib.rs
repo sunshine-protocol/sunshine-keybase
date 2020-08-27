@@ -8,13 +8,13 @@ use substrate_subxt::system::System;
 use substrate_subxt::{extrinsic, sp_core, sp_runtime};
 use sunshine_chain_client::Chain;
 use sunshine_client_utils::client::{GenericClient, KeystoreImpl, OffchainStoreImpl};
-use sunshine_client_utils::codec::hasher::BLAKE2B_256;
+use sunshine_client_utils::codec::hasher::{TreeHashBlake2b256, TreeHasherBlake2b256, BLAKE2B_256};
+use sunshine_client_utils::codec::Cid;
 use sunshine_client_utils::crypto::keychain::KeyType;
 use sunshine_client_utils::crypto::sr25519;
 use sunshine_client_utils::node::{
     ChainSpecError, Configuration, NodeConfig, RpcHandlers, ScServiceError, TaskManager,
 };
-use sunshine_client_utils::{Blake2Hasher, Cid};
 use sunshine_faucet_client::Faucet;
 use sunshine_identity_client::{Claim, Identity};
 
@@ -48,7 +48,8 @@ impl Balances for Runtime {
 impl Chain for Runtime {
     type ChainId = u64;
     type Number = u64;
-    type Hasher = Blake2Hasher;
+    type TrieHasher = TreeHasherBlake2b256;
+    type TrieHash = TreeHashBlake2b256;
 }
 
 impl Faucet for Runtime {}
