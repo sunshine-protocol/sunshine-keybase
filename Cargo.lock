@@ -557,21 +557,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blake3"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce4f9586c9a3151c4b49b19e82ba163dd073614dd057e53c969e1a4db5b52720"
-dependencies = [
- "arrayref",
- "arrayvec 0.5.1",
- "cc",
- "cfg-if",
- "constant_time_eq",
- "crypto-mac 0.8.0",
- "digest 0.9.0",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3645,13 +3630,12 @@ dependencies = [
 
 [[package]]
 name = "multihash"
-version = "0.11.3"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51cc1552a982658478dbc22eefb72bb1d4fd1161eb9818f7bbf4347443f07569"
+checksum = "567122ab6492f49b59def14ecc36e13e64dca4188196dd0cd41f9f3f979f3df6"
 dependencies = [
  "blake2b_simd",
  "blake2s_simd",
- "blake3",
  "digest 0.9.0",
  "sha-1 0.9.1",
  "sha2 0.9.1",
@@ -7195,7 +7179,7 @@ dependencies = [
 [[package]]
 name = "sunshine-cli-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#0bf55e6cd5d999c03dcd88c73fa4957f37b0b5f4"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
@@ -7208,7 +7192,7 @@ dependencies = [
 [[package]]
 name = "sunshine-client-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#0bf55e6cd5d999c03dcd88c73fa4957f37b0b5f4"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
 dependencies = [
  "anyhow",
  "async-std",
@@ -7232,7 +7216,7 @@ dependencies = [
 [[package]]
 name = "sunshine-codec"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#0bf55e6cd5d999c03dcd88c73fa4957f37b0b5f4"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
 dependencies = [
  "anyhow",
  "generic-array 0.14.4",
@@ -7249,7 +7233,7 @@ dependencies = [
 [[package]]
 name = "sunshine-crypto"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#0bf55e6cd5d999c03dcd88c73fa4957f37b0b5f4"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
 dependencies = [
  "aead 0.2.0",
  "anyhow",
@@ -7327,7 +7311,7 @@ dependencies = [
 [[package]]
 name = "sunshine-ffi-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#0bf55e6cd5d999c03dcd88c73fa4957f37b0b5f4"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
 dependencies = [
  "allo-isolate",
  "async-std",
@@ -7401,7 +7385,7 @@ dependencies = [
 [[package]]
 name = "sunshine-keystore"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#0bf55e6cd5d999c03dcd88c73fa4957f37b0b5f4"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
 dependencies = [
  "anyhow",
  "async-std",
@@ -7416,7 +7400,7 @@ dependencies = [
 [[package]]
 name = "sunshine-node-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#0bf55e6cd5d999c03dcd88c73fa4957f37b0b5f4"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
 dependencies = [
  "sc-basic-authorship",
  "sc-client-api",

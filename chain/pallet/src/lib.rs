@@ -23,7 +23,7 @@ pub trait Trait: System {
     type ChainId: Parameter + Member + Copy + Default + CheckedAdd + From<u8>;
 
     /// Block number type.
-    type Number: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Encode;
+    type Number: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Encode + Ord;
 
     /// Trie hasher.
     type TrieHasher: Hasher<Out = Self::TrieHash>;
@@ -54,7 +54,7 @@ decl_storage! {
             hasher(blake2_128_concat) T::ChainId
             => Option<T::TrieHash>;
 
-        pub ChainNumber get(fn block_number): map
+        pub ChainHeight get(fn block_number): map
             hasher(blake2_128_concat) T::ChainId
             => <T as Trait>::Number;
     }
@@ -144,13 +144,9 @@ decl_module! {
             let who = ensure_signed(origin)?;
             Self::ensure_authorized(chain_id, &who)?;
             let ancestor = <ChainRoot<T>>::get(chain_id);
-            let number = if ancestor.is_some() {
-                <ChainNumber<T>>::get(chain_id)
-                    .checked_add(&1u8.into())
-                    .ok_or(Error::<T>::BlockNumberOverflow)?
-            } else {
-                0u8.into()
-            };
+            let number = <ChainHeight<T>>::get(chain_id);
+            let height = number.checked_add(&1u8.into())
+                .ok_or(Error::<T>::BlockNumberOverflow)?;
             sp_trie::verify_trie_proof::<Layout<T::TrieHasher>, _, _, _>(
                 &root,
                 &proof,
@@ -160,7 +156,7 @@ decl_module! {
                 ],
             ).map_err(|_| Error::<T>::InvalidProof)?;
             <ChainRoot<T>>::insert(chain_id, root);
-            <ChainNumber<T>>::insert(chain_id, number);
+            <ChainHeight<T>>::insert(chain_id, height);
             Self::deposit_event(RawEvent::NewBlock(chain_id, number, who, root));
             Ok(())
         }
@@ -169,7 +165,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     fn height(chain_id: T::ChainId) -> T::Number {
-        <ChainNumber<T>>::get(chain_id)
+        <ChainHeight<T>>::get(chain_id)
     }
 
     fn is_authority(chain_id: T::ChainId, who: &<T as System>::AccountId) -> bool {

@@ -3,7 +3,7 @@ use frame_support::assert_ok;
 use sunshine_client_utils::block::GenericBlock;
 use sunshine_client_utils::codec::trie::TreeEncode;
 
-type Block = GenericBlock<(), sunshine_client_utils::codec::hasher::TreeHasherBlake2b256>;
+type Block = GenericBlock<(), u64, sunshine_client_utils::codec::hasher::TreeHasherBlake2b256>;
 
 #[test]
 fn test_block_authoring() {

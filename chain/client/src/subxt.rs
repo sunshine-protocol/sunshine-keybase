@@ -1,11 +1,12 @@
 use frame_support::Parameter;
 use parity_scale_codec::{Decode, Encode};
 use sp_core::Hasher;
-use sp_runtime::traits::{CheckedAdd, Member};
+use sp_runtime::traits::{CheckedAdd, CheckedSub, Member};
 use std::marker::PhantomData;
 use substrate_subxt::system::{System, SystemEventsDecoder};
 use substrate_subxt::{module, Call, Event, Store};
 use substrate_subxt::{sp_core, sp_runtime};
+use sunshine_client_utils::codec::Cid;
 
 #[module]
 pub trait Chain: System {
@@ -24,10 +25,20 @@ pub trait Chain: System {
         + Eq
         + Default
         + Copy
-        + core::hash::Hash;
+        + core::hash::Hash
+        + Into<Cid>;
 
     /// Block number type.
-    type Number: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Encode;
+    type Number: Parameter
+        + Member
+        + Copy
+        + Default
+        + CheckedAdd
+        + CheckedSub
+        + From<u8>
+        + Encode
+        + Ord
+        + Into<u64>;
 }
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
@@ -43,7 +54,7 @@ pub struct ChainRootStore<T: Chain> {
 }
 
 #[derive(Clone, Debug, Eq, Encode, PartialEq, Store)]
-pub struct ChainNumberStore<T: Chain> {
+pub struct ChainHeightStore<T: Chain> {
     #[store(returns = T::Number)]
     pub chain_id: T::ChainId,
 }
