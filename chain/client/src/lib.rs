@@ -180,8 +180,6 @@ pub trait ChainClient<R: Runtime + Chain>: Client<R> + Sized {
         chain_id: R::ChainId,
         authority: &<R as System>::AccountId,
     ) -> Result<R::Number>;
-    async fn follow(&self, chain_id: R::ChainId) -> Result<()>;
-    async fn unfollow(&self, chain_id: R::ChainId) -> Result<()>;
 }
 
 #[async_trait]
@@ -272,16 +270,6 @@ where
             .authority_removed()?
             .ok_or(RemoveAuthority)?
             .number)
-    }
-
-    async fn follow(&self, _chain_id: R::ChainId) -> Result<()> {
-        // TODO
-        Ok(())
-    }
-
-    async fn unfollow(&self, _chain_id: R::ChainId) -> Result<()> {
-        // TODO
-        Ok(())
     }
 }
 
