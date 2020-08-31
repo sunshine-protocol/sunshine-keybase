@@ -207,23 +207,34 @@ where
         block: &B,
     ) -> Result<R::Number> {
         let signer = self.chain_signer()?;
-        let number = self.chain_client().chain_height(chain_id, None).await?;
-        let ancestor = self.chain_client().chain_root(chain_id, None).await?;
-        let full_block = GenericBlock::<_, R::Number, R::TrieHasher> {
-            number,
-            ancestor,
-            payload: block,
-        };
-        let sealed = full_block.seal()?;
-        let block = Block::encode(TreeCodec, BLAKE2B_256_TREE, &sealed.offchain)?;
-        self.offchain_client().store().insert(&block).await?;
-        // TODO: retry failed due to concurrency.
-        self.chain_client()
-            .author_block_and_watch(&signer, chain_id, *sealed.offchain.root(), &sealed.proof)
-            .await?
-            .new_block()?
-            .ok_or(AuthorBlock)?;
-        Ok(number)
+        let mut number = self.chain_client().chain_height(chain_id, None).await?;
+        loop {
+            let ancestor = self.chain_client().chain_root(chain_id, None).await?;
+            let full_block = GenericBlock::<_, R::Number, R::TrieHasher> {
+                number,
+                ancestor,
+                payload: block,
+            };
+            let sealed = full_block.seal()?;
+            let block = Block::encode(TreeCodec, BLAKE2B_256_TREE, &sealed.offchain)?;
+            log::info!("created block {:?} {:?} with ancestor {:?}", number, block.cid, ancestor);
+            self.offchain_client().store().insert(&block).await?;
+            let result = self.chain_client()
+                .author_block_and_watch(&signer, chain_id, *sealed.offchain.root(), &sealed.proof)
+                .await;
+            if let Err(err) = &result {
+                let height = self.chain_client().chain_height(chain_id, None).await?;
+                if height > number {
+                    number = height;
+                    log::info!("chain height changed {:?}, retrying.\n{:?}", height, err);
+                    continue;
+                }
+            }
+            result?
+                .new_block()?
+                .ok_or(AuthorBlock)?;
+            return Ok(number);
+        }
     }
 
     async fn subscribe<B: Decode + Send + Sync>(
@@ -275,6 +286,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use async_std::prelude::*;
     use parity_scale_codec::{Decode, Encode};
     use test_client::chain::ChainClient;
     use test_client::mock::{test_node, AccountKeyring, Client};
@@ -286,6 +298,7 @@ mod tests {
 
     #[async_std::test]
     async fn test_chain() {
+        env_logger::try_init().ok();
         let (node, _node_tmp) = test_node();
         let client = Client::mock(&node, AccountKeyring::Alice).await;
 
@@ -333,6 +346,7 @@ mod tests {
 
     #[async_std::test]
     async fn test_sync() {
+        env_logger::try_init().ok();
         let (node, _node_tmp) = test_node();
         let client = Client::mock(&node, AccountKeyring::Alice).await;
 
@@ -348,5 +362,24 @@ mod tests {
         assert_eq!(b1.payload, 1);
         let b2 = sub.next().await.unwrap().unwrap();
         assert_eq!(b2.payload, 2);
+    }
+
+    #[async_std::test]
+    async fn test_concurrent() {
+        env_logger::try_init().ok();
+        let (node, _node_tmp) = test_node();
+        let client1 = Client::mock(&node, AccountKeyring::Alice).await;
+        let client2 = Client::mock(&node, AccountKeyring::Bob).await;
+
+        let chain_id = client1.create_chain().await.unwrap();
+        assert_eq!(chain_id, 0);
+        client1.add_authority(chain_id, &AccountKeyring::Bob.to_account_id()).await.unwrap();
+
+        let a = client1.author_block(chain_id, &0u64);
+        let b = client2.author_block(chain_id, &1u64);
+
+        let (ra, rb) = a.join(b).await;
+        ra.unwrap();
+        rb.unwrap();
     }
 }

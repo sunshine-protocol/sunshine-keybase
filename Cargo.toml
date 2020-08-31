@@ -18,4 +18,5 @@ members = [
 ]
 
 [patch.crates-io]
-substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt" }
+#substrate-subxt = { git = "https://github.com/paritytech/substrate-subxt" }
+substrate-subxt = { path = "../subxt" }

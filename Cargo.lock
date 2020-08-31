@@ -7072,7 +7072,6 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.11.0"
-source = "git+https://github.com/paritytech/substrate-subxt#3ea9d3b8bbeb8c7ab9c2f7b382c39a54ba2bcb6a"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -7100,7 +7099,6 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-client"
 version = "0.3.0"
-source = "git+https://github.com/paritytech/substrate-subxt#3ea9d3b8bbeb8c7ab9c2f7b382c39a54ba2bcb6a"
 dependencies = [
  "async-std",
  "futures 0.1.29",
@@ -7117,7 +7115,6 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.11.0"
-source = "git+https://github.com/paritytech/substrate-subxt#3ea9d3b8bbeb8c7ab9c2f7b382c39a54ba2bcb6a"
 dependencies = [
  "heck",
  "proc-macro-crate",
@@ -7151,8 +7148,10 @@ name = "sunshine-chain-client"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "env_logger",
  "frame-support",
  "libipld",
+ "log",
  "parity-scale-codec",
  "substrate-subxt",
  "sunshine-client-utils",
