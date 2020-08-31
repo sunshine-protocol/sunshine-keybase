@@ -217,9 +217,15 @@ where
             };
             let sealed = full_block.seal()?;
             let block = Block::encode(TreeCodec, BLAKE2B_256_TREE, &sealed.offchain)?;
-            log::info!("created block {:?} {:?} with ancestor {:?}", number, block.cid, ancestor);
+            log::info!(
+                "created block {:?} {:?} with ancestor {:?}",
+                number,
+                block.cid,
+                ancestor
+            );
             self.offchain_client().store().insert(&block).await?;
-            let result = self.chain_client()
+            let result = self
+                .chain_client()
                 .author_block_and_watch(&signer, chain_id, *sealed.offchain.root(), &sealed.proof)
                 .await;
             if let Err(err) = &result {
@@ -230,9 +236,7 @@ where
                     continue;
                 }
             }
-            result?
-                .new_block()?
-                .ok_or(AuthorBlock)?;
+            result?.new_block()?.ok_or(AuthorBlock)?;
             return Ok(number);
         }
     }
@@ -373,7 +377,10 @@ mod tests {
 
         let chain_id = client1.create_chain().await.unwrap();
         assert_eq!(chain_id, 0);
-        client1.add_authority(chain_id, &AccountKeyring::Bob.to_account_id()).await.unwrap();
+        client1
+            .add_authority(chain_id, &AccountKeyring::Bob.to_account_id())
+            .await
+            .unwrap();
 
         let a = client1.author_block(chain_id, &0u64);
         let b = client2.author_block(chain_id, &1u64);
