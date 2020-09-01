@@ -233,10 +233,14 @@ where
                 if height > number {
                     number = height;
                     log::info!("chain height changed {:?}, retrying.\n{:?}", height, err);
+                    self.offchain_client().store().unpin(&block.cid).await?;
                     continue;
                 }
             }
             result?.new_block()?.ok_or(AuthorBlock)?;
+            if let Some(cid) = ancestor.map(Into::into) {
+                self.offchain_client().store().unpin(&cid).await?;
+            }
             return Ok(number);
         }
     }
@@ -292,12 +296,33 @@ where
 mod tests {
     use async_std::prelude::*;
     use parity_scale_codec::{Decode, Encode};
-    use test_client::chain::ChainClient;
+    use sunshine_client_utils::{Client as _, OffchainClient, codec::Cid};
+    use test_client::chain::{ChainClient, ChainRootStoreExt};
     use test_client::mock::{test_node, AccountKeyring, Client};
 
     #[derive(Clone, Debug, Eq, PartialEq, Decode, Encode)]
     struct Block {
         description: String,
+    }
+
+    async fn pinned_blocks(client: &Client) -> Vec<(Cid, usize)> {
+        let store = client.offchain_client().store();
+        let mut pinned_blocks = vec![];
+        for cid in store.blocks().await {
+            let md = store.metadata(&cid).await;
+            if md.pins > 0 {
+                pinned_blocks.push((cid, md.pins));
+            }
+        }
+        pinned_blocks
+    }
+
+    async fn assert_only_root_is_pinned_once(client: &Client, chain_id: u64) {
+        let root = client.chain_client().chain_root(chain_id, None).await.unwrap();
+        let pinned = pinned_blocks(client).await;
+        assert_eq!(pinned.len(), 1);
+        assert_eq!(Some(pinned[0].0.clone()), root.map(Cid::from));
+        assert_eq!(pinned[0].1, 1);
     }
 
     #[async_std::test]
@@ -346,6 +371,8 @@ mod tests {
         assert_eq!(block2.number, number);
         assert!(block2.ancestor.is_some());
         assert_eq!(block, block2.payload);
+
+        assert_only_root_is_pinned_once(&client, chain_id).await;
     }
 
     #[async_std::test]
@@ -361,11 +388,15 @@ mod tests {
         client.author_block(chain_id, &1u64).await.unwrap();
         client.author_block(chain_id, &2u64).await.unwrap();
 
+        assert_only_root_is_pinned_once(&client, chain_id).await;
+
         let mut sub = client.subscribe::<u64>(chain_id, 1).await.unwrap();
         let b1 = sub.next().await.unwrap().unwrap();
         assert_eq!(b1.payload, 1);
         let b2 = sub.next().await.unwrap().unwrap();
         assert_eq!(b2.payload, 2);
+
+        assert_only_root_is_pinned_once(&client, chain_id).await;
     }
 
     #[async_std::test]
@@ -388,5 +419,8 @@ mod tests {
         let (ra, rb) = a.join(b).await;
         ra.unwrap();
         rb.unwrap();
+
+        assert_only_root_is_pinned_once(&client1, chain_id).await;
+        assert_only_root_is_pinned_once(&client2, chain_id).await;
     }
 }

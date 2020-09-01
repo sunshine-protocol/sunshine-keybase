@@ -159,9 +159,12 @@ dependencies = [
 
 [[package]]
 name = "allo-isolate"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eea2c1a4b084f8eb5c41d89b498cb67f300d065870773bdadf5fa45fef4e97dd"
+checksum = "ff09da612ca86c794c3c8f70613a3e6652b5f1313b938937b32cae80df28fdb1"
+dependencies = [
+ "pin-project",
+]
 
 [[package]]
 name = "ansi_term"
@@ -298,9 +301,9 @@ dependencies = [
 
 [[package]]
 name = "async-mutex"
-version = "1.1.5"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20e85981fc34e84cdff3fc2c9219189752633fdc538a06df8b5ac45b68a4f3a9"
+checksum = "065de1ccf10280d0d75c2f3a71a970ee1007c85c51aa3e7deee1df100f1dfadb"
 dependencies = [
  "event-listener",
 ]
@@ -366,9 +369,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.38"
+version = "0.1.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e1a4a2f97ce50c9d0282c1468816208588441492b40d813b2e0419c22c05e7f"
+checksum = "687c230d85c0a52504709705fc8a53e4a692b83a2184f03dae73e38e1e93a783"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1669,7 +1672,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e64b03909df88034c26dc1547e8970b91f98bdb65165d6a4e9110d94263dbb2c"
 dependencies = [
  "gloo-timers",
- "send_wrapper 0.4.0",
+ "send_wrapper",
 ]
 
 [[package]]
@@ -2509,8 +2512,6 @@ checksum = "755456fae044e6fa1ebbbd1b3e902ae19e73097ed4ed87bb79934a867c007bc3"
 [[package]]
 name = "libipld"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcfef06ff1af915d35b840c64986ae0c83a064fdcd34e4c506e980436e1c0aab"
 dependencies = [
  "async-std",
  "async-trait",
@@ -2521,14 +2522,13 @@ dependencies = [
  "libipld-json",
  "libipld-macro",
  "libipld-pb",
+ "log",
  "thiserror",
 ]
 
 [[package]]
 name = "libipld-cbor"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "025039273c91b943ff9c0e5818e43b13bd8eddcbd71d50ad3b5c4f3a001c7062"
 dependencies = [
  "byteorder 1.3.4",
  "libipld-core",
@@ -2538,8 +2538,6 @@ dependencies = [
 [[package]]
 name = "libipld-cbor-derive"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63c482f222852993f971370c4a452b9460ba848ae0757c414993e825e05e6b36"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2550,8 +2548,6 @@ dependencies = [
 [[package]]
 name = "libipld-core"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef7d2c3293102e8e25230c6e00f25c84067f9a56f033e6ff18ad1ea5473a28f2"
 dependencies = [
  "anyhow",
  "multibase",
@@ -2563,8 +2559,6 @@ dependencies = [
 [[package]]
 name = "libipld-json"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73fa78242b6e9fb8d17e5ba73c7554add83543f6fa07f6f26db8a93d4b94dec4"
 dependencies = [
  "base64 0.12.3",
  "libipld-core",
@@ -2575,8 +2569,6 @@ dependencies = [
 [[package]]
 name = "libipld-macro"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e06b4b9e648e7b9089e794511eb902fa515ba8fbc8ea3377225e654272e6840"
 dependencies = [
  "libipld-core",
 ]
@@ -2584,8 +2576,6 @@ dependencies = [
 [[package]]
 name = "libipld-pb"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "feb620478c1158bd4fb862dac9f80df4c34ba315e1055b76c52ca221b1bad1e1"
 dependencies = [
  "libipld-core",
  "prost",
@@ -3354,9 +3344,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af67924b8dd885cccea261866c8ce5b74d239d272e154053ff927dae839f5ae9"
+checksum = "23b34178653005c1181711c333f0e5604a14a1b5115c814fd42304bdd16245e0"
 dependencies = [
  "cc",
  "pkg-config",
@@ -4082,9 +4072,9 @@ dependencies = [
 
 [[package]]
 name = "parity-multiaddr"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc20af3143a62c16e7c9e92ea5c6ae49f7d271d97d4d8fe73afc28f0514a3d0f"
+checksum = "2165a93382a93de55868dcbfa11e4a8f99676a9164eee6a2b4a9479ad319c257"
 dependencies = [
  "arrayref",
  "bs58",
@@ -4389,12 +4379,13 @@ checksum = "feb3b2b1033b8a60b4da6ee470325f887758c95d5320f52f9ce0df055a55940e"
 
 [[package]]
 name = "polling"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e09dffb745feffca5be3dea51c02b7b368c4597ab0219a82acaf9799ab3e0d1"
+checksum = "d10bd4578b2ca39fa2581c058921cb50ad226a8999829ba595e1665bcfdaf4a8"
 dependencies = [
  "cfg-if",
  "libc",
+ "log",
  "wepoll-sys-stjepang",
  "winapi 0.3.9",
 ]
@@ -6022,12 +6013,6 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "send_wrapper"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0eddf2e8f50ced781f288c19f18621fa72a3779e3cb58dbf23b07469b0abeb4"
-
-[[package]]
-name = "send_wrapper"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f638d531eccd6e23b980caf34876660d38e265409d8e99b397ab71eb3612fad0"
@@ -7072,6 +7057,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.11.0"
+source = "git+https://github.com/dvc94ch/substrate-subxt?branch=error-bug#2632187a88a128f14fe1557a368feb3e71c3091b"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -7099,6 +7085,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-client"
 version = "0.3.0"
+source = "git+https://github.com/dvc94ch/substrate-subxt?branch=error-bug#2632187a88a128f14fe1557a368feb3e71c3091b"
 dependencies = [
  "async-std",
  "futures 0.1.29",
@@ -7115,6 +7102,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.11.0"
+source = "git+https://github.com/dvc94ch/substrate-subxt?branch=error-bug#2632187a88a128f14fe1557a368feb3e71c3091b"
 dependencies = [
  "heck",
  "proc-macro-crate",
@@ -7178,7 +7166,7 @@ dependencies = [
 [[package]]
 name = "sunshine-cli-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
@@ -7191,7 +7179,7 @@ dependencies = [
 [[package]]
 name = "sunshine-client-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
 dependencies = [
  "anyhow",
  "async-std",
@@ -7215,7 +7203,7 @@ dependencies = [
 [[package]]
 name = "sunshine-codec"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
 dependencies = [
  "anyhow",
  "generic-array 0.14.4",
@@ -7232,7 +7220,7 @@ dependencies = [
 [[package]]
 name = "sunshine-crypto"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
 dependencies = [
  "aead 0.2.0",
  "anyhow",
@@ -7310,7 +7298,7 @@ dependencies = [
 [[package]]
 name = "sunshine-ffi-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
 dependencies = [
  "allo-isolate",
  "async-std",
@@ -7384,7 +7372,7 @@ dependencies = [
 [[package]]
 name = "sunshine-keystore"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
 dependencies = [
  "anyhow",
  "async-std",
@@ -7399,7 +7387,7 @@ dependencies = [
 [[package]]
 name = "sunshine-node-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#2d2913273045931ca89d5b41f132eae02d91ca62"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
 dependencies = [
  "sc-basic-authorship",
  "sc-client-api",
@@ -7661,9 +7649,7 @@ dependencies = [
 
 [[package]]
 name = "tiny-cid"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db638d9f528f75ed5a79b52cfbd60c4da079db92fba86f48da137460aec1e752"
+version = "0.2.5"
 dependencies = [
  "multibase",
  "parity-scale-codec",
@@ -7682,15 +7668,16 @@ dependencies = [
 
 [[package]]
 name = "tiny-multihash"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ff9b72da15b55d25ec47cf88a4db9d20a786cf9dc5d6e2eba84d5f45e071022"
+checksum = "903ca10df4dbb9c5afb890f8005f9e8224cd607ddabf6ddcf87c68d1692751a1"
 dependencies = [
  "blake2b_simd",
  "blake2s_simd",
  "digest 0.9.0",
  "generic-array 0.14.4",
  "parity-scale-codec",
+ "serde",
  "sha-1 0.9.1",
  "sha2 0.9.1",
  "sha3 0.9.1",
@@ -7868,9 +7855,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-rustls"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "228139ddd4fea3fa345a29233009635235833e52807af7ea6448ead03890d6a9"
+checksum = "e12831b255bcfa39dc0436b01e19fea231a37db570686c06ee72c423479f889a"
 dependencies = [
  "futures-core",
  "rustls 0.18.1",
@@ -8409,15 +8396,14 @@ checksum = "93b162580e34310e5931c4b792560108b10fd14d64915d7fff8ff00180e70092"
 
 [[package]]
 name = "wasm-timer"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "324c5e65a08699c9c4334ba136597ab22b85dccd4b65dd1e36ccf8f723a95b54"
+checksum = "be0ecb0db480561e9a7642b5d3e4187c128914e58aa84330b9493e3eb68c5e7f"
 dependencies = [
  "futures 0.3.5",
  "js-sys",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.0",
  "pin-utils",
- "send_wrapper 0.2.0",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
