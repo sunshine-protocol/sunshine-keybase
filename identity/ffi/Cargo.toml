@@ -9,7 +9,7 @@ documentation = "https://docs.rs/sunshine-identity-ffi"
 repository = "https://github.com/sunshine-protocol/sunshine-identity"
 
 [dependencies]
-substrate-subxt = "0.11.0"
+substrate-subxt = "0.12.0"
 sunshine-client-utils = { git = "https://github.com/sunshine-protocol/sunshine-core" }
 sunshine-ffi-utils = { git = "https://github.com/sunshine-protocol/sunshine-core" }
 sunshine-identity-client = { version = "^0.2", path = "../client" }

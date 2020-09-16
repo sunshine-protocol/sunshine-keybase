@@ -18,6 +18,4 @@ members = [
 ]
 
 [patch.crates-io]
-substrate-subxt = { git = "https://github.com/dvc94ch/substrate-subxt", branch = "error-bug" }
-libipld = { path = "../../ipld/rust-ipld" }
-tiny-cid = { path = "../../ipld/tiny-cid" }
+libipld = { path = "../rust-ipld" }

@@ -257,9 +257,9 @@ dependencies = [
 
 [[package]]
 name = "async-channel"
-version = "1.4.1"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59386c3aa61f4e14c4ddda1a6744c119b4bf278ec9f866d3c20bc5728ee0eb97"
+checksum = "21279cfaa4f47df10b1816007e738ca3747ef2ee53ffc51cdbf57a8bb266fee3"
 dependencies = [
  "concurrent-queue",
  "event-listener",
@@ -1289,9 +1289,9 @@ checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 
 [[package]]
 name = "fastrand"
-version = "1.3.4"
+version = "1.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bd3bdaaf0a72155260a1c098989b60db1cbb22d6a628e64f16237aa4da93cc7"
+checksum = "5c85295147490b8fcf2ea3d104080a105a8b2c63f9c319e82c02d8e952388919"
 
 [[package]]
 name = "fdlimit"
@@ -2177,9 +2177,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.5.1"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86b45e59b16c76b11bf9738fd5d38879d3bd28ad292d7b313608becb17ae2df9"
+checksum = "4e47a3566dd4fd4eec714ae6ceabdee0caec795be835c223d92c2d40f1e8cf1c"
 dependencies = [
  "autocfg 1.0.1",
  "hashbrown 0.8.2",
@@ -2318,9 +2318,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpc-derive"
-version = "14.2.1"
+version = "14.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fadf6945e227246825a583514534d864554e9f23d80b3c77d034b10983db5ef"
+checksum = "d0e77e8812f02155b85a677a96e1d16b60181950c0636199bc4528524fba98dc"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -3294,7 +3294,7 @@ dependencies = [
  "quicksink",
  "rustls 0.18.1",
  "rw-stream-sink",
- "soketto 0.4.1",
+ "soketto 0.4.2",
  "url 2.1.1",
  "webpki",
  "webpki-roots 0.18.0",
@@ -3344,9 +3344,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23b34178653005c1181711c333f0e5604a14a1b5115c814fd42304bdd16245e0"
+checksum = "602113192b08db8f38796c4e85c39e960c145965140e918018bcde1952429655"
 dependencies = [
  "cc",
  "pkg-config",
@@ -4379,9 +4379,9 @@ checksum = "feb3b2b1033b8a60b4da6ee470325f887758c95d5320f52f9ce0df055a55940e"
 
 [[package]]
 name = "polling"
-version = "0.1.6"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d10bd4578b2ca39fa2581c058921cb50ad226a8999829ba595e1665bcfdaf4a8"
+checksum = "b1e9fa0ab21ed700cf0c4ebec57ae5496bec942a0aef9545562979a9f75b97aa"
 dependencies = [
  "cfg-if",
  "libc",
@@ -4500,9 +4500,9 @@ checksum = "eba180dafb9038b050a4c280019bbedf9f2467b61e5d892dcad585bb57aadc5a"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.19"
+version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04f5f085b5d71e2188cb8271e5da0161ad52c3f227a661a3c135fdf28e258b12"
+checksum = "175c513d55719db99da20232b06cda8bab6b83ec2d04e3283edf0213c37c1a29"
 dependencies = [
  "unicode-xid",
 ]
@@ -6297,9 +6297,9 @@ dependencies = [
 
 [[package]]
 name = "soketto"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85457366ae0c6ce56bf05a958aef14cd38513c236568618edbcd9a8c52cb80b0"
+checksum = "b5c71ed3d54db0a699f4948e1bb3e45b450fa31fe602621dee6680361d569c88"
 dependencies = [
  "base64 0.12.3",
  "bytes 0.5.6",
@@ -6308,7 +6308,7 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.7.3",
- "sha-1 0.8.2",
+ "sha-1 0.9.1",
 ]
 
 [[package]]
@@ -7056,8 +7056,9 @@ dependencies = [
 
 [[package]]
 name = "substrate-subxt"
-version = "0.11.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=error-bug#2632187a88a128f14fe1557a368feb3e71c3091b"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31fb7e8027a8445851f2a45fa82c30d2b005b9e6eb3be9db8669904d6d8ed5ab"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -7084,8 +7085,9 @@ dependencies = [
 
 [[package]]
 name = "substrate-subxt-client"
-version = "0.3.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=error-bug#2632187a88a128f14fe1557a368feb3e71c3091b"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41f3218c00b2f05683c7536214334668dba790baaf0dbedaf837d7007090187a"
 dependencies = [
  "async-std",
  "futures 0.1.29",
@@ -7101,8 +7103,9 @@ dependencies = [
 
 [[package]]
 name = "substrate-subxt-proc-macro"
-version = "0.11.0"
-source = "git+https://github.com/dvc94ch/substrate-subxt?branch=error-bug#2632187a88a128f14fe1557a368feb3e71c3091b"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af1b2f3a945ccd397a1b14fea7abf5a92d1da60329d62362be3a146a1982eba7"
 dependencies = [
  "heck",
  "proc-macro-crate",
@@ -7166,7 +7169,7 @@ dependencies = [
 [[package]]
 name = "sunshine-cli-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#e057ea849cfed2da13794e7c2f5ec2306b547046"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.1",
@@ -7179,7 +7182,7 @@ dependencies = [
 [[package]]
 name = "sunshine-client-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#e057ea849cfed2da13794e7c2f5ec2306b547046"
 dependencies = [
  "anyhow",
  "async-std",
@@ -7203,7 +7206,7 @@ dependencies = [
 [[package]]
 name = "sunshine-codec"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#e057ea849cfed2da13794e7c2f5ec2306b547046"
 dependencies = [
  "anyhow",
  "generic-array 0.14.4",
@@ -7220,7 +7223,7 @@ dependencies = [
 [[package]]
 name = "sunshine-crypto"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#e057ea849cfed2da13794e7c2f5ec2306b547046"
 dependencies = [
  "aead 0.2.0",
  "anyhow",
@@ -7244,7 +7247,7 @@ dependencies = [
  "substrate-subxt",
  "subtle 2.2.3",
  "thiserror",
- "x25519-dalek 1.0.1",
+ "x25519-dalek 1.1.0",
  "zeroize",
 ]
 
@@ -7298,7 +7301,7 @@ dependencies = [
 [[package]]
 name = "sunshine-ffi-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#e057ea849cfed2da13794e7c2f5ec2306b547046"
 dependencies = [
  "allo-isolate",
  "async-std",
@@ -7372,7 +7375,7 @@ dependencies = [
 [[package]]
 name = "sunshine-keystore"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#e057ea849cfed2da13794e7c2f5ec2306b547046"
 dependencies = [
  "anyhow",
  "async-std",
@@ -7387,7 +7390,7 @@ dependencies = [
 [[package]]
 name = "sunshine-node-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#c6aa06cb2fa5a84105f2a7ded0e662b49d3f1261"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#e057ea849cfed2da13794e7c2f5ec2306b547046"
 dependencies = [
  "sc-basic-authorship",
  "sc-client-api",
@@ -7650,6 +7653,8 @@ dependencies = [
 [[package]]
 name = "tiny-cid"
 version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b635d214a0d951465523fd67ad11faf8838ad927b5a85f021142d4349d89f00"
 dependencies = [
  "multibase",
  "parity-scale-codec",
@@ -8590,9 +8595,9 @@ dependencies = [
 
 [[package]]
 name = "x25519-dalek"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00ffb05621d7d051df0f020edf3e5db20797a4e522bf1f9c5dfa20603f1c85f6"
+checksum = "bc614d95359fd7afc321b66d2107ede58b246b844cf5d8a0adcca413e439f088"
 dependencies = [
  "curve25519-dalek 3.0.0",
  "rand_core 0.5.1",
