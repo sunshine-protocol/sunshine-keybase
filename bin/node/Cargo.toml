@@ -15,6 +15,7 @@ test-runtime = { path = "../runtime" }
 sc-cli = "0.8.0-rc6"
 sc-service = { version = "0.8.0-rc6", default-features = false }
 structopt = "0.3.17"
+tiny-multihash = "0.4.7"
 
 [build-dependencies]
 substrate-build-script-utils = "2.0.0-rc6"

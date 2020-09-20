@@ -12,7 +12,7 @@ mock = [
 
 [dependencies]
 async-trait = "0.1.40"
-libipld = { version = "0.4.0", default-features = false }
+libipld = { version = "0.5.1", default-features = false }
 substrate-subxt = "0.12.0"
 sunshine-chain-client = { path = "../../chain/client" }
 sunshine-client-utils = { git = "https://github.com/sunshine-protocol/sunshine-core" }

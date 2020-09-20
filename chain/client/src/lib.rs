@@ -6,7 +6,9 @@ pub use subxt::*;
 use crate::error::{AddAuthority, AuthorBlock, CreateChain, RemoveAuthority};
 use core::marker::PhantomData;
 use libipld::block::Block;
-use libipld::store::{ReadonlyStore, Store};
+use libipld::codec::{Decode as IpldDecode};
+use libipld::ipld::Ipld;
+use libipld::store::{Store, StoreParams};
 use parity_scale_codec::{Decode, Encode};
 use sp_runtime::traits::CheckedSub;
 use substrate_subxt::{
@@ -17,7 +19,7 @@ use sunshine_client_utils::block::GenericBlock;
 use sunshine_client_utils::codec::codec::TreeCodec;
 use sunshine_client_utils::codec::hasher::BLAKE2B_256_TREE;
 use sunshine_client_utils::codec::trie::{OffchainBlock, TreeDecode, TreeEncode};
-use sunshine_client_utils::{async_trait, Client, OffchainClient, Result};
+use sunshine_client_utils::{async_trait, Client, Node, OffchainClient, Result};
 
 struct ChainEventSubscription<R: Runtime, E: Event<R>> {
     _marker: PhantomData<E>,
@@ -101,7 +103,7 @@ pub struct BlockSubscription<R: Runtime + Chain, S: Store, B: Decode + Send + Sy
 
 impl<R: Runtime + Chain, S: Store, B: Decode + Send + Sync> BlockSubscription<R, S, B>
 where
-    S::Codec: Into<TreeCodec>,
+    <S::Params as StoreParams>::Codecs: Into<TreeCodec>,
 {
     async fn subscribe(
         client: &substrate_subxt::Client<R>,
@@ -140,7 +142,7 @@ where
         hash: R::TrieHash,
     ) -> Result<GenericBlock<B, R::Number, R::TrieHasher>> {
         let block: OffchainBlock<R::TrieHasher> =
-            store.get(hash.into()).await?.decode::<TreeCodec, _>()?;
+            store.get(&hash.into()).await?.decode::<TreeCodec, _>()?;
         GenericBlock::decode(&block)
     }
 
@@ -157,41 +159,46 @@ where
 }
 
 #[async_trait]
-pub trait ChainClient<R: Runtime + Chain>: Client<R> + Sized {
-    async fn create_chain(&self) -> Result<R::ChainId>;
+pub trait ChainClient<N: Node>: Client<N> + Sized
+where
+    N::Runtime: Chain,
+{
+    async fn create_chain(&self) -> Result<<N::Runtime as Chain>::ChainId>;
     async fn author_block<B: Encode + ?Sized + Send + Sync>(
         &self,
-        chain_id: R::ChainId,
+        chain_id: <N::Runtime as Chain>::ChainId,
         block: &B,
-    ) -> Result<R::Number>;
+    ) -> Result<<N::Runtime as Chain>::Number>;
     async fn subscribe<B: Decode + Send + Sync>(
         &self,
-        chain_id: R::ChainId,
-        number: R::Number,
-    ) -> Result<BlockSubscription<R, <Self::OffchainClient as OffchainClient>::Store, B>>;
-    async fn authorities(&self, chain_id: R::ChainId) -> Result<Vec<R::AccountId>>;
+        chain_id: <N::Runtime as Chain>::ChainId,
+        number: <N::Runtime as Chain>::Number,
+    ) -> Result<BlockSubscription<N::Runtime, <Self::OffchainClient as OffchainClient>::Store, B>>;
+    async fn authorities(&self, chain_id: <N::Runtime as Chain>::ChainId) -> Result<Vec<<N::Runtime as System>::AccountId>>;
     async fn add_authority(
         &self,
-        chain_id: R::ChainId,
-        authority: &R::AccountId,
-    ) -> Result<R::Number>;
+        chain_id: <N::Runtime as Chain>::ChainId,
+        authority: &<N::Runtime as System>::AccountId,
+    ) -> Result<<N::Runtime as Chain>::Number>;
     async fn remove_authority(
         &self,
-        chain_id: R::ChainId,
-        authority: &<R as System>::AccountId,
-    ) -> Result<R::Number>;
+        chain_id: <N::Runtime as Chain>::ChainId,
+        authority: &<N::Runtime as System>::AccountId,
+    ) -> Result<<N::Runtime as Chain>::Number>;
 }
 
 #[async_trait]
-impl<R, C> ChainClient<R> for C
+impl<N, C> ChainClient<N> for C
 where
-    R: Runtime + Chain,
-    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<R>,
-    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+    N: Node,
+    N::Runtime: Chain,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
+    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
         From<TreeCodec> + Into<TreeCodec>,
+    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
 {
-    async fn create_chain(&self) -> Result<R::ChainId> {
+    async fn create_chain(&self) -> Result<<N::Runtime as Chain>::ChainId> {
         Ok(self
             .chain_client()
             .create_chain_and_watch(&self.chain_signer()?)
@@ -203,14 +210,14 @@ where
 
     async fn author_block<B: Encode + ?Sized + Send + Sync>(
         &self,
-        chain_id: R::ChainId,
+        chain_id: <N::Runtime as Chain>::ChainId,
         block: &B,
-    ) -> Result<R::Number> {
+    ) -> Result<<N::Runtime as Chain>::Number> {
         let signer = self.chain_signer()?;
         let mut number = self.chain_client().chain_height(chain_id, None).await?;
         loop {
             let ancestor = self.chain_client().chain_root(chain_id, None).await?;
-            let full_block = GenericBlock::<_, R::Number, R::TrieHasher> {
+            let full_block = GenericBlock::<_, <N::Runtime as Chain>::Number, <N::Runtime as Chain>::TrieHasher> {
                 number,
                 ancestor,
                 payload: block,
@@ -220,10 +227,10 @@ where
             log::info!(
                 "created block {:?} {:?} with ancestor {:?}",
                 number,
-                block.cid,
+                block.cid(),
                 ancestor
             );
-            self.offchain_client().store().insert(&block).await?;
+            self.offchain_client().store().insert(block).await?;
             let result = self
                 .chain_client()
                 .author_block_and_watch(&signer, chain_id, *sealed.offchain.root(), &sealed.proof)
@@ -233,23 +240,23 @@ where
                 if height > number {
                     number = height;
                     log::info!("chain height changed {:?}, retrying.\n{:?}", height, err);
-                    self.offchain_client().store().unpin(&block.cid).await?;
                     continue;
                 }
             }
             result?.new_block()?.ok_or(AuthorBlock)?;
+            /*self.offchain_client().store().update(
             if let Some(cid) = ancestor.map(Into::into) {
-                self.offchain_client().store().unpin(&cid).await?;
-            }
+                self.offchain_client().store().update(&cid).await?;
+            }*/
             return Ok(number);
         }
     }
 
     async fn subscribe<B: Decode + Send + Sync>(
         &self,
-        chain_id: R::ChainId,
-        number: R::Number,
-    ) -> Result<BlockSubscription<R, <C::OffchainClient as OffchainClient>::Store, B>> {
+        chain_id: <N::Runtime as Chain>::ChainId,
+        number: <N::Runtime as Chain>::Number,
+    ) -> Result<BlockSubscription<N::Runtime, <C::OffchainClient as OffchainClient>::Store, B>> {
         BlockSubscription::subscribe(
             self.chain_client(),
             self.offchain_client().store(),
@@ -259,15 +266,15 @@ where
         .await
     }
 
-    async fn authorities(&self, chain_id: R::ChainId) -> Result<Vec<R::AccountId>> {
+    async fn authorities(&self, chain_id: <N::Runtime as Chain>::ChainId) -> Result<Vec<<N::Runtime as System>::AccountId>> {
         Ok(self.chain_client().authorities(chain_id, None).await?)
     }
 
     async fn add_authority(
         &self,
-        chain_id: R::ChainId,
-        authority: &R::AccountId,
-    ) -> Result<R::Number> {
+        chain_id: <N::Runtime as Chain>::ChainId,
+        authority: &<N::Runtime as System>::AccountId,
+    ) -> Result<<N::Runtime as Chain>::Number> {
         Ok(self
             .chain_client()
             .add_authority_and_watch(&self.chain_signer()?, chain_id, authority)
@@ -279,9 +286,9 @@ where
 
     async fn remove_authority(
         &self,
-        chain_id: R::ChainId,
-        authority: &<R as System>::AccountId,
-    ) -> Result<R::Number> {
+        chain_id: <N::Runtime as Chain>::ChainId,
+        authority: &<N::Runtime as System>::AccountId,
+    ) -> Result<<N::Runtime as Chain>::Number> {
         Ok(self
             .chain_client()
             .remove_authority_and_watch(&self.chain_signer()?, chain_id, authority)

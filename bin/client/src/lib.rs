@@ -1,4 +1,4 @@
-use libipld::cache::{CacheConfig, IpldCache};
+use libipld::cache::{IpldCache};
 use libipld::cbor::DagCborCodec;
 use libipld::derive_cache;
 use libipld::store::Store;
@@ -13,7 +13,7 @@ use sunshine_client_utils::codec::Cid;
 use sunshine_client_utils::crypto::keychain::KeyType;
 use sunshine_client_utils::crypto::sr25519;
 use sunshine_client_utils::node::{
-    ChainSpecError, Configuration, NodeConfig, RpcHandlers, ScServiceError, TaskManager,
+    ChainSpecError, Configuration, Network, Node as NodeT, RpcHandlers, ScServiceError, TaskManager,
 };
 use sunshine_faucet_client::Faucet;
 use sunshine_identity_client::{Claim, Identity};
@@ -74,12 +74,9 @@ pub struct OffchainClient<S> {
 
 impl<S: Store> OffchainClient<S> {
     pub fn new(store: S) -> Self {
-        let mut config = CacheConfig::new(store.clone(), DagCborCodec);
-        config.size = 64;
-        config.hash = BLAKE2B_256;
         Self {
+            claims: IpldCache::new(store.clone(), DagCborCodec, BLAKE2B_256, 64),
             store,
-            claims: IpldCache::new(config),
         }
     }
 }
@@ -98,12 +95,15 @@ impl<S: Store> From<S> for OffchainClient<S> {
     }
 }
 
+// TODO: remove
+use libipld::ipld::Ipld;
 derive_cache!(OffchainClient, claims, DagCborCodec, Claim);
 
 pub struct Node;
 
-impl NodeConfig for Node {
+impl NodeT for Node {
     type ChainSpec = test_node::ChainSpec;
+    type Block = test_node::OpaqueBlock;
     type Runtime = Runtime;
 
     fn impl_name() -> &'static str {
@@ -130,11 +130,11 @@ impl NodeConfig for Node {
         Self::ChainSpec::from_json_bytes(json).map_err(ChainSpecError)
     }
 
-    fn new_light(config: Configuration) -> Result<(TaskManager, RpcHandlers), ScServiceError> {
+    fn new_light(config: Configuration) -> Result<(TaskManager, RpcHandlers, Network<Self>), ScServiceError> {
         Ok(test_node::new_light(config)?)
     }
 
-    fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), ScServiceError> {
+    fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers, Network<Self>), ScServiceError> {
         Ok(test_node::new_full(config)?)
     }
 }
@@ -147,7 +147,7 @@ impl KeyType for UserDevice {
 }
 
 pub type Client =
-    GenericClient<Node, UserDevice, KeystoreImpl<UserDevice>, OffchainClient<OffchainStoreImpl>>;
+    GenericClient<Node, UserDevice, KeystoreImpl<UserDevice>, OffchainClient<OffchainStoreImpl<Node>>>;
 
 #[cfg(feature = "mock")]
 pub mod mock {

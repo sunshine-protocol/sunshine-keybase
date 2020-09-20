@@ -5,7 +5,7 @@ use substrate_subxt::sp_core::crypto::Ss58Codec;
 use substrate_subxt::system::System;
 use substrate_subxt::{Runtime, SignedExtension, SignedExtra};
 pub use sunshine_cli_utils::wallet::{TransferEventDecode, TransferEventFind};
-use sunshine_cli_utils::Result;
+use sunshine_cli_utils::{Node, Result};
 use sunshine_identity_client::{resolve, Identifier, Identity, IdentityClient};
 
 #[derive(Clone, Debug, Clap)]
@@ -14,15 +14,16 @@ pub struct WalletBalanceCommand {
 }
 
 impl WalletBalanceCommand {
-    pub async fn exec<R: Runtime + Identity + Balances, C: IdentityClient<R>>(
+    pub async fn exec<N: Node, C: IdentityClient<N>>(
         &self,
         client: &C,
     ) -> Result<()>
     where
-        <R as System>::AccountId: Ss58Codec,
-        R: Identity<IdAccountData = AccountData<<R as Balances>::Balance>>,
+        N::Runtime: Identity + Balances,
+        <N::Runtime as System>::AccountId: Ss58Codec,
+        N::Runtime: Identity<IdAccountData = AccountData<<N::Runtime as Balances>::Balance>>,
     {
-        let identifier: Option<Identifier<R>> = if let Some(identifier) = &self.identifier {
+        let identifier: Option<Identifier<N::Runtime>> = if let Some(identifier) = &self.identifier {
             Some(identifier.parse()?)
         } else {
             None
@@ -41,17 +42,18 @@ pub struct WalletTransferCommand {
 }
 
 impl WalletTransferCommand {
-    pub async fn exec<R: Runtime + Identity + Balances, C: IdentityClient<R>>(
+    pub async fn exec<N: Node, C: IdentityClient<N>>(
         &self,
         client: &C,
     ) -> Result<()>
     where
-        <R as System>::AccountId: Ss58Codec + Into<<R as System>::Address>,
-        <<<R as Runtime>::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned:
+        N::Runtime: Identity + Balances,
+        <N::Runtime as System>::AccountId: Ss58Codec + Into<<N::Runtime as System>::Address>,
+        <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned:
             Send + Sync,
-        <R as Balances>::Balance: From<u128> + Display,
+        <N::Runtime as Balances>::Balance: From<u128> + Display,
     {
-        let identifier: Identifier<R> = self.identifier.parse()?;
+        let identifier: Identifier<N::Runtime> = self.identifier.parse()?;
         let uid = resolve(client, Some(identifier)).await?;
         let keys = client.fetch_keys(uid, None).await?;
         let signer = client.chain_signer()?;

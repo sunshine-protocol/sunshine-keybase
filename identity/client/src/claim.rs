@@ -61,7 +61,7 @@ impl UnsignedClaim {
     }
 
     pub fn to_bytes(&self) -> Result<Box<[u8]>> {
-        Ok(DagCborCodec.encode(self)?)
+        Ok(DagCborCodec.encode(self)?.into_boxed_slice())
     }
 }
 

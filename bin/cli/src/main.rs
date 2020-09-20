@@ -20,8 +20,13 @@ async fn main() -> Result<()> {
             .ok_or(ConfigDirNotFound)?
             .join("sunshine-identity")
     };
+    let chain_spec = if let Some(chain_spec) = opts.chain_spec {
+        chain_spec
+    } else {
+        unimplemented!();
+    };
 
-    let mut client = Client::new(&root, "ws://127.0.0.1:9944").await?;
+    let mut client = Client::new(&root, &chain_spec).await?;
 
     let mut password_changes = if client.chain_signer().is_ok() {
         let sub = client.subscribe_password_changes().await?;

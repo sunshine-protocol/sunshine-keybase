@@ -5,10 +5,12 @@ use crate::service::Service;
 use crate::subxt::*;
 use codec::{Decode, Encode};
 use core::convert::TryInto;
-use libipld::cache::{Cache, ReadonlyCache};
+use libipld::cache::Cache;
 use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
-use libipld::store::ReadonlyStore;
+use libipld::codec::Decode as IpldDecode;
+use libipld::ipld::Ipld;
+use libipld::store::{Store, StoreParams};
 use std::collections::HashMap;
 use std::time::Duration;
 use std::time::UNIX_EPOCH;
@@ -22,38 +24,43 @@ use sunshine_client_utils::crypto::{
     secrecy::SecretString,
     signer::GenericSigner,
 };
-use sunshine_client_utils::{Client, OffchainClient, Result, Signer};
+use sunshine_client_utils::{Client, Node, OffchainClient, Result, Signer};
 
-async fn set_identity<R, C>(client: &C, claim: Claim) -> Result<()>
+async fn set_identity<N, C>(client: &C, claim: Claim) -> Result<()>
 where
-    R: Runtime + Identity,
-    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<R>,
-    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
-    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
+    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
+    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
         From<DagCborCodec> + Into<DagCborCodec>,
+    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
 {
     let prev = claim.claim().prev.clone();
-    let root = client.offchain_client().insert(claim).await?;
+    let mut tx = client.offchain_client().transaction();
+    let root = tx.insert(claim)?;
+    client.offchain_client().commit(tx).await?;
     let prev_cid = prev.clone().map(Into::into);
     let root_cid = root.clone().into();
-    client.offchain_client().flush().await?;
+    client.offchain_client().store().flush().await?;
     client
         .chain_client()
         .set_identity_and_watch(&client.chain_signer()?, &prev_cid, &root_cid)
         .await?
         .identity_changed()?;
     if let Some(prev) = prev {
-        client.offchain_client().unpin(&prev).await?;
+        client.offchain_client().store().unpin(&prev).await?;
     }
     Ok(())
 }
 
-async fn fetch_identity<T, C>(client: &C, uid: T::Uid) -> Result<Option<Cid>>
+async fn fetch_identity<N, C>(client: &C, uid: <N::Runtime as Identity>::Uid) -> Result<Option<Cid>>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
     Ok(client
         .chain_client()
@@ -62,20 +69,21 @@ where
         .map(Into::into))
 }
 
-async fn create_claim<R, C>(
+async fn create_claim<N, C>(
     client: &C,
     body: ClaimBody,
     expire_in: Option<Duration>,
-    uid: R::Uid,
+    uid: <N::Runtime as Identity>::Uid,
 ) -> Result<Claim>
 where
-    R: Runtime + Identity,
-    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<R>,
-    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
-    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
+    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
+    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
         From<DagCborCodec> + Into<DagCborCodec>,
-    R::AccountId: Ss58Codec,
+    <N::Runtime as System>::AccountId: Ss58Codec,
 {
     let genesis = client.chain_client().genesis().as_ref().to_vec();
     let block = client
@@ -112,17 +120,18 @@ where
     Ok(Claim::new(claim, signature))
 }
 
-async fn verify_claim<R, C>(client: &C, uid: R::Uid, claim: &Claim) -> Result<()>
+async fn verify_claim<N, C>(client: &C, uid: <N::Runtime as Identity>::Uid, claim: &Claim) -> Result<()>
 where
-    R: Runtime + Identity,
-    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<R>,
-    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
-    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
+    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
+    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
         From<DagCborCodec> + Into<DagCborCodec>,
-    R::Signature: Decode,
-    <R::Signature as Verify>::Signer: IdentifyAccount<AccountId = R::AccountId>,
-    R::AccountId: Ss58Codec,
+    <N::Runtime as Runtime>::Signature: Decode,
+    <<N::Runtime as Runtime>::Signature as Verify>::Signer: IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>,
+    <N::Runtime as System>::AccountId: Ss58Codec,
 {
     if claim.claim().uid != uid.into() {
         return Err(InvalidClaim("uid").into());
@@ -145,18 +154,19 @@ where
         .find(|k| k.to_ss58check() == claim.claim().public)
         .ok_or(InvalidClaim("key"))?;
     let bytes = claim.claim().to_bytes()?;
-    let signature: R::Signature = Decode::decode(&mut claim.signature())?;
+    let signature: <N::Runtime as Runtime>::Signature = Decode::decode(&mut claim.signature())?;
     if !signature.verify(&bytes[..], key) {
         return Err(InvalidClaim("signature").into());
     }
     Ok(())
 }
 
-pub async fn create_account_for<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<()>
+pub async fn create_account_for<N, C>(client: &C, key: &<N::Runtime as System>::AccountId) -> Result<()>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
     client
         .chain_client()
@@ -166,33 +176,35 @@ where
     Ok(())
 }
 
-pub async fn add_paperkey<T, C, K>(client: &C) -> Result<Mnemonic>
+pub async fn add_paperkey<N, C, K>(client: &C) -> Result<Mnemonic>
 where
-    T: Runtime + Identity,
-    T::AccountId: Into<T::Address>,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    <T::Signature as Verify>::Signer: From<<K::Pair as Pair>::Public>
+    N: Node,
+    N::Runtime: Identity,
+    <N::Runtime as System>::AccountId: Into<<N::Runtime as System>::Address>,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    <<N::Runtime as Runtime>::Signature as Verify>::Signer: From<<K::Pair as Pair>::Public>
         + TryInto<<K::Pair as Pair>::Public>
-        + IdentifyAccount<AccountId = T::AccountId>
+        + IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>
         + Clone
         + Send
         + Sync,
-    C: Client<T>,
+    C: Client<N>,
     K: KeyType,
-    <K::Pair as Pair>::Signature: Into<T::Signature>,
+    <K::Pair as Pair>::Signature: Into<<N::Runtime as Runtime>::Signature>,
 {
     let mnemonic = Mnemonic::generate(24).expect("word count is a multiple of six; qed");
     let key = TypedPair::<K>::from_mnemonic(&mnemonic).expect("have enough entropy bits; qed");
-    let signer = GenericSigner::<T, K>::new(key);
+    let signer = GenericSigner::<N::Runtime, K>::new(key);
     add_key(client, signer.account_id()).await?;
     Ok(mnemonic)
 }
 
-pub async fn add_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<()>
+pub async fn add_key<N, C>(client: &C, key: &<N::Runtime as System>::AccountId) -> Result<()>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
     client
         .chain_client()
@@ -202,11 +214,12 @@ where
     Ok(())
 }
 
-pub async fn remove_key<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<()>
+pub async fn remove_key<N, C>(client: &C, key: &<N::Runtime as System>::AccountId) -> Result<()>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
     client
         .chain_client()
@@ -216,11 +229,12 @@ where
     Ok(())
 }
 
-pub async fn change_password<T, C, K>(client: &C, password: &SecretString) -> Result<()>
+pub async fn change_password<N, C, K>(client: &C, password: &SecretString) -> Result<()>
 where
-    T: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T, KeyType = K, Keystore = Keystore<K>>,
+    N: Node,
+    N::Runtime: Identity<Gen = u16, Mask = [u8; 32]>,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N, KeyType = K, Keystore = Keystore<K>>,
     K: KeyType,
 {
     let (mask, gen) = client.keystore().change_password_mask(password).await?;
@@ -231,11 +245,12 @@ where
     Ok(())
 }
 
-pub async fn update_password<T, C, K>(client: &mut C) -> Result<()>
+pub async fn update_password<N, C, K>(client: &mut C) -> Result<()>
 where
-    T: Runtime + Identity<Gen = u16, Mask = [u8; 32]>,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T, KeyType = K, Keystore = Keystore<K>>,
+    N: Node,
+    N::Runtime: Identity<Gen = u16, Mask = [u8; 32]>,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N, KeyType = K, Keystore = Keystore<K>>,
     K: KeyType,
 {
     let uid = fetch_uid(client, &client.signer()?.account_id())
@@ -258,38 +273,41 @@ where
     Ok(())
 }
 
-pub async fn subscribe_password_changes<T, C>(client: &C) -> Result<EventSubscription<T>>
+pub async fn subscribe_password_changes<N, C>(client: &C) -> Result<EventSubscription<N::Runtime>>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
     let subscription = client.chain_client().subscribe_events().await.unwrap();
-    let mut decoder = EventsDecoder::<T>::new(client.chain_client().metadata().clone());
+    let mut decoder = EventsDecoder::<N::Runtime>::new(client.chain_client().metadata().clone());
     decoder.with_identity();
-    let mut subscription = EventSubscription::<T>::new(subscription, decoder);
+    let mut subscription = EventSubscription::<N::Runtime>::new(subscription, decoder);
     subscription.filter_event::<PasswordChangedEvent<_>>();
     Ok(subscription)
 }
 
-pub async fn fetch_uid<T, C>(client: &C, key: &<T as System>::AccountId) -> Result<Option<T::Uid>>
+pub async fn fetch_uid<N, C>(client: &C, key: &<N::Runtime as System>::AccountId) -> Result<Option<<N::Runtime as Identity>::Uid>>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
     Ok(client.chain_client().uid_lookup(key, None).await?)
 }
 
-pub async fn fetch_keys<T, C>(
+pub async fn fetch_keys<N, C>(
     client: &C,
-    uid: T::Uid,
-    hash: Option<T::Hash>,
-) -> Result<Vec<<T as System>::AccountId>>
+    uid: <N::Runtime as Identity>::Uid,
+    hash: Option<<N::Runtime as System>::Hash>,
+) -> Result<Vec<<N::Runtime as System>::AccountId>>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
     let keys = client.chain_client().keys(uid, hash).await?;
     if keys.is_empty() {
@@ -298,24 +316,27 @@ where
     Ok(keys)
 }
 
-pub async fn fetch_account<T, C>(client: &C, uid: T::Uid) -> Result<T::IdAccountData>
+pub async fn fetch_account<N, C>(client: &C, uid: <N::Runtime as Identity>::Uid) -> Result<<N::Runtime as Identity>::IdAccountData>
 where
-    T: Runtime + Identity,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
     Ok(client.chain_client().account(uid, None).await?)
 }
 
-pub async fn prove_identity<R, C>(client: &C, service: Service) -> Result<String>
+pub async fn prove_identity<N, C>(client: &C, service: Service) -> Result<String>
 where
-    R: Runtime + Identity,
-    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<R>,
-    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
-    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
+    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
+    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
         From<DagCborCodec> + Into<DagCborCodec>,
-    R::AccountId: Ss58Codec,
+    <N::Runtime as System>::AccountId: Ss58Codec,
+    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
 {
     let uid = fetch_uid(client, client.signer()?.account_id())
         .await?
@@ -326,17 +347,19 @@ where
     Ok(proof)
 }
 
-pub async fn revoke_identity<R, C>(client: &C, service: Service) -> Result<()>
+pub async fn revoke_identity<N, C>(client: &C, service: Service) -> Result<()>
 where
-    R: Runtime + Identity,
-    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<R>,
-    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
-    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
+    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
+    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
         From<DagCborCodec> + Into<DagCborCodec>,
-    R::AccountId: Ss58Codec,
-    R::Signature: Decode,
-    <R::Signature as Verify>::Signer: IdentifyAccount<AccountId = R::AccountId>,
+    <N::Runtime as System>::AccountId: Ss58Codec,
+    <N::Runtime as Runtime>::Signature: Decode,
+    <<N::Runtime as Runtime>::Signature as Verify>::Signer: IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>,
+    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
 {
     let uid = fetch_uid(client, client.signer()?.account_id())
         .await?
@@ -353,17 +376,18 @@ where
     Ok(())
 }
 
-pub async fn identity<R, C>(client: &C, uid: R::Uid) -> Result<Vec<IdentityInfo>>
+pub async fn identity<N, C>(client: &C, uid: <N::Runtime as Identity>::Uid) -> Result<Vec<IdentityInfo>>
 where
-    R: Runtime + Identity,
-    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<R>,
-    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
-    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
+    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
+    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
         From<DagCborCodec> + Into<DagCborCodec>,
-    R::AccountId: Ss58Codec,
-    R::Signature: Decode,
-    <R::Signature as Verify>::Signer: IdentifyAccount<AccountId = R::AccountId>,
+    <N::Runtime as System>::AccountId: Ss58Codec,
+    <N::Runtime as Runtime>::Signature: Decode,
+    <<N::Runtime as Runtime>::Signature as Verify>::Signer: IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>,
 {
     let mut claims = vec![];
     let mut next = fetch_identity(client, uid).await?;
@@ -434,17 +458,18 @@ where
     Ok(info)
 }
 
-pub async fn resolve<R, C>(client: &C, service: &Service) -> Result<R::Uid>
+pub async fn resolve<N, C>(client: &C, service: &Service) -> Result<<N::Runtime as Identity>::Uid>
 where
-    R: Runtime + Identity,
-    <<R::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<R>,
-    C::OffchainClient: Cache<<C::OffchainClient as OffchainClient>::Store, DagCborCodec, Claim>,
-    <<C::OffchainClient as OffchainClient>::Store as ReadonlyStore>::Codec:
+    N: Node,
+    N::Runtime: Identity,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
+    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
+    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
         From<DagCborCodec> + Into<DagCborCodec>,
-    R::AccountId: Ss58Codec,
-    R::Signature: Decode,
-    <R::Signature as Verify>::Signer: IdentifyAccount<AccountId = R::AccountId>,
+    <N::Runtime as System>::AccountId: Ss58Codec,
+    <N::Runtime as Runtime>::Signature: Decode,
+    <<N::Runtime as Runtime>::Signature as Verify>::Signer: IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>,
 {
     let uids = service.resolve().await?;
     for uid in uids {

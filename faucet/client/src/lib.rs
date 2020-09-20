@@ -2,7 +2,7 @@ use parity_scale_codec::{Decode, Encode};
 use substrate_subxt::balances::{Balances, BalancesEventsDecoder};
 use substrate_subxt::system::{System, SystemEventsDecoder};
 use substrate_subxt::{module, Call, Event, Runtime, SignedExtension, SignedExtra};
-use sunshine_client_utils::{async_trait, Client, Result};
+use sunshine_client_utils::{async_trait, Client, Node, Result};
 use sunshine_identity_client::{Identity, IdentityEventsDecoder};
 
 #[module]
@@ -20,22 +20,26 @@ pub struct MintedEvent<T: Faucet> {
 }
 
 #[async_trait]
-pub trait FaucetClient<T: Runtime + Faucet>: Client<T> {
-    async fn mint(&self) -> Result<Option<MintedEvent<T>>>;
+pub trait FaucetClient<N: Node>: Client<N>
+where
+    N::Runtime: Faucet,
+{
+    async fn mint(&self) -> Result<Option<MintedEvent<N::Runtime>>>;
 }
 
 #[async_trait]
-impl<T, C> FaucetClient<T> for C
+impl<N, C> FaucetClient<N> for C
 where
-    T: Runtime + Faucet,
-    <<T::Extra as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
-    C: Client<T>,
+    N: Node,
+    N::Runtime: Faucet,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
+    C: Client<N>,
 {
-    async fn mint(&self) -> Result<Option<MintedEvent<T>>> {
+    async fn mint(&self) -> Result<Option<MintedEvent<N::Runtime>>> {
         let account = self.signer()?.account_id();
         let call = MintCall { account };
         let unsigned = self.chain_client().create_unsigned(call)?;
-        let decoder = self.chain_client().events_decoder::<MintCall<T>>();
+        let decoder = self.chain_client().events_decoder::<MintCall<N::Runtime>>();
         let event = self
             .chain_client()
             .submit_and_watch_extrinsic(unsigned, decoder)

@@ -7,6 +7,7 @@ use test_runtime::{
     AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SystemConfig,
     WASM_BINARY,
 };
+pub use test_runtime::opaque::Block as OpaqueBlock;
 
 pub const IMPL_NAME: &str = "Sunshine Identity Test Node";
 pub const IMPL_VERSION: &str = env!("CARGO_PKG_VERSION");

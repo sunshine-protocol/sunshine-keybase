@@ -3,13 +3,14 @@ use crate::service::{Service, ServiceParseError};
 use crate::{Identity, IdentityClient};
 use sp_core::crypto::Ss58Codec;
 use std::str::FromStr;
-use substrate_subxt::{sp_core, system::System, Runtime};
-use sunshine_client_utils::{crypto::ss58::Ss58, Result};
+use substrate_subxt::{sp_core, system::System};
+use sunshine_client_utils::{crypto::ss58::Ss58, Node, Result};
 
-pub async fn resolve<T, C>(client: &C, identifier: Option<Identifier<T>>) -> Result<T::Uid>
+pub async fn resolve<N, C>(client: &C, identifier: Option<Identifier<N::Runtime>>) -> Result<<N::Runtime as Identity>::Uid>
 where
-    T: Runtime + Identity,
-    C: IdentityClient<T>,
+    N: Node,
+    N::Runtime: Identity,
+    C: IdentityClient<N>,
 {
     let identifier = if let Some(identifier) = identifier {
         identifier
@@ -25,13 +26,13 @@ where
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Identifier<T: Identity> {
-    Uid(T::Uid),
-    Account(T::AccountId),
+pub enum Identifier<R: Identity> {
+    Uid(R::Uid),
+    Account(R::AccountId),
     Service(Service),
 }
 
-impl<T: Identity> core::fmt::Display for Identifier<T> {
+impl<R: Identity> core::fmt::Display for Identifier<R> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
             Self::Uid(uid) => write!(f, "{}", uid),
@@ -41,16 +42,16 @@ impl<T: Identity> core::fmt::Display for Identifier<T> {
     }
 }
 
-impl<T: Identity> FromStr for Identifier<T>
+impl<R: Identity> FromStr for Identifier<R>
 where
-    <T as System>::AccountId: Ss58Codec,
+    <R as System>::AccountId: Ss58Codec,
 {
     type Err = ServiceParseError;
 
     fn from_str(string: &str) -> core::result::Result<Self, Self::Err> {
-        if let Ok(uid) = T::Uid::from_str(string) {
+        if let Ok(uid) = R::Uid::from_str(string) {
             Ok(Self::Uid(uid))
-        } else if let Ok(Ss58(account_id)) = Ss58::<T>::from_str(string) {
+        } else if let Ok(Ss58(account_id)) = Ss58::<R>::from_str(string) {
             Ok(Self::Account(account_id))
         } else {
             Ok(Self::Service(Service::from_str(string)?))

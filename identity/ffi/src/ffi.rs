@@ -12,7 +12,7 @@ use sunshine_client_utils::crypto::{
     secrecy::{ExposeSecret, SecretString},
     ss58::Ss58,
 };
-use sunshine_client_utils::Result;
+use sunshine_client_utils::{Node, Result};
 use sunshine_ffi_utils::async_std::sync::RwLock;
 use sunshine_identity_client::{resolve, Identifier, Identity, IdentityClient, Service};
 use thiserror::Error;
@@ -20,19 +20,21 @@ use thiserror::Error;
 macro_rules! make {
     ($name: ident) => {
         #[derive(Clone, Debug)]
-        pub struct $name<'a, C, R>
+        pub struct $name<'a, C, N>
         where
-            C: IdentityClient<R> + Send + Sync,
-            R: Runtime + Identity,
+            C: IdentityClient<N> + Send + Sync,
+            N: Node,
+            N::Runtime: Identity,
         {
             client: &'a RwLock<C>,
-            _runtime: PhantomData<R>,
+            _runtime: PhantomData<N>,
         }
 
-        impl<'a, C, R> $name<'a, C, R>
+        impl<'a, C, N> $name<'a, C, N>
         where
-            C: IdentityClient<R> + Send + Sync,
-            R: Runtime + Identity,
+            C: IdentityClient<N> + Send + Sync,
+            N: Node,
+            N::Runtime: Identity,
         {
             pub fn new(client: &'a RwLock<C>) -> Self {
                 Self {
@@ -51,10 +53,11 @@ macro_rules! make {
 
 make!(Key, Account, Device, ID, Wallet);
 
-impl<'a, C, R> Key<'a, C, R>
+impl<'a, C, N> Key<'a, C, N>
 where
-    C: IdentityClient<R> + Send + Sync,
-    R: Runtime + Identity,
+    N: Node,
+    N::Runtime: Identity,
+    C: IdentityClient<N> + Send + Sync,
 {
     pub async fn exists(&self) -> Result<bool> {
         self.client.read().await.keystore().is_initialized().await
@@ -106,14 +109,15 @@ where
     }
 }
 
-impl<'a, C, R> Account<'a, C, R>
+impl<'a, C, N> Account<'a, C, N>
 where
-    C: IdentityClient<R> + Send + Sync,
-    R: Runtime + Identity,
-    <R as System>::AccountId: Ss58Codec,
+    N: Node,
+    N::Runtime: Identity,
+    C: IdentityClient<N> + Send + Sync,
+    <N::Runtime as System>::AccountId: Ss58Codec,
 {
     pub async fn create(&self, device: &str) -> Result<bool> {
-        let device: Ss58<R> = device.parse()?;
+        let device: Ss58<N::Runtime> = device.parse()?;
         self.client
             .read()
             .await
@@ -132,11 +136,12 @@ where
     }
 }
 
-impl<'a, C, R> Device<'a, C, R>
+impl<'a, C, N> Device<'a, C, N>
 where
-    C: IdentityClient<R> + Send + Sync,
-    R: Runtime + Identity,
-    <R as System>::AccountId: Ss58Codec,
+    N: Node,
+    N::Runtime: Identity,
+    C: IdentityClient<N> + Send + Sync,
+    <N::Runtime as System>::AccountId: Ss58Codec,
 {
     pub async fn current(&self) -> Result<String> {
         let client = self.client.read().await;
@@ -149,20 +154,20 @@ where
     }
 
     pub async fn add(&self, device: &str) -> Result<bool> {
-        let device: Ss58<R> = device.parse()?;
+        let device: Ss58<N::Runtime> = device.parse()?;
         self.client.read().await.add_key(&device.0).await?;
         Ok(true)
     }
 
     pub async fn remove(&self, device: &str) -> Result<bool> {
-        let device: Ss58<R> = device.parse()?;
+        let device: Ss58<N::Runtime> = device.parse()?;
         self.client.read().await.remove_key(&device.0).await?;
         Ok(true)
     }
 
     pub async fn list(&self, identifier: &str) -> Result<Vec<String>> {
         let client = self.client.read().await;
-        let identifier: Identifier<R> = identifier.parse()?;
+        let identifier: Identifier<N::Runtime> = identifier.parse()?;
         let uid = resolve(&*client, Some(identifier)).await?;
         let list = client
             .fetch_keys(uid, None)
@@ -179,14 +184,15 @@ where
     }
 }
 
-impl<'a, C, R> ID<'a, C, R>
+impl<'a, C, N> ID<'a, C, N>
 where
-    C: IdentityClient<R> + Send + Sync,
-    R: Runtime + Identity,
-    <R as System>::AccountId: Ss58Codec,
+    N: Node,
+    N::Runtime: Identity,
+    C: IdentityClient<N> + Send + Sync,
+    <N::Runtime as System>::AccountId: Ss58Codec,
 {
     pub async fn resolve(&self, identifier: &str) -> Result<String> {
-        let identifier: Identifier<R> = identifier.parse()?;
+        let identifier: Identifier<N::Runtime> = identifier.parse()?;
         let client = self.client.read().await;
         let uid = resolve(&*client, Some(identifier)).await?;
         Ok(uid.to_string())
@@ -194,7 +200,7 @@ where
 
     pub async fn list(&self, identifier: &str) -> Result<Vec<String>> {
         let client = self.client.read().await;
-        let identifier: Identifier<R> = identifier.parse()?;
+        let identifier: Identifier<N::Runtime> = identifier.parse()?;
         let uid = resolve(&*client, Some(identifier)).await?;
         let list = client
             .identity(uid)
@@ -219,18 +225,19 @@ where
     }
 }
 
-impl<'a, C, R> Wallet<'a, C, R>
+impl<'a, C, N> Wallet<'a, C, N>
 where
-    C: IdentityClient<R> + Send + Sync,
-    R: Runtime + Balances,
-    R: Identity<IdAccountData = AccountData<<R as Balances>::Balance>>,
-    <R as System>::AccountId: Ss58Codec + Into<<R as System>::Address>,
-    <<<R as Runtime>::Extra as SignedExtra<R>>::Extra as SignedExtension>::AdditionalSigned:
+    N: Node,
+    N::Runtime: Identity + Balances,
+    C: IdentityClient<N> + Send + Sync,
+    N::Runtime: Identity<IdAccountData = AccountData<<N::Runtime as Balances>::Balance>>,
+    <N::Runtime as System>::AccountId: Ss58Codec + Into<<N::Runtime as System>::Address>,
+    <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned:
         Send + Sync,
 {
-    pub async fn balance(&self, identifier: Option<&str>) -> Result<R::Balance> {
+    pub async fn balance(&self, identifier: Option<&str>) -> Result<<N::Runtime as Balances>::Balance> {
         let client = self.client.read().await;
-        let account_id: Identifier<R> = if let Some(identifier) = identifier {
+        let account_id: Identifier<N::Runtime> = if let Some(identifier) = identifier {
             identifier.parse()?
         } else {
             Identifier::Account(client.signer()?.account_id().clone())
@@ -243,10 +250,10 @@ where
     pub async fn transfer(
         &self,
         identifier: &str,
-        amount: impl Into<R::Balance>,
-    ) -> Result<R::Balance> {
+        amount: impl Into<<N::Runtime as Balances>::Balance>,
+    ) -> Result<<N::Runtime as Balances>::Balance> {
         let client = self.client.read().await;
-        let identifier: Identifier<R> = identifier.parse()?;
+        let identifier: Identifier<N::Runtime> = identifier.parse()?;
         let signer = client.chain_signer()?;
         let uid = resolve(&*client, Some(identifier)).await?;
         let keys = client.fetch_keys(uid, None).await?;

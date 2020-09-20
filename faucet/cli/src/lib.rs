@@ -1,15 +1,16 @@
 use clap::Clap;
-use substrate_subxt::{balances::Balances, Runtime};
-use sunshine_client_utils::Result;
+use substrate_subxt::balances::Balances;
+use sunshine_client_utils::{Node, Result};
 use sunshine_faucet_client::{Faucet, FaucetClient};
 
 #[derive(Clone, Debug, Clap)]
 pub struct MintCommand;
 
 impl MintCommand {
-    pub async fn exec<R: Runtime + Faucet, C: FaucetClient<R>>(&self, client: &C) -> Result<()>
+    pub async fn exec<N: Node, C: FaucetClient<N>>(&self, client: &C) -> Result<()>
     where
-        <R as Balances>::Balance: std::fmt::Display,
+        N::Runtime: Faucet,
+        <N::Runtime as Balances>::Balance: std::fmt::Display,
     {
         let amount = client.mint().await?.unwrap().amount;
         println!("minted {} tokens into your account", amount);

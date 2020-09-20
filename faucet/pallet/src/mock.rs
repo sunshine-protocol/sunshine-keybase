@@ -51,11 +51,13 @@ impl system::Trait for Test {
 }
 parameter_types! {
     pub const ExistentialDeposit: u128 = 500;
+    pub const MaxLocks: u32 = 50;
 }
 impl balances::Trait for Test {
     type Balance = u128;
     type Event = ();
     type ExistentialDeposit = ExistentialDeposit;
+    type MaxLocks = MaxLocks;
     type DustRemoval = ();
     type AccountStore = system::Module<Test>;
     type WeightInfo = ();

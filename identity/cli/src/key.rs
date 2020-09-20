@@ -1,7 +1,6 @@
 use clap::Clap;
-use substrate_subxt::Runtime;
 pub use sunshine_cli_utils::key::{KeyLockCommand, KeyUnlockCommand};
-use sunshine_cli_utils::{set_key, Result};
+use sunshine_cli_utils::{set_key, Node, Result};
 use sunshine_identity_client::{Identity, IdentityClient};
 use textwrap::Wrapper;
 
@@ -21,10 +20,13 @@ pub struct KeySetCommand {
 }
 
 impl KeySetCommand {
-    pub async fn exec<R: Runtime + Identity, C: IdentityClient<R>>(
+    pub async fn exec<N: Node, C: IdentityClient<N>>(
         &self,
         client: &mut C,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        N::Runtime: Identity,
+    {
         let account_id = set_key(client, self.paperkey, self.suri.as_deref(), self.force).await?;
         let account_id_str = account_id.to_string();
         println!("Your device id is {}", &account_id_str);
