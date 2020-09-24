@@ -11,7 +11,7 @@ use sunshine_client_utils::codec::Cid;
 #[module]
 pub trait Chain: System {
     /// Chain ID type.
-    type ChainId: Parameter + Member + Copy + Default + CheckedAdd + From<u8>;
+    type ChainId: Parameter + Member + Copy + Default + CheckedAdd + From<u8> + Into<u64>;
 
     /// Trie hasher.
     #[module(ignore)]

@@ -5,8 +5,10 @@ pub use subxt::*;
 
 use crate::error::{AddAuthority, AuthorBlock, CreateChain, RemoveAuthority};
 use core::marker::PhantomData;
+use libipld::alias;
 use libipld::block::Block;
-use libipld::store::{Store, StoreParams};
+use libipld::cid::Cid;
+use libipld::store::{dyn_alias, Store, StoreParams};
 use parity_scale_codec::{Decode, Encode};
 use sp_runtime::traits::CheckedSub;
 use std::ops::Deref;
@@ -19,6 +21,10 @@ use sunshine_client_utils::codec::hasher::BLAKE2B_256_TREE;
 use sunshine_client_utils::codec::trie::{OffchainBlock, TreeDecode, TreeEncode};
 use sunshine_client_utils::GenericBlock;
 use sunshine_client_utils::{async_trait, Client, Node, OffchainStore, Result};
+
+fn chain_alias<R: Chain>(chain_id: R::ChainId) -> String {
+    dyn_alias(alias!(chain), chain_id.into())
+}
 
 struct ChainEventSubscription<R: Runtime, E: Event<R>> {
     _marker: PhantomData<E>,
@@ -98,6 +104,7 @@ pub struct BlockSubscription<R: Runtime + Chain, S: Store, B: Decode + Send + Sy
     store: S,
     sub: NewBlockSubscription<R>,
     sync_buf: Vec<GenericBlock<B, R::Number, R::TrieHasher>>,
+    alias: String,
 }
 
 impl<R: Runtime + Chain, S: Store, B: Decode + Send + Sync> BlockSubscription<R, S, B>
@@ -110,22 +117,25 @@ where
         chain_id: R::ChainId,
         start: R::Number,
     ) -> Result<Self> {
+        let alias = chain_alias::<R>(chain_id);
         let mut sub = NewBlockSubscription::subscribe(client, chain_id, start).await?;
         let height = client.chain_height(chain_id, None).await?;
         let mut sync_buf =
             Vec::with_capacity(height.checked_sub(&start).unwrap_or_default().into() as usize);
         if height > start {
-            let mut root = client.chain_root(chain_id, None).await?.unwrap();
+            let root: Cid = client.chain_root(chain_id, None).await?.unwrap().into();
+            let mut next = root;
             loop {
-                let block = Self::fetch_block(&store, root).await?;
+                let block = Self::fetch_block(&store, &next).await?;
                 let ancestor = block.ancestor;
                 let number = block.number;
                 sync_buf.push(block);
                 if number <= start {
                     break;
                 }
-                root = ancestor.unwrap();
+                next = ancestor.unwrap().into();
             }
+            store.alias(&alias, Some(&root)).await?;
         }
         sub.set_next(height);
         Ok(Self {
@@ -133,15 +143,15 @@ where
             store: store.clone(),
             sub,
             sync_buf,
+            alias,
         })
     }
 
     async fn fetch_block(
         store: &S,
-        hash: R::TrieHash,
+        cid: &Cid,
     ) -> Result<GenericBlock<B, R::Number, R::TrieHasher>> {
-        let block: OffchainBlock<R::TrieHasher> =
-            store.get(&hash.into()).await?.decode::<TreeCodec, _>()?;
+        let block: OffchainBlock<R::TrieHasher> = store.get(cid).await?.decode::<TreeCodec, _>()?;
         GenericBlock::decode(&block)
     }
 
@@ -150,7 +160,15 @@ where
             return Some(Ok(next));
         }
         if let Some(res) = self.sub.next().await {
-            Some(async move { Self::fetch_block(&self.store, res?.root).await }.await)
+            Some(
+                async move {
+                    let cid = res?.root.into();
+                    let block = Self::fetch_block(&self.store, &cid).await?;
+                    self.store.alias(&self.alias, Some(&cid)).await?;
+                    Ok(block)
+                }
+                .await,
+            )
         } else {
             None
         }
@@ -243,10 +261,6 @@ where
                 }
             }
             result?.new_block()?.ok_or(AuthorBlock)?;
-            /*self.offchain_client().store().update(
-            if let Some(cid) = ancestor.map(Into::into) {
-                self.offchain_client().store().update(&cid).await?;
-            }*/
             return Ok(number);
         }
     }
@@ -302,38 +316,27 @@ where
 mod tests {
     use async_std::prelude::*;
     use parity_scale_codec::{Decode, Encode};
-    use test_client::chain::{ChainClient, ChainRootStoreExt};
-    use test_client::client::{codec::Cid, AccountKeyring, Client as _, Node as _};
-    use test_client::{Client, Node};
+    use test_client::chain::{Chain, ChainClient, ChainRootStoreExt};
+    use test_client::client::{AccountKeyring, Client as _, Node as _};
+    use test_client::{Client, Node, Runtime};
 
     #[derive(Clone, Debug, Eq, PartialEq, Decode, Encode)]
     struct Block {
         description: String,
     }
 
-    async fn pinned_blocks(_client: &Client) -> Vec<(Cid, usize)> {
-        Default::default()
-        /*let store = client.offchain_client();
-        let mut pinned_blocks = vec![];
-        for cid in store.blocks().await {
-            let md = store.metadata(&cid).await;
-            if md.pins > 0 {
-                pinned_blocks.push((cid, md.pins));
-            }
-        }
-        pinned_blocks*/
-    }
-
-    async fn assert_only_root_is_pinned_once(client: &Client, chain_id: u64) {
+    async fn assert_chain_pinned(client: &Client, chain_id: <Runtime as Chain>::Number) {
         let root = client
             .chain_client()
             .chain_root(chain_id, None)
             .await
-            .unwrap();
-        let pinned = pinned_blocks(client).await;
-        assert_eq!(pinned.len(), 1);
-        assert_eq!(Some(pinned[0].0.clone()), root.map(Cid::from));
-        assert_eq!(pinned[0].1, 1);
+            .unwrap()
+            .unwrap()
+            .into();
+        assert_eq!(
+            client.offchain_client().pinned(&root).await.unwrap(),
+            Some(true)
+        );
     }
 
     #[async_std::test]
@@ -383,7 +386,7 @@ mod tests {
         assert!(block2.ancestor.is_some());
         assert_eq!(block, block2.payload);
 
-        assert_only_root_is_pinned_once(&client, chain_id).await;
+        assert_chain_pinned(&client, chain_id).await;
     }
 
     #[async_std::test]
@@ -399,15 +402,13 @@ mod tests {
         client.author_block(chain_id, &1u64).await.unwrap();
         client.author_block(chain_id, &2u64).await.unwrap();
 
-        assert_only_root_is_pinned_once(&client, chain_id).await;
-
         let mut sub = client.subscribe::<u64>(chain_id, 1).await.unwrap();
         let b1 = sub.next().await.unwrap().unwrap();
         assert_eq!(b1.payload, 1);
         let b2 = sub.next().await.unwrap().unwrap();
         assert_eq!(b2.payload, 2);
 
-        assert_only_root_is_pinned_once(&client, chain_id).await;
+        assert_chain_pinned(&client, chain_id).await;
     }
 
     #[async_std::test]
@@ -430,8 +431,5 @@ mod tests {
         let (ra, rb) = a.join(b).await;
         ra.unwrap();
         rb.unwrap();
-
-        assert_only_root_is_pinned_once(&client1, chain_id).await;
-        assert_only_root_is_pinned_once(&client2, chain_id).await;
     }
 }
