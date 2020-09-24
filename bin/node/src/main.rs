@@ -65,9 +65,7 @@ fn main() -> sc_cli::Result<()> {
         Some(Subcommand::PurgeChain(cmd)) => {
             let mut runner = cli.create_runner(cmd)?;
             force_parity_db(&mut runner);
-            runner.sync_run(|config| {
-                cmd.run(config.database)
-            })
+            runner.sync_run(|config| cmd.run(config.database))
         }
         None => {
             let mut runner = cli.create_runner(&cli.run)?;

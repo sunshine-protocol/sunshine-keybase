@@ -6,7 +6,10 @@ use std::str::FromStr;
 use substrate_subxt::{sp_core, system::System};
 use sunshine_client_utils::{crypto::ss58::Ss58, Node, Result};
 
-pub async fn resolve<N, C>(client: &C, identifier: Option<Identifier<N::Runtime>>) -> Result<<N::Runtime as Identity>::Uid>
+pub async fn resolve<N, C>(
+    client: &C,
+    identifier: Option<Identifier<N::Runtime>>,
+) -> Result<<N::Runtime as Identity>::Uid>
 where
     N: Node,
     N::Runtime: Identity,
@@ -62,8 +65,8 @@ where
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
+    use test_client::client::AccountKeyring;
     use test_client::identity::{Identifier, Service, ServiceParseError};
-    use test_client::mock::AccountKeyring;
     use test_client::Runtime;
 
     #[test]

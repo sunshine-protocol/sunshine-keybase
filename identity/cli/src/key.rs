@@ -7,7 +7,7 @@ use textwrap::Wrapper;
 #[derive(Clone, Debug, Clap)]
 pub struct KeySetCommand {
     /// Overwrite existing keys.
-    #[clap(short = "f", long = "force")]
+    #[clap(short = 'f', long = "force")]
     pub force: bool,
 
     /// Suri.
@@ -20,10 +20,7 @@ pub struct KeySetCommand {
 }
 
 impl KeySetCommand {
-    pub async fn exec<N: Node, C: IdentityClient<N>>(
-        &self,
-        client: &mut C,
-    ) -> Result<()>
+    pub async fn exec<N: Node, C: IdentityClient<N>>(&self, client: &mut C) -> Result<()>
     where
         N::Runtime: Identity,
     {

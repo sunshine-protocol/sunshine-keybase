@@ -1,19 +1,21 @@
-use libipld::cache::{IpldCache};
+use libipld::cache::IpldCache;
 use libipld::cbor::DagCborCodec;
 use libipld::derive_cache;
 use libipld::store::Store;
+use sc_service::{Configuration, RpcHandlers, TaskManager};
+use std::ops::Deref;
 use substrate_subxt::balances::{AccountData, Balances};
 use substrate_subxt::sp_runtime::traits::{IdentifyAccount, Verify};
 use substrate_subxt::system::System;
 use substrate_subxt::{extrinsic, sp_core, sp_runtime};
 use sunshine_chain_client::Chain;
-use sunshine_client_utils::client::{GenericClient, KeystoreImpl, OffchainStoreImpl};
 use sunshine_client_utils::codec::hasher::{TreeHashBlake2b256, TreeHasherBlake2b256, BLAKE2B_256};
 use sunshine_client_utils::codec::Cid;
 use sunshine_client_utils::crypto::keychain::KeyType;
 use sunshine_client_utils::crypto::sr25519;
-use sunshine_client_utils::node::{
-    ChainSpecError, Configuration, Network, Node as NodeT, RpcHandlers, ScServiceError, TaskManager,
+use sunshine_client_utils::{
+    sc_service, ChainSpecError, GenericClient, Network, Node as NodeT,
+    OffchainClient as OffchainClientT, OffchainStore,
 };
 use sunshine_faucet_client::Faucet;
 use sunshine_identity_client::{Claim, Identity};
@@ -72,6 +74,16 @@ pub struct OffchainClient<S> {
     claims: IpldCache<S, DagCborCodec, Claim>,
 }
 
+impl<S> Deref for OffchainClient<S> {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
+        &self.store
+    }
+}
+
+derive_cache!(OffchainClient, claims, DagCborCodec, Claim);
+
 impl<S: Store> OffchainClient<S> {
     pub fn new(store: S) -> Self {
         Self {
@@ -81,24 +93,15 @@ impl<S: Store> OffchainClient<S> {
     }
 }
 
-impl<S: Store> sunshine_client_utils::OffchainClient for OffchainClient<S> {
-    type Store = S;
-
-    fn store(&self) -> &S {
-        &self.store
-    }
-}
-
 impl<S: Store> From<S> for OffchainClient<S> {
     fn from(store: S) -> Self {
         Self::new(store)
     }
 }
 
-// TODO: remove
-use libipld::ipld::Ipld;
-derive_cache!(OffchainClient, claims, DagCborCodec, Claim);
+impl<S: Store> OffchainClientT<S> for OffchainClient<S> {}
 
+#[derive(Clone, Copy)]
 pub struct Node;
 
 impl NodeT for Node {
@@ -130,11 +133,15 @@ impl NodeT for Node {
         Self::ChainSpec::from_json_bytes(json).map_err(ChainSpecError)
     }
 
-    fn new_light(config: Configuration) -> Result<(TaskManager, RpcHandlers, Network<Self>), ScServiceError> {
+    fn new_light(
+        config: Configuration,
+    ) -> Result<(TaskManager, RpcHandlers, Network<Self>), sc_service::Error> {
         Ok(test_node::new_light(config)?)
     }
 
-    fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers, Network<Self>), ScServiceError> {
+    fn new_full(
+        config: Configuration,
+    ) -> Result<(TaskManager, RpcHandlers, Network<Self>), sc_service::Error> {
         Ok(test_node::new_full(config)?)
     }
 }
@@ -146,30 +153,4 @@ impl KeyType for UserDevice {
     type Pair = sr25519::Pair;
 }
 
-pub type Client =
-    GenericClient<Node, UserDevice, KeystoreImpl<UserDevice>, OffchainClient<OffchainStoreImpl<Node>>>;
-
-#[cfg(feature = "mock")]
-pub mod mock {
-    use super::*;
-    use sunshine_client_utils::mock::{self, build_test_node, OffchainStoreImpl};
-    pub use sunshine_client_utils::mock::{AccountKeyring, TempDir, TestNode};
-
-    pub type Client = GenericClient<
-        Node,
-        UserDevice,
-        mock::KeystoreImpl<UserDevice>,
-        OffchainClient<OffchainStoreImpl>,
-    >;
-
-    pub type ClientWithKeystore = GenericClient<
-        Node,
-        UserDevice,
-        KeystoreImpl<UserDevice>,
-        OffchainClient<OffchainStoreImpl>,
-    >;
-
-    pub fn test_node() -> (TestNode, TempDir) {
-        build_test_node::<Node>()
-    }
-}
+pub type Client = GenericClient<Node, UserDevice, OffchainClient<OffchainStore<Node>>>;

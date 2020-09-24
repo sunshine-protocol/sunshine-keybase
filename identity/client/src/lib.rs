@@ -14,9 +14,6 @@ pub use utils::{resolve, Identifier};
 use codec::Decode;
 use libipld::cache::Cache;
 use libipld::cbor::DagCborCodec;
-use libipld::codec::Decode as IpldDecode;
-use libipld::ipld::Ipld;
-use libipld::store::{Store, StoreParams};
 use sp_core::crypto::{Pair, Ss58Codec};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::convert::TryInto;
@@ -26,7 +23,7 @@ use substrate_subxt::{
 use sunshine_client_utils::{
     async_trait,
     crypto::{bip39::Mnemonic, keychain::KeyType, secrecy::SecretString},
-    keystore, Client, Node, OffchainClient, Result,
+    keystore, Client, Node, OffchainConfig, Result,
 };
 
 #[async_trait]
@@ -41,13 +38,19 @@ where
     async fn change_password(&self, password: &SecretString) -> Result<()>;
     async fn update_password(&mut self) -> Result<()>;
     async fn subscribe_password_changes(&self) -> Result<EventSubscription<N::Runtime>>;
-    async fn fetch_uid(&self, key: &<N::Runtime as System>::AccountId) -> Result<Option<<N::Runtime as Identity>::Uid>>;
+    async fn fetch_uid(
+        &self,
+        key: &<N::Runtime as System>::AccountId,
+    ) -> Result<Option<<N::Runtime as Identity>::Uid>>;
     async fn fetch_keys(
         &self,
         uid: <N::Runtime as Identity>::Uid,
         hash: Option<<N::Runtime as System>::Hash>,
     ) -> Result<Vec<<N::Runtime as System>::AccountId>>;
-    async fn fetch_account(&self, uid: <N::Runtime as Identity>::Uid) -> Result<<N::Runtime as Identity>::IdAccountData>;
+    async fn fetch_account(
+        &self,
+        uid: <N::Runtime as Identity>::Uid,
+    ) -> Result<<N::Runtime as Identity>::IdAccountData>;
     async fn prove_identity(&self, service: Service) -> Result<String>;
     async fn revoke_identity(&self, service: Service) -> Result<()>;
     async fn identity(&self, uid: <N::Runtime as Identity>::Uid) -> Result<Vec<IdentityInfo>>;
@@ -69,10 +72,7 @@ where
         + Send
         + Sync,
     C: Client<N, KeyType = K, Keystore = keystore::Keystore<K>>,
-    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<DagCborCodec> + Into<DagCborCodec>,
-    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
+    C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
     K: KeyType + 'static,
 {
     async fn create_account_for(&self, key: &<N::Runtime as System>::AccountId) -> Result<()> {

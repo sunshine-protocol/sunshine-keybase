@@ -3,11 +3,11 @@ use sc_service::ChainType;
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use sunshine_node_utils::node_service;
+pub use test_runtime::opaque::Block as OpaqueBlock;
 use test_runtime::{
     AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SystemConfig,
     WASM_BINARY,
 };
-pub use test_runtime::opaque::Block as OpaqueBlock;
 
 pub const IMPL_NAME: &str = "Sunshine Identity Test Node";
 pub const IMPL_VERSION: &str = env!("CARGO_PKG_VERSION");

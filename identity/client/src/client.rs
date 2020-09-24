@@ -5,12 +5,11 @@ use crate::service::Service;
 use crate::subxt::*;
 use codec::{Decode, Encode};
 use core::convert::TryInto;
+use libipld::alias;
 use libipld::cache::Cache;
 use libipld::cbor::DagCborCodec;
 use libipld::cid::Cid;
-use libipld::codec::Decode as IpldDecode;
-use libipld::ipld::Ipld;
-use libipld::store::{Store, StoreParams};
+use libipld::store::Store;
 use std::collections::HashMap;
 use std::time::Duration;
 use std::time::UNIX_EPOCH;
@@ -24,7 +23,7 @@ use sunshine_client_utils::crypto::{
     secrecy::SecretString,
     signer::GenericSigner,
 };
-use sunshine_client_utils::{Client, Node, OffchainClient, Result, Signer};
+use sunshine_client_utils::{Client, Node, OffchainConfig, Result, Signer};
 
 async fn set_identity<N, C>(client: &C, claim: Claim) -> Result<()>
 where
@@ -32,26 +31,19 @@ where
     N::Runtime: Identity,
     <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<N>,
-    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<DagCborCodec> + Into<DagCborCodec>,
-    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
+    C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
 {
+    let alias = alias!(sunshine_keybase_chain);
     let prev = claim.claim().prev.clone();
-    let mut tx = client.offchain_client().transaction();
-    let root = tx.insert(claim)?;
-    client.offchain_client().commit(tx).await?;
+    let root = client.offchain_client().insert(claim).await?;
     let prev_cid = prev.clone().map(Into::into);
     let root_cid = root.clone().into();
-    client.offchain_client().store().flush().await?;
     client
         .chain_client()
         .set_identity_and_watch(&client.chain_signer()?, &prev_cid, &root_cid)
         .await?
         .identity_changed()?;
-    if let Some(prev) = prev {
-        client.offchain_client().store().unpin(&prev).await?;
-    }
+    client.offchain_client().alias(alias, Some(&root)).await?;
     Ok(())
 }
 
@@ -80,9 +72,7 @@ where
     N::Runtime: Identity,
     <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<N>,
-    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<DagCborCodec> + Into<DagCborCodec>,
+    C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
     <N::Runtime as System>::AccountId: Ss58Codec,
 {
     let genesis = client.chain_client().genesis().as_ref().to_vec();
@@ -126,9 +116,7 @@ where
     N::Runtime: Identity,
     <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<N>,
-    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<DagCborCodec> + Into<DagCborCodec>,
+    C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
     <N::Runtime as Runtime>::Signature: Decode,
     <<N::Runtime as Runtime>::Signature as Verify>::Signer: IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>,
     <N::Runtime as System>::AccountId: Ss58Codec,
@@ -332,11 +320,8 @@ where
     N::Runtime: Identity,
     <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<N>,
-    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<DagCborCodec> + Into<DagCborCodec>,
+    C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
     <N::Runtime as System>::AccountId: Ss58Codec,
-    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
 {
     let uid = fetch_uid(client, client.signer()?.account_id())
         .await?
@@ -353,13 +338,10 @@ where
     N::Runtime: Identity,
     <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<N>,
-    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<DagCborCodec> + Into<DagCborCodec>,
+    C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
     <N::Runtime as System>::AccountId: Ss58Codec,
     <N::Runtime as Runtime>::Signature: Decode,
     <<N::Runtime as Runtime>::Signature as Verify>::Signer: IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>,
-    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
 {
     let uid = fetch_uid(client, client.signer()?.account_id())
         .await?
@@ -382,9 +364,7 @@ where
     N::Runtime: Identity,
     <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<N>,
-    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<DagCborCodec> + Into<DagCborCodec>,
+    C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
     <N::Runtime as System>::AccountId: Ss58Codec,
     <N::Runtime as Runtime>::Signature: Decode,
     <<N::Runtime as Runtime>::Signature as Verify>::Signer: IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>,
@@ -464,9 +444,7 @@ where
     N::Runtime: Identity,
     <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<N>,
-    C::OffchainClient: Cache<<<C::OffchainClient as OffchainClient>::Store as Store>::Params, DagCborCodec, Claim>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<DagCborCodec> + Into<DagCborCodec>,
+    C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
     <N::Runtime as System>::AccountId: Ss58Codec,
     <N::Runtime as Runtime>::Signature: Decode,
     <<N::Runtime as Runtime>::Signature as Verify>::Signer: IdentifyAccount<AccountId = <N::Runtime as System>::AccountId>,
@@ -492,14 +470,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_client::client::Client as _;
+    use test_client::client::{AccountKeyring, Client as _, Node as _};
     use test_client::identity::{IdentityClient, IdentityStatus, Service};
-    use test_client::mock::{test_node, AccountKeyring, ClientWithKeystore as Client};
+    use test_client::{Client, Node};
 
     #[async_std::test]
     async fn prove_identity() {
-        let (node, _node_tmp) = test_node();
-        let (client, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Alice).await;
+        let node = Node::new_mock();
+        let (client, _tmp) = Client::mock(&node, AccountKeyring::Alice).await;
         let account_id = AccountKeyring::Alice.to_account_id();
         let uid = client.fetch_uid(&account_id).await.unwrap().unwrap();
         let service = Service::Github("dvc94ch".into());
@@ -528,9 +506,9 @@ mod tests {
 
     #[async_std::test]
     async fn change_password() {
-        let (node, _node_tmp) = test_node();
-        let (mut client1, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Alice).await;
-        let (client2, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Eve).await;
+        let node = Node::new_mock();
+        let (mut client1, _tmp) = Client::mock(&node, AccountKeyring::Alice).await;
+        let (client2, _tmp) = Client::mock(&node, AccountKeyring::Eve).await;
 
         let signer2 = client2.signer().unwrap();
         client1.add_key(signer2.account_id()).await.unwrap();
@@ -548,9 +526,9 @@ mod tests {
 
     #[async_std::test]
     async fn provision_device() {
-        let (node, _node_tmp) = test_node();
-        let (mut client1, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Alice).await;
-        let (mut client2, _tmp) = Client::mock_with_keystore(&node, AccountKeyring::Eve).await;
+        let node = Node::new_mock();
+        let (mut client1, _tmp) = Client::mock(&node, AccountKeyring::Alice).await;
+        let (mut client2, _tmp) = Client::mock(&node, AccountKeyring::Eve).await;
 
         let password = SecretString::new("abcdefgh".to_string());
         let (mask, gen) = client1

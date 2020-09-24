@@ -5,17 +5,17 @@ authors = ["David Craven <david@craven.ch>"]
 edition = "2018"
 
 [dependencies]
-frame-support = { version = "2.0.0-rc6", default-features = false }
-frame-system = { version = "2.0.0-rc6", default-features = false }
+frame-support = { version = "2.0.0", default-features = false }
+frame-system = { version = "2.0.0", default-features = false }
 orml-utilities = { version = "0.2.0", default-features = false }
 parity-scale-codec = { version = "1.3.5", default-features = false }
-sp-core = { version = "2.0.0-rc6", default-features = false }
-sp-runtime = { version = "2.0.0-rc6", default-features = false }
-sp-std = { version = "2.0.0-rc6", default-features = false }
-sp-trie = { version = "2.0.0-rc6", default-features = false }
+sp-core = { version = "2.0.0", default-features = false }
+sp-runtime = { version = "2.0.0", default-features = false }
+sp-std = { version = "2.0.0", default-features = false }
+sp-trie = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
-sp-io = { version = "2.0.0-rc6", default-features = false }
+sp-io = { version = "2.0.0", default-features = false }
 sunshine-client-utils = { version = "0.1.0", git = "https://github.com/sunshine-protocol/sunshine-core" }
 
 [features]

@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 async-std = { version = "1.6.4", features = ["attributes"] }
 async-trait = "0.1.40"
-clap = "3.0.0-beta.1"
+clap = "3.0.0-beta.2"
 dirs = "3.0.1"
 env_logger = "0.7.1"
 sunshine-cli-utils = { git = "https://github.com/sunshine-protocol/sunshine-core" }

@@ -26,10 +26,7 @@ impl AccountCreateCommand {
 pub struct AccountPasswordCommand;
 
 impl AccountPasswordCommand {
-    pub async fn exec<N: Node, C: IdentityClient<N>>(
-        &self,
-        client: &C,
-    ) -> Result<()>
+    pub async fn exec<N: Node, C: IdentityClient<N>>(&self, client: &C) -> Result<()>
     where
         N::Runtime: Identity,
     {

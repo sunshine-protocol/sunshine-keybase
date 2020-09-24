@@ -51,13 +51,14 @@ where
 
 #[cfg(test)]
 mod tests {
+    use test_client::client::{AccountKeyring, Node as _};
     use test_client::faucet::FaucetClient;
-    use test_client::mock::{test_node, AccountKeyring, Client};
+    use test_client::{Client, Node};
 
     #[async_std::test]
     async fn test_mint() {
-        let (node, _node_tmp) = test_node();
-        let client = Client::mock(&node, AccountKeyring::Eve).await;
+        let node = Node::new_mock();
+        let (client, _tmp) = Client::mock(&node, AccountKeyring::Eve).await;
         client.mint().await.unwrap();
     }
 }

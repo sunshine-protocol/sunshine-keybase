@@ -6,20 +6,19 @@ pub use subxt::*;
 use crate::error::{AddAuthority, AuthorBlock, CreateChain, RemoveAuthority};
 use core::marker::PhantomData;
 use libipld::block::Block;
-use libipld::codec::{Decode as IpldDecode};
-use libipld::ipld::Ipld;
 use libipld::store::{Store, StoreParams};
 use parity_scale_codec::{Decode, Encode};
 use sp_runtime::traits::CheckedSub;
+use std::ops::Deref;
 use substrate_subxt::{
     sp_runtime, system::System, Event, EventSubscription, EventsDecoder, Runtime, SignedExtension,
     SignedExtra,
 };
-use sunshine_client_utils::block::GenericBlock;
 use sunshine_client_utils::codec::codec::TreeCodec;
 use sunshine_client_utils::codec::hasher::BLAKE2B_256_TREE;
 use sunshine_client_utils::codec::trie::{OffchainBlock, TreeDecode, TreeEncode};
-use sunshine_client_utils::{async_trait, Client, Node, OffchainClient, Result};
+use sunshine_client_utils::GenericBlock;
+use sunshine_client_utils::{async_trait, Client, Node, OffchainStore, Result};
 
 struct ChainEventSubscription<R: Runtime, E: Event<R>> {
     _marker: PhantomData<E>,
@@ -173,8 +172,11 @@ where
         &self,
         chain_id: <N::Runtime as Chain>::ChainId,
         number: <N::Runtime as Chain>::Number,
-    ) -> Result<BlockSubscription<N::Runtime, <Self::OffchainClient as OffchainClient>::Store, B>>;
-    async fn authorities(&self, chain_id: <N::Runtime as Chain>::ChainId) -> Result<Vec<<N::Runtime as System>::AccountId>>;
+    ) -> Result<BlockSubscription<N::Runtime, OffchainStore<N>, B>>;
+    async fn authorities(
+        &self,
+        chain_id: <N::Runtime as Chain>::ChainId,
+    ) -> Result<Vec<<N::Runtime as System>::AccountId>>;
     async fn add_authority(
         &self,
         chain_id: <N::Runtime as Chain>::ChainId,
@@ -194,9 +196,6 @@ where
     N::Runtime: Chain,
     <<<N::Runtime as Runtime>::Extra as SignedExtra<N::Runtime>>::Extra as SignedExtension>::AdditionalSigned: Send + Sync,
     C: Client<N>,
-    <<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs:
-        From<TreeCodec> + Into<TreeCodec>,
-    Ipld: IpldDecode<<<<C::OffchainClient as OffchainClient>::Store as Store>::Params as StoreParams>::Codecs>,
 {
     async fn create_chain(&self) -> Result<<N::Runtime as Chain>::ChainId> {
         Ok(self
@@ -230,7 +229,7 @@ where
                 block.cid(),
                 ancestor
             );
-            self.offchain_client().store().insert(block).await?;
+            self.offchain_client().insert(&block).await?;
             let result = self
                 .chain_client()
                 .author_block_and_watch(&signer, chain_id, *sealed.offchain.root(), &sealed.proof)
@@ -256,10 +255,10 @@ where
         &self,
         chain_id: <N::Runtime as Chain>::ChainId,
         number: <N::Runtime as Chain>::Number,
-    ) -> Result<BlockSubscription<N::Runtime, <C::OffchainClient as OffchainClient>::Store, B>> {
+    ) -> Result<BlockSubscription<N::Runtime, OffchainStore<N>, B>> {
         BlockSubscription::subscribe(
             self.chain_client(),
-            self.offchain_client().store(),
+            self.offchain_client().deref(),
             chain_id,
             number,
         )
@@ -303,17 +302,18 @@ where
 mod tests {
     use async_std::prelude::*;
     use parity_scale_codec::{Decode, Encode};
-    use sunshine_client_utils::{Client as _, OffchainClient, codec::Cid};
     use test_client::chain::{ChainClient, ChainRootStoreExt};
-    use test_client::mock::{test_node, AccountKeyring, Client};
+    use test_client::client::{codec::Cid, AccountKeyring, Client as _, Node as _};
+    use test_client::{Client, Node};
 
     #[derive(Clone, Debug, Eq, PartialEq, Decode, Encode)]
     struct Block {
         description: String,
     }
 
-    async fn pinned_blocks(client: &Client) -> Vec<(Cid, usize)> {
-        let store = client.offchain_client().store();
+    async fn pinned_blocks(_client: &Client) -> Vec<(Cid, usize)> {
+        Default::default()
+        /*let store = client.offchain_client();
         let mut pinned_blocks = vec![];
         for cid in store.blocks().await {
             let md = store.metadata(&cid).await;
@@ -321,11 +321,15 @@ mod tests {
                 pinned_blocks.push((cid, md.pins));
             }
         }
-        pinned_blocks
+        pinned_blocks*/
     }
 
     async fn assert_only_root_is_pinned_once(client: &Client, chain_id: u64) {
-        let root = client.chain_client().chain_root(chain_id, None).await.unwrap();
+        let root = client
+            .chain_client()
+            .chain_root(chain_id, None)
+            .await
+            .unwrap();
         let pinned = pinned_blocks(client).await;
         assert_eq!(pinned.len(), 1);
         assert_eq!(Some(pinned[0].0.clone()), root.map(Cid::from));
@@ -335,8 +339,8 @@ mod tests {
     #[async_std::test]
     async fn test_chain() {
         env_logger::try_init().ok();
-        let (node, _node_tmp) = test_node();
-        let client = Client::mock(&node, AccountKeyring::Alice).await;
+        let node = Node::new_mock();
+        let (client, _tmp) = Client::mock(&node, AccountKeyring::Alice).await;
 
         let chain_id = client.create_chain().await.unwrap();
         assert_eq!(chain_id, 0);
@@ -385,8 +389,8 @@ mod tests {
     #[async_std::test]
     async fn test_sync() {
         env_logger::try_init().ok();
-        let (node, _node_tmp) = test_node();
-        let client = Client::mock(&node, AccountKeyring::Alice).await;
+        let node = Node::new_mock();
+        let (client, _tmp) = Client::mock(&node, AccountKeyring::Alice).await;
 
         let chain_id = client.create_chain().await.unwrap();
         assert_eq!(chain_id, 0);
@@ -409,9 +413,9 @@ mod tests {
     #[async_std::test]
     async fn test_concurrent() {
         env_logger::try_init().ok();
-        let (node, _node_tmp) = test_node();
-        let client1 = Client::mock(&node, AccountKeyring::Alice).await;
-        let client2 = Client::mock(&node, AccountKeyring::Bob).await;
+        let node = Node::new_mock();
+        let (client1, _tmp) = Client::mock(&node, AccountKeyring::Alice).await;
+        let (client2, _tmp) = Client::mock(&node, AccountKeyring::Bob).await;
 
         let chain_id = client1.create_chain().await.unwrap();
         assert_eq!(chain_id, 0);

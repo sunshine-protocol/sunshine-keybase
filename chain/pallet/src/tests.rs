@@ -1,7 +1,7 @@
 use crate::mock::*;
 use frame_support::assert_ok;
-use sunshine_client_utils::block::GenericBlock;
 use sunshine_client_utils::codec::trie::TreeEncode;
+use sunshine_client_utils::GenericBlock;
 
 type Block = GenericBlock<(), u64, sunshine_client_utils::codec::hasher::TreeHasherBlake2b256>;
 
