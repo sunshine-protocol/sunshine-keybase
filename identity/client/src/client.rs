@@ -34,7 +34,7 @@ where
     C::OffchainClient: Cache<OffchainConfig<N>, DagCborCodec, Claim>,
 {
     let alias = alias!(sunshine_keybase_chain);
-    let prev = claim.claim().prev.clone();
+    let prev = claim.claim().prev;
     let root = client.offchain_client().insert(claim).await?;
     let prev_cid = prev.clone().map(Into::into);
     let root_cid = root.clone().into();
@@ -373,7 +373,7 @@ where
     let mut next = fetch_identity(client, uid).await?;
     while let Some(cid) = next {
         let claim = client.offchain_client().get(&cid).await?;
-        next = claim.claim().prev.clone();
+        next = claim.claim().prev;
         verify_claim(client, uid, &claim).await?;
         claims.push(claim);
     }

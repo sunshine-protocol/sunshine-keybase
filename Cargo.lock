@@ -6786,7 +6786,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt"
 version = "0.12.0"
-source = "git+https://github.com/paritytech/substrate-subxt#385d21421714f6fdd99cb6bdaada439f3724d70b"
+source = "git+https://github.com/paritytech/substrate-subxt#cd7bb6041b53ab6e33058af21d4f6b20f974aa4f"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -6821,7 +6821,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-client"
 version = "0.4.0"
-source = "git+https://github.com/paritytech/substrate-subxt#385d21421714f6fdd99cb6bdaada439f3724d70b"
+source = "git+https://github.com/paritytech/substrate-subxt#cd7bb6041b53ab6e33058af21d4f6b20f974aa4f"
 dependencies = [
  "async-std",
  "futures 0.1.29",
@@ -6838,7 +6838,7 @@ dependencies = [
 [[package]]
 name = "substrate-subxt-proc-macro"
 version = "0.12.0"
-source = "git+https://github.com/paritytech/substrate-subxt#385d21421714f6fdd99cb6bdaada439f3724d70b"
+source = "git+https://github.com/paritytech/substrate-subxt#cd7bb6041b53ab6e33058af21d4f6b20f974aa4f"
 dependencies = [
  "heck",
  "proc-macro-crate",
@@ -6902,7 +6902,7 @@ dependencies = [
 [[package]]
 name = "sunshine-cli-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#e3109d1fe5bcd7c81facbcf61044379514213183"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#199fa9f46b99f675a77a9485b8cae90833f9c1c4"
 dependencies = [
  "async-std",
  "clap 3.0.0-beta.2",
@@ -6915,7 +6915,7 @@ dependencies = [
 [[package]]
 name = "sunshine-client-net"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#e3109d1fe5bcd7c81facbcf61044379514213183"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#199fa9f46b99f675a77a9485b8cae90833f9c1c4"
 dependencies = [
  "anyhow",
  "futures 0.3.5",
@@ -6928,7 +6928,7 @@ dependencies = [
 [[package]]
 name = "sunshine-client-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#e3109d1fe5bcd7c81facbcf61044379514213183"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#199fa9f46b99f675a77a9485b8cae90833f9c1c4"
 dependencies = [
  "anyhow",
  "async-std",
@@ -6953,7 +6953,7 @@ dependencies = [
 [[package]]
 name = "sunshine-codec"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#e3109d1fe5bcd7c81facbcf61044379514213183"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#199fa9f46b99f675a77a9485b8cae90833f9c1c4"
 dependencies = [
  "anyhow",
  "generic-array 0.14.4",
@@ -6970,7 +6970,7 @@ dependencies = [
 [[package]]
 name = "sunshine-crypto"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#e3109d1fe5bcd7c81facbcf61044379514213183"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#199fa9f46b99f675a77a9485b8cae90833f9c1c4"
 dependencies = [
  "aead 0.2.0",
  "anyhow",
@@ -7048,7 +7048,7 @@ dependencies = [
 [[package]]
 name = "sunshine-ffi-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#e3109d1fe5bcd7c81facbcf61044379514213183"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#199fa9f46b99f675a77a9485b8cae90833f9c1c4"
 dependencies = [
  "allo-isolate",
  "async-std",
@@ -7122,7 +7122,7 @@ dependencies = [
 [[package]]
 name = "sunshine-keystore"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#e3109d1fe5bcd7c81facbcf61044379514213183"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#199fa9f46b99f675a77a9485b8cae90833f9c1c4"
 dependencies = [
  "anyhow",
  "async-std",
@@ -7137,7 +7137,7 @@ dependencies = [
 [[package]]
 name = "sunshine-node-utils"
 version = "0.1.0"
-source = "git+https://github.com/sunshine-protocol/sunshine-core#e3109d1fe5bcd7c81facbcf61044379514213183"
+source = "git+https://github.com/sunshine-protocol/sunshine-core#199fa9f46b99f675a77a9485b8cae90833f9c1c4"
 dependencies = [
  "sc-basic-authorship",
  "sc-client-api",
