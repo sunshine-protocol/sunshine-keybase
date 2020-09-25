@@ -1,7 +1,7 @@
 use sc_cli::{RunCmd, Runner, RuntimeVersion, SubstrateCli};
 use sc_service::{ChainSpec, DatabaseConfig, Role};
+use sunshine_codec::Multihash;
 use structopt::StructOpt;
-use tiny_multihash::Multihash;
 
 #[derive(Debug, StructOpt)]
 pub struct Cli {

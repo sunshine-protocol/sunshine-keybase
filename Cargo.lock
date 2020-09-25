@@ -7268,9 +7268,9 @@ dependencies = [
  "sp-runtime",
  "structopt",
  "substrate-build-script-utils",
+ "sunshine-codec",
  "sunshine-node-utils",
  "test-runtime",
- "tiny-multihash",
 ]
 
 [[package]]
