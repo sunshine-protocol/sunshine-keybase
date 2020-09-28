@@ -72,6 +72,34 @@ macro_rules! impl_identity_wallet_ffi {
     () => {};
 }
 
+
+#[doc(hidden)]
+#[cfg(feature = "identity-account")]
+#[macro_export]
+macro_rules! impl_identity_account_ffi {
+    () => {
+        use $crate::ffi::Account;
+        gen_ffi! {
+            /// Creates Account for that device id.
+            /// returns `true` if it got created.
+            Account::create => fn client_account_create(device: *const raw::c_char = cstr!(device)) -> bool;
+            /// Changes Current Account Password.
+            /// returns `true` if it got updated.
+            Account::change_password => fn client_account_change_password(
+                to: *const raw::c_char = cstr!(to),
+            ) -> bool;
+        }
+    };
+}
+
+#[doc(hidden)]
+#[cfg(not(feature = "identity-account"))]
+#[macro_export]
+macro_rules! impl_identity_account_ffi {
+    () => {};
+}
+
+
 #[doc(hidden)]
 #[cfg(feature = "identity-device")]
 #[macro_export]

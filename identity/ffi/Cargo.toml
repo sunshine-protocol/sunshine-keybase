@@ -19,8 +19,9 @@ thiserror = "1.0.20"
 test-client = { path = "../../bin/client" }
 
 [features]
-default = ["identity-key", "identity-wallet", "identity-device", "identity-id"]
+default = ["identity-key", "identity-wallet", "identity-device", "identity-id", "identity-account"]
 identity-key = []
 identity-wallet = []
 identity-device = []
 identity-id = []
+identity-account = []
