@@ -184,6 +184,7 @@ macro_rules! impl_ffi {
         $crate::impl_identity_device_ffi!();
         $crate::impl_identity_id_ffi!();
         $crate::impl_identity_wallet_ffi!();
+        $crate::impl_identity_account_ffi!();
     };
     (client: $client: ty) => {
         use ::std::os::raw;
