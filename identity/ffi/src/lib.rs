@@ -86,7 +86,7 @@ macro_rules! impl_identity_account_ffi {
             /// Changes Current Account Password.
             /// returns `true` if it got updated.
             Account::change_password => fn client_account_change_password(
-                to: *const raw::c_char = cstr!(to),
+                to: *const raw::c_char = cstr!(to)
             ) -> bool;
         }
     };
