@@ -7157,6 +7157,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "sunshine-split"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-utilities",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-trie",
+ "sunshine-client-utils",
+]
+
+[[package]]
+name = "sunshine-sss-client"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "env_logger",
+ "frame-support",
+ "libipld",
+ "log",
+ "parity-scale-codec",
+ "substrate-subxt",
+ "sunshine-client-utils",
+ "test-client",
+ "thiserror",
+]
+
+[[package]]
 name = "syn"
 version = "1.0.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
