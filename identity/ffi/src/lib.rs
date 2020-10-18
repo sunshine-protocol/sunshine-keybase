@@ -72,7 +72,6 @@ macro_rules! impl_identity_wallet_ffi {
     () => {};
 }
 
-
 #[doc(hidden)]
 #[cfg(feature = "identity-account")]
 #[macro_export]
@@ -98,7 +97,6 @@ macro_rules! impl_identity_account_ffi {
 macro_rules! impl_identity_account_ffi {
     () => {};
 }
-
 
 #[doc(hidden)]
 #[cfg(feature = "identity-device")]
