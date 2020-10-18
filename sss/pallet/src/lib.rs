@@ -10,6 +10,9 @@ use sp_core::Hasher;
 use sp_runtime::traits::{CheckedAdd, Member};
 use sp_std::prelude::*;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Encode, Decode, sp_runtime::RuntimeDebug)]
 /// Membership info for each group
 pub struct Group<Id, AccountId> {
@@ -20,11 +23,11 @@ pub struct Group<Id, AccountId> {
 pub type Gov<T> = Group<<T as Trait>::SecretId, <T as System>::AccountId>;
 
 #[derive(Encode, Decode, sp_runtime::RuntimeDebug)]
-pub struct Proof<Hash> {
+pub struct Commit<Hash> {
     pub hash: Hash,
     pub proven: Option<bool>,
 }
-#[derive(Encode, Decode, sp_runtime::RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, sp_runtime::RuntimeDebug)]
 pub struct Threshold {
     // Some(true) proofs submitted count
     pub yes_ct: u8,
@@ -34,29 +37,30 @@ pub struct Threshold {
     pub req: u8,
     // Fault tolerance (required no_ct to trigger explicit fault)
     pub tol: u8,
+    // Total
+    pub all: u8,
 }
 impl Threshold {
-    pub fn new(req: u8, tol: u8) -> Self {
+    pub fn new(req: u8, tol: u8, all: u8) -> Self {
+        core::debug_assert!(req <= all && tol <= all);
         Threshold {
             yes_ct: 0u8,
             no_ct: 0u8,
             req,
             tol,
+            all,
         }
     }
 }
 
 #[derive(Encode, Decode, sp_runtime::RuntimeDebug)]
 /// Recovery State
-/// The hash is the commitment for the relevant holder
-/// The Option<bool> shows if the holder has committed the preimage
-/// - Some(true) => proved via preimage
-/// - Some(false) => proof failed for preimage (speaker-listener fault equivalence => use fault tolerance)
-/// - None => proof not submitted by group member (index corresponds to position of AccountId in Group OrderedSet)
+/// - score contains the threshold state
+/// - state contains all commits by the dealer + the state of preimage proofs from secret share holders
 pub struct RecoverySt<Id, Hash> {
     pub id: Id,
-    pub thresh: Threshold,
-    pub proofs: Vec<Proof<Hash>>,
+    pub score: Threshold,
+    pub state: Vec<Commit<Hash>>,
 }
 pub type RecSt<T> =
     RecoverySt<(<T as Trait>::SecretId, <T as Trait>::RoundId), <T as System>::Hash>;
@@ -80,15 +84,13 @@ decl_event! {
         SecretId = <T as Trait>::SecretId,
         RoundId = <T as Trait>::RoundId,
     {
-        /// Account opens new group with identifier and number of accounts
+        // _, _, total members
         NewGroup(AccountId, SecretId, u8),
-        /// Secret, Round, CommitHash, Required, Tolerance, Total
-        SplitSecret(SecretId, RoundId, u8, u8, u8),
+        SplitSecret(SecretId, RoundId, Threshold),
         MemberRemoved(SecretId, AccountId),
         MemberAdded(SecretId, AccountId),
-        /// _, _, _,  Current Yes Count, Current No Count, Required, Tolerance, Total
-        ValidProofPublished(SecretId, RoundId, AccountId, u8, u8, u8, u8, u8),
-        InvalidProofPublished(SecretId, RoundId, AccountId, u8, u8, u8, u8, u8),
+        ValidPreImage(SecretId, RoundId, AccountId, Threshold),
+        InvalidPreImage(SecretId, RoundId, AccountId, Threshold),
     }
 }
 
@@ -117,13 +119,13 @@ decl_storage! {
             hasher(blake2_128_concat) T::SecretId
             => Option<Gov<T>>;
 
-        /// Commitments made by the Dealer (user) && proofs by Secret Holders
+        /// Commitments made by the Dealer (user) && proofs of PreImage knowledge by Secret Holders
         pub Commits get(fn commits): double_map
             hasher(blake2_128_concat) T::SecretId,
             hasher(blake2_128_concat) T::RoundId
             => Option<RecSt<T>>;
 
-        /// Latest round
+        /// Current round
         pub Round get(fn round): map
             hasher(blake2_128_concat) T::SecretId
             => T::RoundId;
@@ -152,7 +154,6 @@ decl_module! {
                 set,
             };
             <Groups<T>>::insert(secret_id, group);
-            // next round is Round 1 (just like secret_id semantics)
             let next_round: T::RoundId = 1u8.into();
             <Round<T>>::insert(secret_id, next_round);
             <SecretIdCounter<T>>::put(next_secret_id);
@@ -173,14 +174,15 @@ decl_module! {
             let next_round = this_round
                 .checked_add(&1u8.into())
                 .ok_or(Error::<T>::RoundIdOverflow)?;
+            let score = Threshold::new(required, tolerance, total as u8);
             let state = RecoverySt {
                 id: (id, this_round),
-                thresh: Threshold::new(required, tolerance),
-                proofs: commit.into_iter().map(|x| Proof { hash: x, proven: None }).collect(),
+                score,
+                state: commit.into_iter().map(|x| Commit { hash: x, proven: None }).collect(),
             };
             <Commits<T>>::insert(id, this_round, state);
             <Round<T>>::insert(id, next_round);
-            Self::deposit_event(RawEvent::SplitSecret(id, this_round, required, tolerance, total as u8));
+            Self::deposit_event(RawEvent::SplitSecret(id, this_round, score));
             Ok(())
         }
         /// Remove member from group
@@ -215,37 +217,25 @@ decl_module! {
             if let Ok(index) = group.set.0.binary_search(&holder) {
                 let round = <Round<T>>::get(id);
                 let mut commit = <Commits<T>>::get(id, round).ok_or(Error::<T>::NoSecretSplit)?;
-                ensure!(commit.proofs.len() == group.set.0.len(), Error::<T>::MustWaitUntilNextRoundAfterMembershipChanges);
+                ensure!(commit.state.len() == group.set.0.len(), Error::<T>::MustWaitUntilNextRoundAfterMembershipChanges);
                 let proof = <T as System>::Hashing::hash(&proof);
-                if let Some(c) = commit.proofs.get(index) {
+                if let Some(c) = commit.state.get(index) {
                     if c.proven.is_some() {
                         // Proof Already Published For This Round so Cannot be Changed
                         return Err(Error::<T>::NoChangesAllowedForRound.into());
                     }
                     if c.hash == proof {
-                        commit.proofs[index] = Proof { proven: Some(true), ..*c };
-                        commit.thresh.yes_ct += 1u8;
-                        let (y, n, r, t, tt) = (
-                            commit.thresh.yes_ct,
-                            commit.thresh.no_ct,
-                            commit.thresh.req,
-                            commit.thresh.tol,
-                            commit.proofs.len() as u8
-                        );
+                        commit.state[index] = Commit { proven: Some(true), ..*c };
+                        commit.score.yes_ct += 1u8;
+                        let score = commit.score;
                         <Commits<T>>::insert(id, round, commit);
-                        Self::deposit_event(RawEvent::ValidProofPublished(id, round, holder, y, n, r, t, tt));
+                        Self::deposit_event(RawEvent::ValidPreImage(id, round, holder, score));
                     } else {
-                        commit.proofs[index] = Proof { proven: Some(false), ..*c };
-                        commit.thresh.no_ct += 1u8;
-                        let (y, n, r, t, tt) = (
-                            commit.thresh.yes_ct,
-                            commit.thresh.no_ct,
-                            commit.thresh.req,
-                            commit.thresh.tol,
-                            commit.proofs.len() as u8
-                        );
+                        commit.state[index] = Commit { proven: Some(false), ..*c };
+                        commit.score.no_ct += 1u8;
+                        let score = commit.score;
                         <Commits<T>>::insert(id, round, commit);
-                        Self::deposit_event(RawEvent::InvalidProofPublished(id, round, holder, y, n, r, t, tt));
+                        Self::deposit_event(RawEvent::InvalidPreImage(id, round, holder, score));
                     }
                 }
                 Ok(())
