@@ -67,7 +67,7 @@ pub type RecSt<T> =
 
 /// The pallet's configuration trait.
 pub trait Trait: System {
-    /// Secret ID type.
+    /// Secret group unique identifier
     type SecretId: Parameter + Member + Copy + Default + CheckedAdd + From<u8>;
 
     /// Round identifier
@@ -106,12 +106,13 @@ decl_error! {
         NoSecretSplit,
         MinOneSharePerMem,
         NoChangesAllowedForRound,
+        ThresholdNotInitializedAt0,
         MustWaitUntilNextRoundAfterMembershipChanges,
     }
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait> as ChainModule {
+    trait Store for Module<T: Trait> as SecretModule {
         SecretIdCounter: T::SecretId;
 
         /// The set of accounts that will hold secret shares to reconstruct secrets
@@ -162,27 +163,28 @@ decl_module! {
         }
         /// Dealer publishes commitments (hashes) of encrypted secret shares
         #[weight = 0]
-        pub fn split_secret(origin, id: T::SecretId, commit: Vec<T::Hash>, required: u8, tolerance: u8) -> DispatchResult {
+        pub fn split_secret(origin, id: T::SecretId, commit: Vec<T::Hash>, threshold: Threshold) -> DispatchResult {
             let user = ensure_signed(origin)?;
             let group = <Groups<T>>::get(id).ok_or(Error::<T>::SecretGroupDNE)?;
             ensure!(group.acc == user, Error::<T>::Unauthorized);
             let total = group.set.0.len();
             ensure!(commit.len() == total, Error::<T>::MinOneSharePerMem);
-            ensure!(required <= total as u8, Error::<T>::ThresholdLEQSize);
-            ensure!(tolerance <= total as u8, Error::<T>::ToleranceLEQSize);
+            ensure!(threshold.all == total as u8, Error::<T>::MinOneSharePerMem);
+            ensure!(threshold.req <= total as u8, Error::<T>::ThresholdLEQSize);
+            ensure!(threshold.tol <= total as u8, Error::<T>::ToleranceLEQSize);
+            ensure!(threshold.yes_ct == 0u8 && threshold.no_ct == 0u8, Error::<T>::ThresholdNotInitializedAt0);
             let this_round = <Round<T>>::get(id);
             let next_round = this_round
                 .checked_add(&1u8.into())
                 .ok_or(Error::<T>::RoundIdOverflow)?;
-            let score = Threshold::new(required, tolerance, total as u8);
             let state = RecoverySt {
                 id: (id, this_round),
-                score,
+                score: threshold,
                 state: commit.into_iter().map(|x| Commit { hash: x, proven: None }).collect(),
             };
             <Commits<T>>::insert(id, this_round, state);
             <Round<T>>::insert(id, next_round);
-            Self::deposit_event(RawEvent::SplitSecret(id, this_round, score));
+            Self::deposit_event(RawEvent::SplitSecret(id, this_round, threshold));
             Ok(())
         }
         /// Remove member from group

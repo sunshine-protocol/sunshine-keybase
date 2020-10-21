@@ -3,6 +3,7 @@ name = "sunshine-split"
 version = "0.0.1"
 authors = ["Amar Singh <asinghchrony@protonmail.com>"]
 edition = "2018"
+description = "blockchain commitments infra for client-side safe secret sharing protocol"
 
 [dependencies]
 frame-support = { version = "2.0.0", default-features = false }

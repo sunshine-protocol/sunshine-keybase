@@ -7184,6 +7184,7 @@ dependencies = [
  "parity-scale-codec",
  "substrate-subxt",
  "sunshine-client-utils",
+ "sunshine-split",
  "test-client",
  "thiserror",
 ]
